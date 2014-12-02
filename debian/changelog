@@ -1,0 +1,5 @@
+contrail-vcenter-plugin (1.0) stable; urgency=low
+
+  * Initial release.
+
+ -- Sachchidanand Vaidya <vaidyasd@juniper.net>  Tue, 21 Nov 2014 13:26:53 +0000

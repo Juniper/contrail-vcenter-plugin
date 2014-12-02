@@ -47,12 +47,12 @@
 
   <build>
     <defaultGoal>package</defaultGoal>
-    <directory>${basedir}/../../../../../build/debug/config/vcenter-monitor/java/target</directory>
-    <sourceDirectory>${basedir}/src</sourceDirectory>
-    <testSourceDirectory>${basedir}/test</testSourceDirectory>
+    <directory>target</directory>
+    <sourceDirectory>src</sourceDirectory>
+    <testSourceDirectory>test</testSourceDirectory>
     <testResources>
       <testResource>
-        <directory>${basedir}/test/resources</directory>
+        <directory>test/resources</directory>
       </testResource>
     </testResources>
     <resources>

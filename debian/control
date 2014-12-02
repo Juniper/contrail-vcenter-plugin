@@ -1,0 +1,21 @@
+Source: contrail-vcenter-plugin
+Section: java
+Priority: optional
+Maintainer: OpenContrail developers <dev@lists.opencontrail.org>
+Build-Depends: debhelper (>= 9), javahelper
+Standards-Version: 3.9.3
+Homepage: https://github.com/Juniper/contrail-vcenter-plugin
+
+Package: contrail-vcenter-plugin
+Architecture: all
+Depends: ${java:Depends}, ${misc:Depends}
+Description: Contrail vCenter Plugin Application
+ This is Contrail vCenter Plugin Application running on Contrail 
+ config node.
+
+Package: contrail-install-vcenter-plugin
+Architecture: all
+Depends: ${java:Depends}, ${misc:Depends}
+Description: Contrail vCenter Plugin Application installation 
+ This is Contrail vCenter Plugin Application running on Contrail 
+ config node. This package combines 4 packages into one

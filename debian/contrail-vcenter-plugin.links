@@ -1,0 +1,2 @@
+etc/init.d/contrail-vcenter-plugin.initd.supervisord /etc/init.d/contrail-vcenter-plugin
+/usr/share/contrail-vcenter-plugin/juniper-contrail-vcenter-1.0.jar /usr/share/contrail-vcenter-plugin/juniper-contrail-vcenter.jar
