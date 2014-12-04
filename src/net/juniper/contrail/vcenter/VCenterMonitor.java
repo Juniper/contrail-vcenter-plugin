@@ -20,9 +20,11 @@ import java.util.UUID;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
+import org.apache.log4j.Level;
 
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
+import net.juniper.contrail.zklibrary.MasterSelection;
 
 class VmwareVirtualMachineInfo {
     private String hostName;
@@ -458,6 +460,9 @@ public class VCenterMonitor {
     private static String _vcenterDvsName    = "dvSwitch";
     private static String _apiServerAddress  = "10.84.13.23";
     private static int _apiServerPort        = 8082;
+    private static String _zookeeperAddrPort  = "127.0.0.1:2181";
+    private static String _zookeeperLatchPath  = "/vcenter-plugin";
+    private static String _zookeeperId  = "node-vcenter-plugin";
     
     private static boolean configure() {
 
@@ -479,7 +484,8 @@ public class VCenterMonitor {
                 _vcenterDcName = configProps.getProperty("vcenter.datacenter");
                 _vcenterDvsName = configProps.getProperty("vcenter.dvswitch");
                 _apiServerAddress = configProps.getProperty("api.hostname");
-                String portStr = configProps.getProperty("api.port");
+                _zookeeperAddrPort = configProps.getProperty("zookeeper.serverlist");
+		String portStr = configProps.getProperty("api.port");
                 if (portStr != null && portStr.length() > 0) {
                     _apiServerPort = Integer.parseInt(portStr);
                 }
@@ -498,6 +504,9 @@ public class VCenterMonitor {
     public static void main(String[] args) throws Exception {
         BasicConfigurator.configure();
         configure();
+        MasterSelection zk_ms = null;
+	zk_ms = new MasterSelection(_zookeeperAddrPort, _zookeeperLatchPath, _zookeeperId);
+	zk_ms.waitForLeadership();
         s_logger.debug("Config params  vcenter url: " + _vcenterURL + ", _vcenterUsername: " + _vcenterUsername + ", api server: " + _apiServerAddress);
         // Launch the periodic VCenterMonitorTask
         VCenterMonitorTask monitorTask = new VCenterMonitorTask(_vcenterURL, 
