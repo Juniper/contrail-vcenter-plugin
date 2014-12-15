@@ -64,6 +64,8 @@ public class VCenterDB {
     private IpPoolManager ipPoolManager;
     private Datacenter contrailDC;
     
+    private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
+
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
                      String contrailDvsName) {
@@ -73,7 +75,7 @@ public class VCenterDB {
         this.contrailDataCenterName = contrailDcName;
         this.contrailDvSwitchName   = contrailDvsName;
     }
-    
+
     public void Initialize() throws Exception {
         // Connect to VCenter
         serviceInstance = new ServiceInstance(new URL(vcenterUrl),
@@ -84,13 +86,38 @@ public class VCenterDB {
         contrailDC = (Datacenter) inventoryNavigator.  searchManagedEntity(
                 "Datacenter", contrailDataCenterName);
     }
-    
-    private static IpPool getIpPool(
+
+    public void setPrevVmwareVNInfos(
+                    SortedMap<String, VmwareVirtualNetworkInfo> _prevVmwareVNInfos) {
+        prevVmwareVNInfos = _prevVmwareVNInfos;
+    }
+
+    public SortedMap<String, VmwareVirtualNetworkInfo> getPrevVmwareVNInfos() {
+        return prevVmwareVNInfos;
+    }
+
+    public ServiceInstance getServiceInstance() {
+      return serviceInstance;
+    }
+
+    public IpPoolManager getIpPoolManager() {
+      return ipPoolManager;
+    }
+
+    public InventoryNavigator getInventoryNavigator() {
+      return inventoryNavigator;
+    }
+
+    public Datacenter getDatacenter() {
+      return contrailDC;
+    }
+
+    public IpPool getIpPool(
             DistributedVirtualPortgroup portGroup, IpPool[] ipPools) {
         NetworkSummary summary = portGroup.getSummary();
         Integer poolid = summary.getIpPoolId();
         if (poolid == null) {
-            s_logger.info("dvPg: " + portGroup.getName() + 
+            s_logger.debug("dvPg: " + portGroup.getName() + 
                     " IpPool NOT configured");
             return null;
         }
@@ -103,29 +130,6 @@ public class VCenterDB {
         s_logger.error("dvPg: " + portGroup.getName() + 
                 " INVALID IpPoolId " + poolid);
         return null;
-    }
-    
-    private static short getIsolatedVlanId(String dvPgName, DVPortSetting portSetting) {
-        if (portSetting instanceof VMwareDVSPortSetting) {
-            VMwareDVSPortSetting vPortSetting = 
-                    (VMwareDVSPortSetting) portSetting;
-            VmwareDistributedVirtualSwitchVlanSpec vlanSpec = 
-                    vPortSetting.getVlan();
-            if (vlanSpec instanceof VmwareDistributedVirtualSwitchPvlanSpec) {
-                VmwareDistributedVirtualSwitchPvlanSpec pvlanSpec = 
-                        (VmwareDistributedVirtualSwitchPvlanSpec) vlanSpec;
-                return (short)pvlanSpec.getPvlanId();
-            } else {
-                s_logger.error("dvPg: " + dvPgName + 
-                        " port setting: " +  vPortSetting + 
-                        ": INVALID vlan spec: " + vlanSpec);
-                return -1;
-            }
-        } else {
-            s_logger.error("dvPg: " + dvPgName + 
-                    " INVALID port setting: " + portSetting);
-            return -1;
-        }
     }
     
     private static String getVirtualMachineMacAddress(
@@ -171,14 +175,14 @@ public class VCenterDB {
             // and IP address is available
             GuestInfo guestInfo = vm.getGuest();
             if (guestInfo == null) {
-                s_logger.info("dvPg: " + dvPgName + " host: " + hostName +
+                s_logger.debug("dvPg: " + dvPgName + " host: " + hostName +
                         " vm:" + vmName + " GuestInfo - VMware Tools " +
                         " NOT installed");
                 continue;
             }
             GuestNicInfo[] nicInfos = guestInfo.getNet();
             if (nicInfos == null) {
-                s_logger.info("dvPg: " + dvPgName + " host: " + hostName +
+                s_logger.debug("dvPg: " + dvPgName + " host: " + hostName +
                         " vm:" + vmName + " GuestNicInfo - VMware Tools " +
                         " NOT installed");
                 continue;
@@ -195,13 +199,13 @@ public class VCenterDB {
                         inventoryNavigator.searchManagedEntity("Network",
                                 networkName);
                 if (network == null) {
-                    s_logger.info("dvPg: " + dvPgName + "host: " + 
+                    s_logger.debug("dvPg: " + dvPgName + "host: " + 
                             hostName + " vm: " + vmName + " network: " + 
                             networkName + " NOT found");
                     continue;
                 }
                 if (network instanceof DistributedVirtualPortgroup) {
-                    s_logger.info("dvPg: " + dvPgName + "host: " + 
+                    s_logger.debug("dvPg: " + dvPgName + "host: " + 
                             hostName + "vm: " + vmName + " network: " +
                             networkName + " is distributed virtual port " +
                             "group");
@@ -239,7 +243,7 @@ public class VCenterDB {
         return null;
     }
     
-    private static boolean doIgnoreVirtualMachine(String vmName) {
+    public boolean doIgnoreVirtualMachine(String vmName) {
         // Ignore contrailVRouterVMs since those should not be reflected in
         // Contrail VNC
         if (vmName.toLowerCase().contains(
@@ -249,6 +253,64 @@ public class VCenterDB {
         return false;
     }
     
+    VmwareVirtualMachineInfo fillVmwareVirtualMachineInfo(
+                                       VirtualMachine vcenterVm,
+                                       DistributedVirtualPortgroup portGroup)
+                                       throws Exception {
+        // Name
+        String vmName = vcenterVm.getName();
+        String dvPgName = portGroup.getName();
+
+        // Ignore virtual machine?
+        if (doIgnoreVirtualMachine(vmName)) {
+            s_logger.debug("dvPg: " + dvPgName +
+                    " Ignoring vm: " + vmName);
+            return null;
+        }
+
+        // Is it powered on?
+        VirtualMachineRuntimeInfo vmRuntimeInfo = vcenterVm.getRuntime();
+        VirtualMachinePowerState powerState =
+                vmRuntimeInfo.getPowerState();
+        if (powerState != VirtualMachinePowerState.poweredOn) {
+            s_logger.debug("dvPg: " + dvPgName + " Ignoring vm: " +
+                    vmName + " Power State: " + powerState);
+            return null;
+        }
+
+        // Extract configuration info
+        VirtualMachineConfigInfo vmConfigInfo = vcenterVm.getConfig();
+
+        // Extract MAC address
+        String vmMac = getVirtualMachineMacAddress(vmConfigInfo,
+                portGroup);
+        if (vmMac == null) {
+            s_logger.error("dvPg: " + dvPgName + " vm: " + 
+                    vmName + " MAC Address NOT found");
+            return null;
+        }
+
+        // Get host information
+        ManagedObjectReference hmor = vmRuntimeInfo.getHost();
+        HostSystem host = new HostSystem(
+            vcenterVm.getServerConnection(), hmor);
+        String hostName = host.getName();
+
+        // Get Contrail VRouter virtual machine information from the host
+        String vrouterIpAddress = getVirtualMachineIpAddress(dvPgName,
+                hostName, host, contrailVRouterVmNamePrefix);
+        if (vrouterIpAddress == null) {
+            s_logger.error("dvPg: " + dvPgName + " vm: " + vmName +
+                    " host: " + hostName + " Contrail VRouter VM: " +
+                    contrailVRouterVmNamePrefix + " NOT found");
+        }
+        VmwareVirtualMachineInfo vmInfo = new
+                VmwareVirtualMachineInfo(vmName, hostName,
+                        vrouterIpAddress, vmMac);
+
+        return vmInfo;
+    }
+
     private SortedMap<String, VmwareVirtualMachineInfo> 
         populateVirtualMachineInfo(
                 DistributedVirtualPortgroup portGroup) throws Exception {
@@ -256,59 +318,21 @@ public class VCenterDB {
         // Get list of virtual machines connected to the port group
         VirtualMachine[] vms = portGroup.getVms();
         if (vms == null || vms.length == 0) {
-            s_logger.info("dvPg: " + dvPgName + 
+            s_logger.debug("dvPg: " + dvPgName + 
                     " NO virtual machines connected");
             return null;
         }
         SortedMap<String, VmwareVirtualMachineInfo> vmInfos = 
                 new TreeMap<String, VmwareVirtualMachineInfo>();
         for (VirtualMachine vm : vms) {
-            // Name
-            String vmName = vm.getName();
-            // Ignore virtual machine?
-            if (doIgnoreVirtualMachine(vmName)) {
-                s_logger.debug("dvPg: " + dvPgName + 
-                        " Ignoring vm: " + vmName);
-                continue;
-            }
-            // Is it powered on?
-            VirtualMachineRuntimeInfo vmRuntimeInfo = vm.getRuntime();
-            VirtualMachinePowerState powerState = 
-                    vmRuntimeInfo.getPowerState();
-            if (powerState != VirtualMachinePowerState.poweredOn) {
-                s_logger.debug("dvPg: " + dvPgName + " Ignoring vm: " + 
-                        vmName + " Power State: " + powerState);
-                continue;
-            }
-
-            // Extract configuration info
+            // Extract configuration info and get instance UUID
             VirtualMachineConfigInfo vmConfigInfo = vm.getConfig();
-            // Extract MAC address
-            String vmMac = getVirtualMachineMacAddress(vmConfigInfo,
-                    portGroup);
-            if (vmMac == null) {
-                s_logger.error("dvPg: " + dvPgName + " vm: " + 
-                        vmName + " MAC Address NOT found");
+            String instanceUuid = vmConfigInfo.getInstanceUuid();
+
+            VmwareVirtualMachineInfo vmInfo = fillVmwareVirtualMachineInfo(vm, portGroup);
+            if (vmInfo == null) {
                 continue;
             }
-            // Get instance UUID
-            String instanceUuid = vmConfigInfo.getInstanceUuid();
-            // Get host information
-            ManagedObjectReference hmor = vmRuntimeInfo.getHost();
-            HostSystem host = new HostSystem(
-                vm.getServerConnection(), hmor);
-            String hostName = host.getName();
-            // Get Contrail VRouter virtual machine information from the host
-            String vrouterIpAddress = getVirtualMachineIpAddress(dvPgName,
-                    hostName, host, contrailVRouterVmNamePrefix);
-            if (vrouterIpAddress == null) {
-                s_logger.error("dvPg: " + dvPgName + " vm: " + vmName + 
-                        " host: " + hostName + " Contrail VRouter VM: " + 
-                        contrailVRouterVmNamePrefix + " NOT found");
-            }
-            VmwareVirtualMachineInfo vmInfo = new 
-                    VmwareVirtualMachineInfo(vmName, hostName, 
-                            vrouterIpAddress, vmMac); 
             vmInfos.put(instanceUuid, vmInfo);
         }
         if (vmInfos.size() == 0) {
@@ -396,7 +420,7 @@ public class VCenterDB {
                         continue;
                     if (!pvlanMapArray[i].getPvlanType().equals("isolated"))
                         continue;
-                    s_logger.info("    PvlanType = " + pvlanMapArray[i].getPvlanType() 
+                    s_logger.debug("    VlanType = PrivateVLAN"
                                   + " PrimaryVLAN = " + pvlanMapArray[i].getPrimaryVlanId() 
                                   + " IsolatedVLAN = " + pvlanMapArray[i].getSecondaryVlanId());
                     primaryVlanId = (short)pvlanMapArray[i].getPrimaryVlanId();
@@ -407,6 +431,7 @@ public class VCenterDB {
                 VmwareDistributedVirtualSwitchVlanIdSpec vlanIdSpec = 
                         (VmwareDistributedVirtualSwitchVlanIdSpec) vlanSpec;
                 short vlanId = (short)vlanIdSpec.getVlanId();
+                s_logger.debug("    VlanType = VLAN " + " VlanId = " + vlanId);
                 vlan.put("primary-vlan", vlanId);
                 vlan.put("secondary-vlan", vlanId);
             } else {
@@ -482,7 +507,7 @@ public class VCenterDB {
         SortedMap<String, VmwareVirtualNetworkInfo> vnInfos =
                 new TreeMap<String, VmwareVirtualNetworkInfo>();
         for (DistributedVirtualPortgroup dvPg : dvPgs) {
-            s_logger.info("dvPg: " + dvPg.getName());
+            s_logger.debug("dvPg: " + dvPg.getName());
             // Extract dvPg configuration info and port setting
             DVPortgroupConfigInfo configInfo = dvPg.getConfig();
             DVPortSetting portSetting = configInfo.getDefaultPortConfig();
@@ -493,19 +518,19 @@ public class VCenterDB {
             // Find associated IP Pool
             IpPool ipPool = getIpPool(dvPg, ipPools);
             if (ipPool == null) {
-                s_logger.info("no ip pool is associated to dvPg: " + dvPg.getName());
+                s_logger.debug("no ip pool is associated to dvPg: " + dvPg.getName());
                 continue;
             }
             byte[] vnKeyBytes = dvPg.getKey().getBytes();
             String vnUuid = UUID.nameUUIDFromBytes(vnKeyBytes).toString();
             String vnName = dvPg.getName();
-            s_logger.info("VN name: " + vnName);
+            s_logger.debug("VN name: " + vnName);
             IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
 
             // get pvlan/vlan info for the portgroup.
             HashMap<String, Short> vlan = getVlanInfo(dvPg);
             if (vlan == null) {
-                s_logger.info("no pvlan/vlan is associated to dvPg: " + dvPg.getName());
+                s_logger.debug("no pvlan/vlan is associated to dvPg: " + dvPg.getName());
                 return null;
             }
             short primaryVlanId   = vlan.get("primary-vlan");

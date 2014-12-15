@@ -65,6 +65,24 @@ public class VncDB {
         vCenterIdPerms.setCreator("vcenter-plugin");
         vCenterIdPerms.setEnable(true);
 
+        s_logger.info(" Check if api-server is alive and kicking..");
+        Short count =100;
+        List<Project> projects = (List<Project>) apiConnector.list(Project.class, null);
+        while ((projects == null) && (count != 0)) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ex) {
+                System.out.println(ex);
+                return;
+            }
+            projects = (List<Project>) apiConnector.list(Project.class, null);
+            count--;
+            if (count == 0) 
+                s_logger.error(" No Pulse found doe api-server..");
+            return;
+        }
+        s_logger.info(" Done. Got the pulse..");
+
         // Check if Vmware Project exists on VNC. If not, create one.
         vCenterProject = (Project) apiConnector.findByFQN(Project.class, 
                                         VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT);
@@ -99,14 +117,15 @@ public class VncDB {
     
     private void DeleteVirtualMachineInternal(
             VirtualMachineInterface vmInterface) throws IOException {
+
+        s_logger.debug("Delete Virtual Machine given VMI (uuid = " + vmInterface.getUuid() + ")");
+
         List<ObjectReference<ApiPropertyBase>> instanceIpRefs = 
                 vmInterface.getInstanceIpBackRefs();
         for (ObjectReference<ApiPropertyBase> instanceIpRef : 
             Utils.safe(instanceIpRefs)) {
-            s_logger.info("Delete instance IP: " + 
-                instanceIpRef.getReferredName());
-            apiConnector.delete(InstanceIp.class, 
-                    instanceIpRef.getUuid());
+            s_logger.info("Delete instance IP: " + instanceIpRef.getReferredName());
+            apiConnector.delete(InstanceIp.class, instanceIpRef.getUuid());
         }
         // There should only be one virtual machine hanging off the virtual
         // machine interface
@@ -124,25 +143,32 @@ public class VncDB {
         ObjectReference<ApiPropertyBase> vmRef = vmRefs.get(0);
         VirtualMachine vm = (VirtualMachine) apiConnector.findById(
                 VirtualMachine.class, vmRef.getUuid());
+        if (vm == null) {
+            s_logger.warn("Virtual machine with uuid: " + vmRef.getUuid()
+                          + " doesn't exist on api-server. Nothing to delete");
+            return;
+        }
+
         boolean deleteVm = false;
         //if (vm.getVirtualMachineInterfaces().size() == 1) {
-            deleteVm = true;
+        deleteVm = true;
         //}
         // Extract VRouter IP address from display name
         String vrouterIpAddress = vm.getDisplayName();
         String vmInterfaceName = vmInterface.getName();
         String vmInterfaceDisplayName = vmInterface.getDisplayName();
-        s_logger.info("Delete virtual machine interface: " + vmInterfaceName);
+        s_logger.debug("Delete virtual machine interface: " + vmInterfaceName);
         String vmInterfaceUuid = vmInterface.getUuid();
         apiConnector.delete(VirtualMachineInterface.class,
                 vmInterfaceUuid);
         if (deleteVm) {
-            s_logger.info("Delete virtual machine: " + vm.getName());
+            s_logger.debug("Delete virtual machine: " + vm.getName());
             apiConnector.delete(VirtualMachine.class, vmRef.getUuid());      
         }
+
         // Unplug notification to vrouter
         if (vrouterIpAddress == null) {
-            s_logger.info("Virtual machine interface: " + vmInterfaceUuid + 
+            s_logger.debug("Virtual machine interface: " + vmInterfaceUuid + 
                     " delete notification NOT sent");
             return;
         }
@@ -172,13 +198,21 @@ public class VncDB {
     }
     
     public void DeleteVirtualMachine(String vmUuid) throws IOException {        
+
+        s_logger.debug("Delete Virtual Machine (uuid = " + vmUuid + ")");
+
         VirtualMachine vm = (VirtualMachine) apiConnector.findById(
                 VirtualMachine.class, vmUuid);
-        apiConnector.read(vm);
+        
+        if (vm == null) {
+            s_logger.warn("Virtual Machine (uuid = " + vmUuid + ") doesn't exist on VNC");
+            return;
+        }
+
         // Extract VRouter IP address from display name
         String vrouterIpAddress = vm.getDisplayName();
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
-                vm.getVirtualMachineInterfaces();
+                vm.getVirtualMachineInterfaceBackRefs();
         assert vmInterfaceRefs.size() == 1 : "Virtual machine: " + vmUuid +
                 " associated with more than one virtual machine interface";
         for (ObjectReference<ApiPropertyBase> vmInterfaceRef :
@@ -187,7 +221,6 @@ public class VncDB {
             VirtualMachineInterface vmInterface = (VirtualMachineInterface)
                     apiConnector.findById(VirtualMachineInterface.class, 
                             vmInterfaceUuid);
-            apiConnector.read(vmInterface);
             List<ObjectReference<ApiPropertyBase>> instanceIpRefs = 
                     vmInterface.getInstanceIpBackRefs();
             for (ObjectReference<ApiPropertyBase> instanceIpRef : 
@@ -203,7 +236,7 @@ public class VncDB {
                     vmInterfaceUuid);
             // Unplug notification to vrouter
             if (vrouterIpAddress == null) {
-                s_logger.info("Virtual machine interace: " + vmInterfaceUuid + 
+                s_logger.warn("Virtual machine interace: " + vmInterfaceUuid + 
                         " delete notification NOT sent");
                 continue;
             }
@@ -217,16 +250,22 @@ public class VncDB {
             vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
         }
         apiConnector.delete(VirtualMachine.class, vmUuid);
-        s_logger.info("Delete virtual machine: " + vmUuid);
+        s_logger.info("Delete Virtual Machine (uuid = " + vmUuid + ") Done.");
     }
     
     public void CreateVirtualMachine(String vnUuid, String vmUuid,
             String macAddress, String vmName, String vrouterIpAddress,
             String hostName, short isolatedVlanId, short primaryVlanId) throws IOException {
-        s_logger.info("CreateVirtualMachine : " + vmUuid + ", vrouterIpAddress: " + vrouterIpAddress + ", vlan: " + isolatedVlanId + "/" + primaryVlanId);
+        s_logger.debug("Create Virtual Machine : " 
+                       + ", VM: " + vmName + " (" + vmUuid + ")" 
+                       + ", VN: " + vmUuid
+                       + ", vrouterIpAddress: " + vrouterIpAddress 
+                       + ", vlan: " + isolatedVlanId + "/" + primaryVlanId);
+        
         VirtualNetwork network = (VirtualNetwork) apiConnector.findById(
                 VirtualNetwork.class, vnUuid);
         apiConnector.read(network);
+
         // Virtual machine
         VirtualMachine vm = new VirtualMachine();
         vm.setName(vmUuid);
@@ -257,7 +296,7 @@ public class VncDB {
         apiConnector.create(vmInterface);
         String vmInterfaceUuid = apiConnector.findByName(
                 VirtualMachineInterface.class, vm, vmInterface.getName());
-        s_logger.info("Create virtual machine interface:" + vmInterfaceName + 
+        s_logger.debug("Created virtual machine interface:" + vmInterfaceName + 
                 ": " + vmInterfaceUuid + "vmiUuid :" + vmiUuid);
 
         // Instance Ip
@@ -278,12 +317,12 @@ public class VncDB {
          //                                           instanceIp.getName());
         apiConnector.read(instanceIp);
         String vmIpAddress = instanceIp.getAddress();
-        s_logger.info("Create instance IP:" + instanceIp.getName() + ": " + 
+        s_logger.debug("Created instance IP:" + instanceIp.getName() + ": " + 
                 vmIpAddress);
 
         // Plug notification to vrouter
         if (vrouterIpAddress == null) {
-            s_logger.info("Virtual machine: " + vmName + " host: " + hostName
+            s_logger.debug("Virtual machine: " + vmName + " host: " + hostName
                 + " create notification NOT sent");
             return;
         }
@@ -295,24 +334,39 @@ public class VncDB {
                          vrouterApiPort, false);
                    vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
-            vrouterApi.AddPort(UUID.fromString(vmiUuid),
+            boolean ret = vrouterApi.AddPort(UUID.fromString(vmiUuid),
                                          UUID.fromString(vmUuid), vmInterface.getName(),
                                          InetAddress.getByName(vmIpAddress),
                                          Utils.parseMacAddress(macAddress),
                                          UUID.fromString(vnUuid), isolatedVlanId, 
                                          primaryVlanId, vmName);
-            s_logger.debug("VRouterAPi Add Port success - port name: " + vmInterface.getName() + "(" + vmInterface.getDisplayName() + ")");
+            if ( ret == true) {
+                s_logger.info("VRouterAPi Add Port success - interface name: "
+                              +  vmInterface.getDisplayName() 
+                              + "(" + vmInterface.getName() + ")");
+            } else {
+                // log failure but don't worry. Periodic KeepAlive task will
+                // attempt to connect to vRouter Agent and replay AddPorts.
+                s_logger.error("VRouterAPi Add Port failed - interface name: "
+                              +  vmInterface.getDisplayName() 
+                              + "(" + vmInterface.getName() + ")");
+            }
+
         }catch(Throwable e) {
             s_logger.error("Exception : " + e);
             e.printStackTrace();
         }
+        s_logger.info("Create Virtual Machine : Done");
     }
 
-    public void syncAddPortPerVirtualMachine(String vnUuid, String vmUuid,
+    public void syncAddPortPerVirtualMachineInterface(String vnUuid, String vmUuid,
             String macAddress, String vmName, String vrouterIpAddress,
             String hostName, short isolatedVlanId, short primaryVlanId) throws IOException {
-        s_logger.info("syncAddPortPerVirtualMachine : " + vmUuid
+        s_logger.debug("syncAddPortPerVirtualMachineInterface : " 
+                      + ", VN: " + vnUuid
+                      + ", VM: " + vmName + " (" + vmUuid + ")"
                       + ", vrouterIpAddress: " + vrouterIpAddress
+                      + ", hostName: " + hostName 
                       + ", vlan: " + isolatedVlanId + "/" + primaryVlanId);
 
         // Virtual network
@@ -335,7 +389,7 @@ public class VncDB {
         }
 
         if (vmInterface == null) {
-            s_logger.info("Virtual machine: " + vmName
+            s_logger.warn("Virtual machine: " + vmName
                           + " has no network interface");
             return;
         }
@@ -353,7 +407,7 @@ public class VncDB {
         }
 
         if (instanceIp == null) {
-            s_logger.info("Virtual machine interface: " + vmInterface.getName()
+            s_logger.warn("Virtual machine interface: " + vmInterface.getName()
                           + " has no ip address");
             return;
         }
@@ -362,8 +416,8 @@ public class VncDB {
 
         // Plug notification to vrouter
         if (vrouterIpAddress == null) {
-            s_logger.info("Virtual machine: " + vmName + " host: " + hostName
-                + " create notification NOT sent");
+            s_logger.warn("Virtual machine: " + vmName + " host: " + hostName
+                + " AddPort notification NOT sent since vrouter-ip address missing");
             return;
         }
         try {
@@ -381,15 +435,15 @@ public class VncDB {
                                UUID.fromString(vnUuid), isolatedVlanId, 
                                primaryVlanId, vmName);
             if ( ret == true) {
-                s_logger.debug("VRouterAPi Add Port success - port name: "
-                                + vmInterface.getName()
-                                + "(" + vmInterface.getDisplayName() + ")");
+                s_logger.info("VRouterAPi Add Port success - interface name: "
+                              +  vmInterface.getDisplayName() 
+                              + "(" + vmInterface.getName() + ")");
             } else {
                 // log failure but don't worry. Periodic KeepAlive task will
                 // attempt to connect to vRouter Agent and replay AddPorts.
-                s_logger.debug("VRouterAPi Add Port failed - port name: "
-                                + vmInterface.getName()
-                                + "(" + vmInterface.getDisplayName() + ")");
+                s_logger.error("VRouterAPi Add Port failed - interface name: "
+                              +  vmInterface.getDisplayName() 
+                              + "(" + vmInterface.getName() + ")");
             }
         }catch(Throwable e) {
             s_logger.error("Exception : " + e);
@@ -402,17 +456,16 @@ public class VncDB {
             short isolatedVlanId, short primaryVlanId,
             SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos) throws
             IOException {
-        s_logger.info("Create VN: Uuid:" + vnUuid + " , vnName:" + vnName);
+        s_logger.info("Create Virtual Network: " 
+                        + vnName + " (" + vnUuid + ")"
+                        + ", Subnet/Mask/GW: " 
+                        + subnetAddr + "/" + subnetMask + "/" + gatewayAddr);
         VirtualNetwork vn = new VirtualNetwork();
         vn.setName(vnName);
         vn.setDisplayName(vnName);
         vn.setUuid(vnUuid);
         vn.setIdPerms(vCenterIdPerms);
         vn.setParent(vCenterProject);
-        String ipamUuid = apiConnector.findByName(NetworkIpam.class, null, 
-                "default-network-ipam");
-        NetworkIpam ipam = (NetworkIpam) apiConnector.findById(
-                NetworkIpam.class, ipamUuid);
         SubnetUtils subnetUtils = new SubnetUtils(subnetAddr, subnetMask);  
         String cidr = subnetUtils.getInfo().getCidrSignature();
         VnSubnetsType subnet = new VnSubnetsType();
@@ -425,8 +478,10 @@ public class VncDB {
 
         vn.setNetworkIpam(vCenterIpam, subnet);
         apiConnector.create(vn); 
-        if (vmMapInfos == null)
+        if (vmMapInfos == null) {
+            s_logger.info("Create Virtual Network: Done");
             return;
+        }
 
         for (Map.Entry<String, VmwareVirtualMachineInfo> vmMapInfo :
             vmMapInfos.entrySet()) {
@@ -438,7 +493,8 @@ public class VncDB {
             String hostName = vmInfo.getHostName();
             CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName,
                     vrouterIpAddr, hostName, isolatedVlanId, primaryVlanId);
-        }  
+        }
+        s_logger.info("Create Virtual Network: Done");
     }
     
     public void DeleteVirtualNetwork(String uuid) 
@@ -457,6 +513,7 @@ public class VncDB {
             DeleteVirtualMachineInternal(vmInterface);
         }
         apiConnector.delete(VirtualNetwork.class, network.getUuid());     
+        s_logger.info("Delete virtual network: Done");
     }
     
     private static boolean doIgnoreVirtualNetwork(String name) {
@@ -478,11 +535,11 @@ public class VncDB {
         networks = (List<VirtualNetwork>) 
                 apiConnector.list(VirtualNetwork.class, null);
         } catch (Exception ex) {
-            s_logger.error("Exception in api.list: " + ex);
+            s_logger.error("Exception in api.list(VirtualNetorks): " + ex);
             ex.printStackTrace();
         }
         if (networks == null || networks.size() == 0) {
-            s_logger.info("NO virtual networks FOUND");
+            s_logger.debug("NO virtual networks FOUND");
             return null;
         }
         SortedMap<String, VncVirtualNetworkInfo> vnInfos =
@@ -506,7 +563,7 @@ public class VncDB {
             List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs = 
                     network.getVirtualMachineInterfaceBackRefs();
             if (vmInterfaceRefs == null || vmInterfaceRefs.size() == 0) {
-                s_logger.info("Virtual network: " + network + 
+                s_logger.debug("Virtual network: " + network + 
                         " NO associated virtual machine interfaces");
             }
             SortedMap<String, VncVirtualMachineInfo> vmInfos = 
@@ -551,7 +608,7 @@ public class VncDB {
             vnInfos.put(vnUuid, vnInfo);
         }
         if (vnInfos.size() == 0) {
-            s_logger.info("NO virtual networks found");
+            s_logger.debug("NO virtual networks found");
         }
         return vnInfos;
     }
