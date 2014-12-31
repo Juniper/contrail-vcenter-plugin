@@ -1,5 +1,5 @@
 contrail-vcenter-plugin /usr/bin
 contrail-vcenter-plugin.ini /etc/contrail/supervisord_config_files
 contrail-vcenter-plugin.initd.supervisord /etc/init.d
-target/juniper-contrail-vcenter-1.0.jar /usr/share/contrail-vcenter-plugin
+target/juniper-contrail-vcenter-3.0-SNAPSHOT.jar /usr/share/contrail-vcenter-plugin
 log4j.properties /usr/share/contrail-vcenter-plugin

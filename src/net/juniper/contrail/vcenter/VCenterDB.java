@@ -11,6 +11,10 @@ import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.SortedMap;
 import java.util.UUID;
+import java.net.MalformedURLException;
+import java.rmi.RemoteException;
+import com.vmware.vim25.InvalidProperty;
+import com.vmware.vim25.RuntimeFault;
 
 import org.apache.log4j.Logger;
 
@@ -63,7 +67,7 @@ public class VCenterDB {
     private InventoryNavigator inventoryNavigator;
     private IpPoolManager ipPoolManager;
     private Datacenter contrailDC;
-    
+    private VmwareDistributedVirtualSwitch contrailDvsTemp;
     private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
@@ -76,15 +80,102 @@ public class VCenterDB {
         this.contrailDvSwitchName   = contrailDvsName;
     }
 
-    public void Initialize() throws Exception {
+    public boolean Initialize() {
+
         // Connect to VCenter
-        serviceInstance = new ServiceInstance(new URL(vcenterUrl),
-                vcenterUsername, vcenterPassword, true);
-        rootFolder = serviceInstance.getRootFolder();
-        inventoryNavigator = new InventoryNavigator(rootFolder);
-        ipPoolManager = serviceInstance.getIpPoolManager();
-        contrailDC = (Datacenter) inventoryNavigator.  searchManagedEntity(
-                "Datacenter", contrailDataCenterName);
+        if (serviceInstance == null) {
+            try {
+                serviceInstance = new ServiceInstance(new URL(vcenterUrl),
+                                            vcenterUsername, vcenterPassword, true);
+                if (serviceInstance == null) {
+                    s_logger.error("Failed to connect to vCenter Server : " + "("
+                                    + vcenterUrl + "," + vcenterUsername + "," 
+                                    + vcenterPassword + ")");
+                    return false;
+                }
+            } catch (MalformedURLException e) {
+                    return false;
+            } catch (RemoteException e) {
+                    return false;
+            }
+        }
+        s_logger.info("Connected to vCenter Server : " + "("
+                                + vcenterUrl + "," + vcenterUsername + "," 
+                                + vcenterPassword + ")");
+
+        if (rootFolder == null) {
+            rootFolder = serviceInstance.getRootFolder();
+            if (rootFolder == null) {
+                s_logger.error("Failed to get rootfolder for vCenter ");
+                return false;
+            }
+        }
+
+        s_logger.error("Get rootfolder for vCenter ");
+
+        if (inventoryNavigator == null) {
+            inventoryNavigator = new InventoryNavigator(rootFolder);
+            if (inventoryNavigator == null) {
+                s_logger.error("Failed to get InventoryNavigator for vCenter ");
+                return false;
+            }
+        }
+        s_logger.error("Get InventoryNavigator for vCenter ");
+
+        if (ipPoolManager == null) {
+            ipPoolManager = serviceInstance.getIpPoolManager();
+            if (ipPoolManager == null) {
+                s_logger.error("Failed to get ipPoolManager for vCenter ");
+                return false;
+            }
+        }
+        s_logger.error("Get ipPoolManager for vCenter ");
+
+        // Search contrailDc
+        if (contrailDC == null) {
+            try {
+                contrailDC = (Datacenter) inventoryNavigator.searchManagedEntity(
+                                          "Datacenter", contrailDataCenterName);
+            } catch (InvalidProperty e) {
+                    return false;
+            } catch (RuntimeFault e) {
+                    return false;
+            } catch (RemoteException e) {
+                    return false;
+            }
+            if (contrailDC == null) {
+                s_logger.error("Failed to find " + contrailDataCenterName 
+                               + " DC on vCenter ");
+                return false;
+            }
+        }
+        s_logger.error("Found " + contrailDataCenterName + " DC on vCenter ");
+
+        // Search contrailDvSwitch
+        if (contrailDC == null) {
+            try {
+                contrailDvsTemp = (VmwareDistributedVirtualSwitch) 
+                                inventoryNavigator.searchManagedEntity(
+                                        "VmwareDistributedVirtualSwitch",
+                                        contrailDvSwitchName);
+            } catch (InvalidProperty e) {
+                    return false;
+            } catch (RuntimeFault e) {
+                    return false;
+            } catch (RemoteException e) {
+                    return false;
+            }
+
+            if (contrailDvsTemp == null) {
+                s_logger.error("Failed to find " + contrailDvSwitchName + 
+                               " DVSwitch on vCenter");
+                return false;
+            }
+        }
+        s_logger.error("Found " + contrailDvSwitchName + " DVSwitch on vCenter ");
+
+        // All well on vCenter front.
+        return true;
     }
 
     public void setPrevVmwareVNInfos(
@@ -473,7 +564,7 @@ public class VCenterDB {
                 contrailDataCenterName);
         IpPool[] ipPools = ipPoolManager.queryIpPools(contrailDC);
         if (ipPools == null || ipPools.length == 0) {
-            s_logger.error("dvSwitch: " + contrailDvSwitchName +
+            s_logger.debug("dvSwitch: " + contrailDvSwitchName +
                     " Datacenter: " + contrailDC.getName() + " IP Pools NOT " +
                     "configured");
             return null;

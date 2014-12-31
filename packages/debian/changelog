@@ -1,4 +1,4 @@
-contrail-install-vcenter-plugin (1.0) stable; urgency=low
+contrail-install-vcenter-plugin (3.0-SNAPSHOT) stable; urgency=low
 
   * Initial release.
 

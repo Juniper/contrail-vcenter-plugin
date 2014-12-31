@@ -33,6 +33,8 @@ class VCenterMonitorTask implements Runnable {
     private VCenterDB vcenterDB;
     private VncDB vncDB;
     private boolean AddPortSyncAtPluginStart = true;
+    private boolean VncDBInitCompelete = false;
+    private boolean VcenterDBInitCompelete = false;
     private static short iteration = 0;
     
     public VCenterMonitorTask(String vcenterUrl, String vcenterUsername,
@@ -41,14 +43,18 @@ class VCenterMonitorTask implements Runnable {
                               int apiServerPort) throws Exception {
         vcenterDB = new VCenterDB(vcenterUrl, vcenterUsername, vcenterPassword,
                                   vcenterDcName, vcenterDvsName);
-        vncDB = new VncDB(apiServerAddress, apiServerPort);
+        vncDB     = new VncDB(apiServerAddress, apiServerPort);
 
         // Initialize the databases
-        vcenterDB.Initialize();
-        vncDB.Initialize();
+        if (vncDB.Initialize() == true) {
+            VncDBInitCompelete = true;
+        }
+        if (vcenterDB.Initialize() == true) {
+            VcenterDBInitCompelete = true;
+        }
     }
 
-    public void setAddPortSyncAtPluginStart (boolean _AddPortSyncAtPluginStart)
+    public void setAddPortSyncAtPluginStart(boolean _AddPortSyncAtPluginStart)
     {
         AddPortSyncAtPluginStart = _AddPortSyncAtPluginStart;
     }
@@ -391,48 +397,69 @@ class VCenterMonitorTask implements Runnable {
     
     @Override
     public void run() {
-            // Perform one time sync between VNC and VCenter.
-            if (getAddPortSyncAtPluginStart() == true) {
 
-                // When syncVirtualNetwrorks is run the first time, it also does
-                // addPort to vrouter agent for existing VMIs.
-                // Clear the flag  on first run of syncVirtualNetworks.
-                try {
-                    syncVirtualNetworks();
-                } catch (Exception e) {
-                    String stackTrace = Throwables.getStackTraceAsString(e);
-                    s_logger.error("Error while syncVirtualNetworks: " + e); 
-                    s_logger.error(stackTrace); 
-                    e.printStackTrace();
-                }
-                setAddPortSyncAtPluginStart(false);
-            }
-
-            if (iteration == 0) {
-                // 4 sec timeout. Sync VN/VM/VMI/InstanceIp etc.
-                try {
-                    syncVmwareVirtualNetworks();
-                } catch (Exception e) {
-                    String stackTrace = Throwables.getStackTraceAsString(e);
-                    s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
-                    s_logger.error(stackTrace); 
-                    e.printStackTrace();
-                }
-
-            } else {
-                // 2 second timeout. run KeepAlive with vRouer Agent.
-                try {
-                    vncDB.vrouterAgentPeriodicConnectionCheck();
-                } catch (Exception e) {
-                    String stackTrace = Throwables.getStackTraceAsString(e);
-                    s_logger.error("Error while vrouterAgentPeriodicConnectionCheck: " + e); 
-                    s_logger.error(stackTrace); 
-                    e.printStackTrace();
+        // Don't perform one time or periodic sync if
+        // Vnc AND Vcenter DB init aren't complete or successful.
+        if ( (VncDBInitCompelete == false) || (VcenterDBInitCompelete == false)) {
+            if (VncDBInitCompelete == false) {
+                if (vncDB.Initialize() == true) {
+                    VncDBInitCompelete = true;
                 }
             }
-            iteration++;
-            if (iteration == 2) // 4 sec for poll
-                iteration = 0;
+
+            if (VcenterDBInitCompelete == false) {
+                if (vcenterDB.Initialize() == true) {
+                    VcenterDBInitCompelete = true;
+                }
+            }
+
+            return;
+        }
+
+        // Perform one time sync between VNC and VCenter DBs.
+        if (getAddPortSyncAtPluginStart() == true) {
+
+            // When syncVirtualNetwrorks is run the first time, it also does
+            // addPort to vrouter agent for existing VMIs.
+            // Clear the flag  on first run of syncVirtualNetworks.
+            try {
+                syncVirtualNetworks();
+            } catch (Exception e) {
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error("Error while syncVirtualNetworks: " + e); 
+                s_logger.error(stackTrace); 
+                e.printStackTrace();
+            }
+            setAddPortSyncAtPluginStart(false);
+            return;
+        }
+
+        // 2 second timeout. run KeepAlive with vRouer Agent.
+        try {
+            vncDB.vrouterAgentPeriodicConnectionCheck();
+        } catch (Exception e) {
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error("Error while vrouterAgentPeriodicConnectionCheck: " + e); 
+            s_logger.error(stackTrace); 
+            e.printStackTrace();
+        }
+
+        // 4 sec timeout. Compare current and prev VCenterDB.
+        if (iteration == 0) {
+            try {
+                syncVmwareVirtualNetworks();
+            } catch (Exception e) {
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
+                s_logger.error(stackTrace); 
+                e.printStackTrace();
+            }
+        } 
+
+        // Increment
+        iteration++;
+        if (iteration == 2) // 4 sec for poll
+            iteration = 0;
     }
 }
 
@@ -486,7 +513,7 @@ public class VCenterMonitor {
     private static VncDB         _vncDB;
     private static VCenterNotify _eventMonitor;
 
-    private static boolean readVcenterPluginconfig() {
+    private static boolean readVcenterPluginConfigFile() {
 
         File configFile = new File(_configurationFile);
         FileInputStream fileStream = null;
@@ -515,7 +542,7 @@ public class VCenterMonitor {
         } catch (IOException ex) {
             s_logger.warn("Unable to read " + _configurationFile, ex);
         } catch (Exception ex) {
-            s_logger.error("Exception in configure: " + ex);
+            s_logger.error("Exception in readVcenterPluginConfigFile: " + ex);
             ex.printStackTrace();
         } finally {
             //IOUtils.closeQuietly(fileStream);
@@ -528,9 +555,9 @@ public class VCenterMonitor {
        // log4j logger
         BasicConfigurator.configure();
 
-        //Read contrail-vcener-plugin.conf file
-        readVcenterPluginconfig();
-        s_logger.info("Config params  vcenter url: " + _vcenterURL + ", _vcenterUsername: " 
+        //Read contrail-vcenter-plugin.conf file
+        readVcenterPluginConfigFile();
+        s_logger.info("Config params vcenter url: " + _vcenterURL + ", _vcenterUsername: " 
                        + _vcenterUsername + ", api server: " + _apiServerAddress);
 
         // Zookeeper mastership logic

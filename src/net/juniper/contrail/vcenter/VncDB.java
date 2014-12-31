@@ -53,66 +53,105 @@ public class VncDB {
     public VncDB(String apiServerAddress, int apiServerPort) {
         this.apiServerAddress = apiServerAddress;
         this.apiServerPort = apiServerPort;
+
+        // Create vrouter api map
         vrouterApiMap = new HashMap<String, ContrailVRouterApi>();
-    }
-    
-    public void Initialize() throws IOException {
-        apiConnector = ApiConnectorFactory.build(apiServerAddress,
-                apiServerPort);
 
         // Create global id-perms object.
         vCenterIdPerms = new IdPermsType();
         vCenterIdPerms.setCreator("vcenter-plugin");
         vCenterIdPerms.setEnable(true);
 
-        s_logger.info(" Check if api-server is alive and kicking..");
-        Short count =100;
-        List<Project> projects = (List<Project>) apiConnector.list(Project.class, null);
-        while ((projects == null) && (count != 0)) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException ex) {
-                System.out.println(ex);
-                return;
+    }
+    
+    public boolean isVncApiServerAlive() {
+        if (apiConnector == null) {
+            apiConnector = ApiConnectorFactory.build(apiServerAddress,
+                                                     apiServerPort);
+            if (apiConnector == null) {
+                s_logger.error(" failed to create ApiConnector.. retry later");
+                return false;
             }
-            projects = (List<Project>) apiConnector.list(Project.class, null);
-            count--;
-            if (count == 0) 
-                s_logger.error(" No Pulse found doe api-server..");
-            return;
         }
-        s_logger.info(" Done. Got the pulse..");
+
+        // Read project list as a life check
+        s_logger.info(" Checking if api-server is alive and kicking..");
+        Short count =10; // 10 sec total
+
+        try {
+            List<Project> projects = (List<Project>) apiConnector.list(Project.class, null);
+            if (projects == null) {
+                s_logger.error(" ApiServer not fully awake yet.. retry again..");
+                return false;
+            }
+        } catch (IOException e) {
+            return false;
+        }
+        s_logger.info(" Api-server alive. Got the pulse..");
+        return true;
+
+    }
+
+    public boolean Initialize() {
+
+        // Check if api-server is alive
+        if (isVncApiServerAlive() == false)
+            return false;
 
         // Check if Vmware Project exists on VNC. If not, create one.
-        vCenterProject = (Project) apiConnector.findByFQN(Project.class, 
+        try {
+            vCenterProject = (Project) apiConnector.findByFQN(Project.class, 
                                         VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT);
+        } catch (IOException e) {
+            return false;
+        }
         if (vCenterProject == null) {
             s_logger.info(" vCenter project not present, creating ");
             vCenterProject = new Project();
             vCenterProject.setName("vCenter");
             vCenterProject.setIdPerms(vCenterIdPerms);
-            if (!apiConnector.create(vCenterProject)) {
-              s_logger.error("Unable to create project: " + vCenterProject.getName());
+            try {
+                if (!apiConnector.create(vCenterProject)) {
+                    s_logger.error("Unable to create project: " + vCenterProject.getName());
+                    return false;
+                }
+            } catch (IOException e) { 
+                s_logger.error("Exception : " + e);
+                e.printStackTrace();
+                return false;
             }
         } else {
             s_logger.info(" vCenter project present, continue ");
         }
 
         // Check if VMWare vCenter-ipam exists on VNC. If not, create one.
-        vCenterIpam = (NetworkIpam) apiConnector.findByFQN(NetworkIpam.class,
+        try {
+            vCenterIpam = (NetworkIpam) apiConnector.findByFQN(NetworkIpam.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_IPAM);
+        } catch (IOException e) {
+            return false;
+        }
+
         if (vCenterIpam == null) {
             s_logger.info(" vCenter Ipam not present, creating ...");
             vCenterIpam = new NetworkIpam();
             vCenterIpam.setParent(vCenterProject);
             vCenterIpam.setName("vCenter-ipam");
             vCenterIpam.setIdPerms(vCenterIdPerms);
-            if (!apiConnector.create(vCenterIpam)) {
-              s_logger.error("Unable to create Ipam: " + vCenterIpam.getName());
+            try {
+                if (!apiConnector.create(vCenterIpam)) {
+                    s_logger.error("Unable to create Ipam: " + vCenterIpam.getName());
+                }
+            } catch (IOException e) { 
+                s_logger.error("Exception : " + e);
+                e.printStackTrace();
+                return false;
             }
         } else {
             s_logger.info(" vCenter Ipam present, continue ");
         }
+
+        return true;
     }
     
     private void DeleteVirtualMachineInternal(

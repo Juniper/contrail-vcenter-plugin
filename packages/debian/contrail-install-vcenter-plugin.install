@@ -1,7 +1,7 @@
-../libcontrail-vijava_1.0_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
-../libcontrail-java-api_1.0_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
-../libcontrail-vrouter-java-api_1.0_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
-../contrail-vcenter-plugin_1.0_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
+../libcontrail-vijava_3.0-SNAPSHOT_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
+../libcontrail-java-api_3.0-SNAPSHOT_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
+../libcontrail-vrouter-java-api_3.0-SNAPSHOT_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
+../contrail-vcenter-plugin_3.0-SNAPSHOT_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
 target/commons-exec-1.2.jar usr/share/contrail-vcenter-plugin/lib
 target/commons-lang-2.6.jar usr/share/contrail-vcenter-plugin/lib
 target/commons-net-3.3.jar usr/share/contrail-vcenter-plugin/lib

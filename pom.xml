@@ -4,7 +4,7 @@
   <groupId>net.juniper.contrail.vcenter</groupId>
   <artifactId>juniper-contrail-vcenter</artifactId>
   <packaging>jar</packaging>
-  <version>1.0</version>
+  <version>3.0-SNAPSHOT</version>
   <name>juniper-contrail-vcenter</name>
   <url>http://maven.apache.org</url>
   <distributionManagement>
@@ -31,17 +31,17 @@
     <dependency>
       <groupId>net.juniper.contrail</groupId>
       <artifactId>juniper-contrail-api</artifactId>
-      <version>1.0</version>
+      <version>3.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>net.juniper.contrail</groupId>
       <artifactId>juniper-contrail-vrouter-api</artifactId>
-      <version>1.0</version>
+      <version>3.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>net.juniper.contrail.vijava</groupId>
       <artifactId>juniper-contrail-vijava</artifactId>
-      <version>1.0</version>
+      <version>3.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.apache.curator</groupId>
