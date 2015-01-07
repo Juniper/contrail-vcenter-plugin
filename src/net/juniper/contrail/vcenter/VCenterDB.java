@@ -391,10 +391,13 @@ public class VCenterDB {
         String vrouterIpAddress = getVirtualMachineIpAddress(dvPgName,
                 hostName, host, contrailVRouterVmNamePrefix);
         if (vrouterIpAddress == null) {
-            s_logger.error("dvPg: " + dvPgName + " vm: " + vmName +
-                    " host: " + hostName + " Contrail VRouter VM: " +
-                    contrailVRouterVmNamePrefix + " NOT found");
+            s_logger.error("ContrailVM not found on ESXi host: " 
+                    + hostName + ", skipping VM (" + vmName + ") creation"
+                    + " on dvPg: " + dvPgName);
+            return null;
         }
+
+        // found valid vm instance.
         VmwareVirtualMachineInfo vmInfo = new
                 VmwareVirtualMachineInfo(vmName, hostName,
                         vrouterIpAddress, vmMac);

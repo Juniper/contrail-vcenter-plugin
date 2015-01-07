@@ -474,7 +474,7 @@ public class VCenterNotify implements Runnable
     void vncVirtualMachineDelete(VirtualMachine vcenterVm)
     {
         try {
-            vncDB.DeleteVirtualMachine(vcenterVm.getConfig().getInstanceUuid());
+            //vncDB.DeleteVirtualMachine(vcenterVm.getConfig().getInstanceUuid());
         }catch(Throwable e) {
             s_logger.error("Exception : " + e);
             e.printStackTrace();

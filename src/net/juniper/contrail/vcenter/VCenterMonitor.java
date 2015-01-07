@@ -273,7 +273,7 @@ class VCenterMonitorTask implements Runnable {
                 curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
             } else if (cmp > 0){
                 // Delete Vnc virtual machine
-                vncDB.DeleteVirtualMachine(prevVmwareItem.getKey());
+                vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid);
                 prevVmwareItem = prevVmwareIter.hasNext() ? prevVmwareIter.next() : null;
             } else if (cmp < 0){
                 // create VMWare virtual machine in VNC
@@ -303,7 +303,7 @@ class VCenterMonitorTask implements Runnable {
         }
         while (prevVmwareItem != null) {
             // Delete
-            vncDB.DeleteVirtualMachine(prevVmwareItem.getKey());
+            vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid);
             prevVmwareItem = prevVmwareIter.hasNext() ? prevVmwareIter.next() : null;
         }
     }
