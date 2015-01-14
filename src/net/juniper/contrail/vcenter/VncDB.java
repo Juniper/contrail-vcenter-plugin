@@ -21,6 +21,7 @@ import net.juniper.contrail.api.ApiConnectorFactory;
 import net.juniper.contrail.api.ApiPropertyBase;
 import net.juniper.contrail.api.ObjectReference;
 import net.juniper.contrail.api.types.InstanceIp;
+import net.juniper.contrail.api.types.FloatingIp;
 import net.juniper.contrail.api.types.MacAddressesType;
 import net.juniper.contrail.api.types.NetworkIpam;
 import net.juniper.contrail.api.types.SubnetType;
@@ -281,10 +282,34 @@ public class VncDB {
             s_logger.info("Found VMInterface matching" + " vnUuid = " + vnUuid);
 
             // If this is the only interface on this VM,
-            // delete Virtual Machine as well.
+            // delete Virtual Machine as well after deleting last VMI
             if (vmInterfaceRefs.size() == 1) {
               deleteVm = true;
             }
+
+            // Clear flloating-ip associations if it exists on VMInterface
+            List<ObjectReference<ApiPropertyBase>> floatingIpRefs = 
+                    vmInterface.getFloatingIpBackRefs();
+            if ((floatingIpRefs != null) && !floatingIpRefs.isEmpty()) {
+                s_logger.info("floatingIp association exists for VMInterface:" + vmInterface.getUuid());
+                // there can be one floating-ip per VMI.
+                FloatingIp floatingIp = (FloatingIp)
+                    apiConnector.findById(FloatingIp.class, 
+                                          floatingIpRefs.get(0).getUuid());
+                // clear VMInterface back reference.
+                FloatingIp fip = new FloatingIp();
+                fip.setParent(floatingIp.getParent());
+                fip.setName(floatingIp.getName());
+                fip.setUuid(floatingIp.getUuid());
+                fip.setVirtualMachineInterface(vmInterface);
+                fip.clearVirtualMachineInterface();
+
+                floatingIp.clearVirtualMachineInterface();
+                apiConnector.update(fip);
+                s_logger.info("Removed floatingIp association for VMInterface:" + vmInterface.getUuid());
+            }
+           
+            // delete instancIp
             List<ObjectReference<ApiPropertyBase>> instanceIpRefs = 
                     vmInterface.getInstanceIpBackRefs();
             for (ObjectReference<ApiPropertyBase> instanceIpRef : 
@@ -294,11 +319,14 @@ public class VncDB {
                 apiConnector.delete(InstanceIp.class, 
                         instanceIpRef.getUuid());
             }
+
+            // delete VMInterface
             s_logger.info("Delete virtual machine interface: " + 
                     vmInterface.getName());
             apiConnector.delete(VirtualMachineInterface.class,
                     vmInterfaceUuid);
-            // Unplug notification to vrouter
+
+            // Send Unplug notification to vrouter
             if (vrouterIpAddress == null) {
                 s_logger.warn("Virtual machine interace: " + vmInterfaceUuid + 
                         " delete notification NOT sent");
@@ -314,6 +342,7 @@ public class VncDB {
             vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
         }
 
+        // delete VirtualMachine or may-be-not 
         if (deleteVm == true) {
             apiConnector.delete(VirtualMachine.class, vmUuid);
             s_logger.info("Delete Virtual Machine (uuid = " + vmUuid + ") Done.");
@@ -342,7 +371,6 @@ public class VncDB {
                        + ", vlan: " + isolatedVlanId + "/" + primaryVlanId);
             return;
         }
-        //apiConnector.read(network); SAS_FIXME : Remove additonal reads.
 
         // Virtual Machine
         VirtualMachine vm = (VirtualMachine) apiConnector.findById(
@@ -397,8 +425,6 @@ public class VncDB {
         vmInterface.setMacAddresses(macAddrType);
         vmInterface.setIdPerms(vCenterIdPerms);
         apiConnector.create(vmInterface);
-        //String vmInterfaceUuid = apiConnector.findByName(
-        //        VirtualMachineInterface.class, vm, vmInterface.getName());
         s_logger.debug("Created virtual machine interface:" + vmInterfaceName + 
                 ", vmiUuid :" + vmiUuid);
 
@@ -406,7 +432,6 @@ public class VncDB {
         String instanceIpName = "ip-" + network.getName() + "-" + vmName;
         String instIpUuid = UUID.randomUUID().toString();
         InstanceIp instanceIp = new InstanceIp();
-        //instanceIp.setParent(vm);   SAS_FIXME
         instanceIp.setDisplayName(instanceIpName);
         instanceIp.setUuid(instIpUuid);
         instanceIp.setName(instIpUuid);
@@ -416,8 +441,6 @@ public class VncDB {
         apiConnector.create(instanceIp);
 
         // Read back to get assigned IP address
-        //instanceIp = (InstanceIp) apiConnector.find(InstanceIp.class, vm, 
-         //                                           instanceIp.getName());
         apiConnector.read(instanceIp);
         String vmIpAddress = instanceIp.getAddress();
         s_logger.debug("Created instance IP:" + instanceIp.getName() + ": " + 
