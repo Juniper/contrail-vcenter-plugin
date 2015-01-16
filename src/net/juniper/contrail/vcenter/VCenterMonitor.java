@@ -54,6 +54,10 @@ class VCenterMonitorTask implements Runnable {
         }
     }
 
+    public VCenterDB getVCenterDB() {
+        return vcenterDB;
+    }
+
     public void setAddPortSyncAtPluginStart(boolean _AddPortSyncAtPluginStart)
     {
         AddPortSyncAtPluginStart = _AddPortSyncAtPluginStart;
@@ -578,9 +582,18 @@ public class VCenterMonitor {
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));
 
-        // Start event notify thread and wait for events.
-        //_eventMonitor = new VCenterNotify(_vncDB, _vcenterDB, _monitorTask);
-        //_eventMonitor.start();
-
+        //Start event notify thread if VNC & VCenter one time resync is complete.
+        s_logger.info("Waiting for one time resync to complete.. ");
+        while (_monitorTask.getAddPortSyncAtPluginStart() == true) {
+            // wait for sync to complete.
+            try {
+                Thread.sleep(2);
+            } catch (java.lang.InterruptedException e) {
+              System.out.println(e);
+            }
+        }
+        s_logger.info("Starting event monitor Task.. ");
+        _eventMonitor = new VCenterNotify(_monitorTask);
+        _eventMonitor.start();
     }
 }

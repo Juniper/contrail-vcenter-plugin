@@ -54,6 +54,8 @@ import com.vmware.vim25.mo.DistributedVirtualPortgroup;
 import com.vmware.vim25.RuntimeFault;
 import com.vmware.vim25.InvalidProperty;
 
+import com.google.common.base.Throwables;
+
 import org.apache.log4j.Logger;
 
 /**
@@ -65,8 +67,6 @@ public class VCenterNotify implements Runnable
 
     private static final Logger s_logger = 
             Logger.getLogger(VCenterNotify.class);
-    private static VncDB  vncDB = null;
-    private static VCenterDB vcenterDB = null;
     private static VCenterMonitorTask monitorTask = null;
 
     private Folder _rootFolder;
@@ -79,10 +79,8 @@ public class VCenterNotify implements Runnable
     private static Boolean shouldRun;
     private static Thread watchUpdates = null;
 
-    public VCenterNotify(VncDB _vncDB, VCenterDB _vcenterDB, VCenterMonitorTask _monitorTask)
+    public VCenterNotify(VCenterMonitorTask _monitorTask)
     {
-        vncDB       = _vncDB;
-        vcenterDB   = _vcenterDB;
         monitorTask = _monitorTask;
      }
 
@@ -91,8 +89,8 @@ public class VCenterNotify implements Runnable
      */
     private void initialize()
     {
-        _eventManager = vcenterDB.getServiceInstance().getEventManager();
-        _rootFolder = vcenterDB.getServiceInstance().getRootFolder();
+        _eventManager = monitorTask.getVCenterDB().getServiceInstance().getEventManager();
+        _rootFolder = monitorTask.getVCenterDB().getServiceInstance().getRootFolder();
     }
 
     private void createEventHistoryCollector() throws Exception
@@ -218,31 +216,39 @@ public class VCenterNotify implements Runnable
                     }
                 } else if (value instanceof VmPoweredOnEvent) {
                     printVmEvent(value);
-                    VmEvent anEvent = (VmEvent) value;
-                    VirtualMachine vm = new VirtualMachine(vcenterDB.getServiceInstance().getServerConnection(), 
-                                                           anEvent.getVm().getVm());
-                    if (vm != null) {
-                        vncVirtualMachineAdd(vm);
+                    try {
+                        monitorTask.syncVmwareVirtualNetworks();
+                    } catch (Exception e) {
+                        String stackTrace = Throwables.getStackTraceAsString(e);
+                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
+                        s_logger.error(stackTrace); 
+                        e.printStackTrace();
                     }
+
                 } else if (value instanceof VmPoweredOffEvent) {
                     printVmEvent(value);
-                    VmEvent anEvent = (VmEvent) value;
-                    VirtualMachine vm = new VirtualMachine(vcenterDB.getServiceInstance().getServerConnection(), 
-                                                           anEvent.getVm().getVm());
-                    if (vm != null) {
-                        vncVirtualMachineDelete(vm);
+                    try {
+                        monitorTask.syncVmwareVirtualNetworks();
+                    } catch (Exception e) {
+                        String stackTrace = Throwables.getStackTraceAsString(e);
+                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
+                        s_logger.error(stackTrace); 
+                        e.printStackTrace();
                     }
+
                 } else if (value instanceof DVPortgroupCreatedEvent) {
                     printDvsPortgroupEvent(value);
-                    DVPortgroupEvent anEvent = (DVPortgroupEvent) value;
-                    DistributedVirtualPortgroup dvPg = new DistributedVirtualPortgroup(
-                                vcenterDB.getServiceInstance().getServerConnection(), anEvent.getNet().getNetwork());
-                    if (dvPg != null) {
-/* vncVirtualNetworkAdd(dvPg); */
-                    }
                 } else if (value instanceof DVPortgroupDestroyedEvent) {
                     printDvsPortgroupEvent(value);
-                    vncVirtualNetworkDelete();
+                    try {
+                        monitorTask.syncVmwareVirtualNetworks();
+                    } catch (Exception e) {
+                        String stackTrace = Throwables.getStackTraceAsString(e);
+                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
+                        s_logger.error(stackTrace); 
+                        e.printStackTrace();
+                    }
+
                 } else if (value instanceof DVPortgroupReconfiguredEvent) {
                     printDvsPortgroupEvent(value);
                 } else if (value instanceof DvsEvent) {
@@ -275,13 +281,14 @@ public class VCenterNotify implements Runnable
      public void start() {
         try
         {
-            System.out.println("info---" + vcenterDB.getServiceInstance().getAboutInfo().getFullName());
+            System.out.println("info---" + 
+                monitorTask.getVCenterDB().getServiceInstance().getAboutInfo().getFullName());
             this.initialize();
             this.createEventHistoryCollector();
 
             PropertyFilterSpec eventFilterSpec = this
                     .createEventFilterSpec();
-            propColl = vcenterDB.getServiceInstance().getPropertyCollector();
+            propColl = monitorTask.getVCenterDB().getServiceInstance().getPropertyCollector();
 
             propFilter = propColl.createFilter(eventFilterSpec, true);
 
@@ -301,7 +308,7 @@ public class VCenterNotify implements Runnable
         shouldRun = false;
         propColl.cancelWaitForUpdates();
         propFilter.destroyPropertyFilter();
-        vcenterDB.getServiceInstance().getServerConnection().logout();
+        monitorTask.getVCenterDB().getServiceInstance().getServerConnection().logout();
         watchUpdates.stop();
     }
 
@@ -349,7 +356,7 @@ public class VCenterNotify implements Runnable
     void printVmEvent(Object value)
     {
         VmEvent anEvent = (VmEvent) value;
-        System.out.println("\n----------" + "\n Event ID: "
+        s_logger.info("\n----------" + "\n Event ID: "
                 + anEvent.getKey() + "\n Event: "
                 + anEvent.getClass().getName()
                 + "\n FullFormattedMessage: "
@@ -359,20 +366,12 @@ public class VCenterNotify implements Runnable
                 + "\n createdTime : "
                 + anEvent.getCreatedTime().getTime()
                 + "\n----------\n");
-        VirtualMachine vm = new VirtualMachine(vcenterDB.getServiceInstance().getServerConnection(), 
-                                                anEvent.getVm().getVm());
-        if (vm != null) {
-            System.out.println("\n----------" + "\n VirtualMachine Info : "
-                + "\ninstanceUUID  : " + vm.getConfig().getInstanceUuid()
-                + "\nguestFullName : " + vm.getConfig().getGuestFullName()
-                + "\nUUID          : " + vm.getConfig().getUuid());
-        }
     }
 
     void printDvsPortgroupEvent(Object value)
     {
         DVPortgroupEvent anEvent = (DVPortgroupEvent) value;
-        System.out.println("\n----------" + "\n Event ID: "
+        s_logger.info("\n----------" + "\n Event ID: "
                 + anEvent.getKey() + "\n Event: "
                 + anEvent.getClass().getName()
                 + "\n FullFormattedMessage: "
@@ -380,143 +379,5 @@ public class VCenterNotify implements Runnable
                 + "\n DVS Portgroup Reference: "
                 + anEvent.getDvs().getDvs().get_value()
                 + "\n----------\n");
-        if (value instanceof DVPortgroupCreatedEvent) {
-            DistributedVirtualPortgroup pg = new DistributedVirtualPortgroup(
-                         vcenterDB.getServiceInstance().getServerConnection(), anEvent.getNet().getNetwork());
-            if (pg != null) {
-                byte[] vnKeyBytes = pg.getKey().getBytes();
-                String vnUuid = UUID.nameUUIDFromBytes(vnKeyBytes).toString();
-                String vnName = pg.getName();
-                System.out.println("\n----------" + "\n Distributed Virtual Port Group Info : "
-                    + "\nName             : " + pg.getName()
-                    + "\nMOB Type         : " + anEvent.getNet().getNetwork().getType()
-                    + "\nMOB Value        : " + anEvent.getNet().getNetwork().getVal()
-                    + "\nDvPortGroupUUID  : " + pg.getKey()
-                    + "\nDVPGConfigUUID   : " + pg.getConfig().getKey()
-                    + "\nvnUuid           : " + vnUuid
-                    + "\nvnName           : " + vnName);
-            }
-        } else {
-            System.out.println("\n----------" + "\n Distributed Virtual Port Group Info : "
-                + "\nMOB Type         : " + anEvent.getNet().getNetwork().getType()
-                + "\nMOB Value        : " + anEvent.getNet().getNetwork().getVal());
-        }
-    }
-
-    void vncVirtualMachineAdd(VirtualMachine vcenterVm)
-    {
-        if (vcenterDB.doIgnoreVirtualMachine(vcenterVm.getName())) {
-            s_logger.debug(" Ignoring vm: " + vcenterVm.getName());
-            return;
-        }
-
-        Network[] nets = null;
-        DistributedVirtualPortgroup dvPg = null;
-        try {
-            nets = vcenterVm.getNetworks();
-            if (nets.length > 2) {
-                s_logger.error("More than 2 network configured on VM .. not allowed");
-                return;
-            }
-
-            IpPool[] ipPools = vcenterDB.getIpPoolManager().queryIpPools(vcenterDB.getDatacenter());
-            if (ipPools == null || ipPools.length == 0) {
-                s_logger.error(" Datacenter: " + vcenterDB.getDatacenter().getName() + " IP Pools NOT " +
-                    "configured");
-                return ;
-            }
-
-            for (int i = 0; i < nets.length; i++) {
-                // Find IP Pool associated with dvPg
-                dvPg = (DistributedVirtualPortgroup) nets[i];
-                IpPool ipPool = vcenterDB.getIpPool(dvPg, ipPools);
-                if (ipPool == null) {
-                    dvPg = null;
-                    continue;
-                }
-            }
-        }catch(Throwable e) {
-            s_logger.error("Exception : " + e);
-            e.printStackTrace();
-        }
-        if (dvPg == null) {
-            s_logger.error("Not port-group associated with VM: " + vcenterVm.getName());
-            return;
-        }
-
-        try {
-            // get private vlan info for the portgroup.
-            Map<String, Short> pvlan = vcenterDB.getVlanInfo(dvPg);
-            short primaryVlanId   = pvlan.get("primary-vlan");
-            short isolatedVlanId  = pvlan.get("secondary-vlan");
-
-            // Extract configuration info & get instance UUID
-            VirtualMachineConfigInfo vmConfigInfo = vcenterVm.getConfig();
-            String vmUuid        = vmConfigInfo.getInstanceUuid();
-
-            // Get vmInfo.
-            VmwareVirtualMachineInfo vmInfo = vcenterDB.fillVmwareVirtualMachineInfo(vcenterVm, dvPg);
-            String macAddress    = vmInfo.getMacAddress();
-            String vmName        = vmInfo.getName();
-            String vrouterIpAddr = vmInfo.getVrouterIpAddress();
-            String hostName      = vmInfo.getHostName();
-            byte[] vnKeyBytes   = dvPg.getKey().getBytes();
-            String vnUuid = UUID.nameUUIDFromBytes(vnKeyBytes).toString();
-
-            vncDB.CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName,
-                    vrouterIpAddr, hostName, isolatedVlanId, primaryVlanId);
-        }catch(Exception e) {
-            s_logger.error("Exception : " + e);
-            e.printStackTrace();
-        }
-    }
-
-    void vncVirtualMachineDelete(VirtualMachine vcenterVm)
-    {
-        try {
-            //vncDB.DeleteVirtualMachine(vcenterVm.getConfig().getInstanceUuid());
-        }catch(Throwable e) {
-            s_logger.error("Exception : " + e);
-            e.printStackTrace();
-        }
-    }
-
-    /*
-    void vncVirtualNetworkAdd(DistributedVirtualPortgroup dvPg)
-    {
-        try {
-        // Create
-            VmwareVirtualNetworkInfo vnInfo = vcenterDB.fillVmwareVirtualNetworkInfo(dvPg);
-            if (vnInfo == null) {
-                s_logger.error("Failed to fill VmwareVirtualNetworkInfo for pg=" + dvPg.getName());
-                return;
-            }
-
-            byte[] vnKeyBytes   = dvPg.getKey().getBytes();
-            String vmwareVnUuid = UUID.nameUUIDFromBytes(vnKeyBytes).toString();
-            String subnetAddr = vnInfo.getSubnetAddress();
-            String subnetMask = vnInfo.getSubnetMask();
-            String gatewayAddr = vnInfo.getGatewayAddress();
-            String vmwareVnName = vnInfo.getName();
-            short isolatedVlanId = vnInfo.getIsolatedVlanId();
-            short primaryVlanId = vnInfo.getPrimaryVlanId();
-
-            // Create virtual-network on vnc. No VM objects to be created.
-            vncDB.CreateVirtualNetwork(vmwareVnUuid, vmwareVnName, subnetAddr,
-                    subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId, null);
-        }catch(Throwable e) {
-            s_logger.error("Exception : " + e);
-            e.printStackTrace();
-        }
-    }
-*/
-    void vncVirtualNetworkDelete()
-    {
-        try {
-            monitorTask.syncVirtualNetworks();
-        }catch(Throwable e) {
-            s_logger.error("Exception : " + e);
-            e.printStackTrace();
-        }
     }
 }
