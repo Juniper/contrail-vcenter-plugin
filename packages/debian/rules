@@ -1,13 +1,24 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
-
 export INSTALL_ROOT=$(shell pwd)
 JAVA_HOME=/usr/lib/jvm/default-java
+
+SRC_VER := $(shell cat ./../../controller/src/base/version.info)
+BUILDDATE := $(shell date -u +%m%d%Y)
+
+ifdef SRC_VER
+BUILDTAG = $(SRC_VER)-$(BUILDDATE)
+else
+BUILDTAG = $(BUILDDATE)
+endif
 
 %:
 	dh $@ --with javahelper
 
 override_dh_auto_build:
+	cat debian/changelog.in | sed 's,BUILDTAG,$(BUILDTAG),g' > debian/changelog
+	cat debian/contrail-install-vcenter-plugin.install.in | sed 's,BUILDTAG,$(BUILDTAG),g' > debian/contrail-install-vcenter-plugin.install
+
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/apache/commons/commons-exec/1.2/commons-exec-1.2.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/commons-lang/commons-lang/2.6/commons-lang-2.6.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/commons-net/commons-net/3.3/commons-net-3.3.jar

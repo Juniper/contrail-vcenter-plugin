@@ -1,21 +1,19 @@
+SRC_VER := $(shell cat ./../controller/src/base/version.info)
+BUILDTIME := $(shell date -u +%y%m%d%H%M)
+VERSION = $(SRC_VER)-$(BUILDTIME)
 
-all: contrail-vcenter-plugin-packages-deb
-	@echo "Build complete"
-
-contrail-vijava-deb:
-	(cd vijava; mvn install; debuild -i -us -uc -b)
-
-contrail-java-api-deb:
-	(cd java-api; mvn install; debuild -i -us -uc -b)
-
-contrail-vrouter-java-api-deb:
-	(cd vrouter-java-api; mvn install; debuild -i -us -uc -b)
-
-contrail-vcenter-plugin-deb:
-	(cd vcenter-plugin; mvn install; debuild -i -us -uc -b)
-
-contrail-vcenter-plugin-packages-deb: contrail-vijava-deb contrail-java-api-deb contrail-vrouter-java-api-deb contrail-vcenter-plugin-deb
-	@echo "Building contrail vcenter plugin package.."
+all:
+	$(eval BUILDDIR=./../build/vcenter-plugin)
+	mkdir -p ${BUILDDIR}
+	cp -ar * ${BUILDDIR}
+	mvn install
+	#(cd ${BUILDDIR}; fakeroot debian/rules clean)
+	#(cd ${BUILDDIR}; fakeroot debian/rules binary)
+	(cd ${BUILDDIR}; debuild -i -us -uc -b)
+	@echo "Wrote: ${BUILDDIR}/../contrail-vcenter-plugin_all.deb"
 
 clean:
-	(rm -rf *.deb *.changes *.build)
+	$(eval BUILDDIR=./../build/vcenter-plugin)
+	rm -rf ${BUILDDIR}/../contrail-vcenter-plugin*.*
+	rm -rf ${BUILDDIR}/*
+

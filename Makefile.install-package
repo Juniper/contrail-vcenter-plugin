@@ -1,0 +1,34 @@
+
+
+vijava-deb:
+	(cd vijava && make)
+
+java-api-deb:
+	(cd java-api && make)
+
+vrouter-java-api-deb:
+	(cd vrouter-java-api && make)
+
+vcenter-plugin-deb:
+	(cd vcenter-plugin && make)
+
+install-package-deb:
+	$(eval BUILDDIR=./build/packages)
+	mkdir -p ${BUILDDIR}
+	cp -ar vcenter-plugin/packages/* ${BUILDDIR}
+	(cd ${BUILDDIR}; debuild -i -us -uc -b)
+	@echo "Wrote: build/contrail-vcenter-plugin_all.deb"
+
+clean-install-package:
+	$(eval BUILDDIR=./build/packages)
+	rm -rf ${BUILDDIR}
+	rm -rf ./build/contrail-install-vcenter-plugin*.*
+
+clean: clean-install-package
+	(cd vijava && mvn clean && make clean)
+	(cd java-api && mvn clean && make clean)
+	(cd vrouter-java-api && mvn clean && make clean)
+	(cd vcenter-plugin && mvn clean && make clean)
+
+
+all: vijava-deb java-api-deb vrouter-java-api-deb vcenter-plugin-deb install-package-deb
