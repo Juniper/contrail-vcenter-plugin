@@ -1,12 +1,18 @@
 SRC_VER := $(shell cat ./../controller/src/base/version.info)
-BUILDTIME := $(shell date -u +%y%m%d%H%M)
-VERSION = $(SRC_VER)-$(BUILDTIME)
+BUILDTIME := $(shell date -u +%m%d%Y)
+
+ifdef SRC_VER
+BUILDTAG = $(SRC_VER)-$(BUILDTIME)
+else
+BUILDTAG = $(BUILDTIME)
+endif
+
 
 all:
 	$(eval BUILDDIR=./../build/vcenter-plugin)
 	mkdir -p ${BUILDDIR}
 	cp -ar * ${BUILDDIR}
-	mvn install
+	(cd ${BUILDDIR}; mvn install)
 	#(cd ${BUILDDIR}; fakeroot debian/rules clean)
 	#(cd ${BUILDDIR}; fakeroot debian/rules binary)
 	(cd ${BUILDDIR}; debuild -i -us -uc -b)
@@ -14,6 +20,7 @@ all:
 
 clean:
 	$(eval BUILDDIR=./../build/vcenter-plugin)
+	(cd ${BUILDDIR}; mvn clean)
 	rm -rf ${BUILDDIR}/../contrail-vcenter-plugin*.*
 	rm -rf ${BUILDDIR}/*
 

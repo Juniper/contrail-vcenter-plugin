@@ -1,16 +1,16 @@
 
 
 vijava-deb:
-	(cd vijava && make)
+	(cd vijava && make all)
 
 java-api-deb:
-	(cd java-api && make)
+	(cd java-api && make all)
 
 vrouter-java-api-deb:
-	(cd vrouter-java-api && make)
+	(cd vrouter-java-api && make all)
 
 vcenter-plugin-deb:
-	(cd vcenter-plugin && make)
+	(cd vcenter-plugin && make all)
 
 install-package-deb:
 	$(eval BUILDDIR=./build/packages)
@@ -25,10 +25,10 @@ clean-install-package:
 	rm -rf ./build/contrail-install-vcenter-plugin*.*
 
 clean: clean-install-package
-	(cd vijava && mvn clean && make clean)
-	(cd java-api && mvn clean && make clean)
-	(cd vrouter-java-api && mvn clean && make clean)
-	(cd vcenter-plugin && mvn clean && make clean)
+	(cd vijava && make clean)
+	(cd java-api && make clean)
+	(cd vrouter-java-api make clean)
+	(cd vcenter-plugin make clean)
 
 
 all: vijava-deb java-api-deb vrouter-java-api-deb vcenter-plugin-deb install-package-deb
