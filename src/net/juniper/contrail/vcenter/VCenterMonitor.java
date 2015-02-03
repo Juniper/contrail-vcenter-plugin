@@ -111,7 +111,7 @@ class VCenterMonitorTask implements Runnable {
                             vmwareVmInfo.getVrouterIpAddress(),
                             vmwareVmInfo.getHostName(),
                             vmwareNetworkInfo.getIsolatedVlanId(),
-                            vmwareNetworkInfo.getPrimaryVlanId());
+                            vmwareNetworkInfo.getPrimaryVlanId(), vmwareVmInfo);
                 }
                 vncItem = vncIter.hasNext() ? vncIter.next() : null;
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
@@ -128,7 +128,7 @@ class VCenterMonitorTask implements Runnable {
                         vmwareVmInfo.getVrouterIpAddress(),
                         vmwareVmInfo.getHostName(),
                         vmwareNetworkInfo.getIsolatedVlanId(),
-                        vmwareNetworkInfo.getPrimaryVlanId());
+                        vmwareNetworkInfo.getPrimaryVlanId(), vmwareVmInfo);
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
             }
         }       
@@ -142,7 +142,7 @@ class VCenterMonitorTask implements Runnable {
                     vmwareVmInfo.getVrouterIpAddress(),
                     vmwareVmInfo.getHostName(), 
                     vmwareNetworkInfo.getIsolatedVlanId(),
-                    vmwareNetworkInfo.getPrimaryVlanId());
+                    vmwareNetworkInfo.getPrimaryVlanId(), vmwareVmInfo);
             vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
         }
         while (vncItem != null) {
@@ -271,10 +271,29 @@ class VCenterMonitorTask implements Runnable {
             String curVmwareVmUuid = curVmwareItem.getKey();
             String prevVmwareVmUuid = prevVmwareItem.getKey();
             Integer cmp = curVmwareVmUuid.compareTo(prevVmwareVmUuid);
-
             if (cmp == 0) {
+                //If VM has migrated from one host to other, uuid is same, so handle it
+                VmwareVirtualMachineInfo cur_VmwareVmInfo = curVmwareItem.getValue();
+                String cur_vrouter = cur_VmwareVmInfo.getVrouterIpAddress();
+                VmwareVirtualMachineInfo prev_VmwareVmInfo = prevVmwareItem.getValue();
+                cur_VmwareVmInfo.setInterfaceUuid(prev_VmwareVmInfo.getInterfaceUuid());
+                String prev_vrouter = prev_VmwareVmInfo.getVrouterIpAddress();
+                Integer cmp_vrouter = prev_vrouter.compareTo(cur_vrouter);
+                if (cmp_vrouter != 0) {
+                    s_logger.info("\nuuids are same, but the vrouters are different. old vrouter: "+prev_vrouter+" new vrouter:"+cur_vrouter+" Taking care of migration");
+                    vncDB.DeletePort(prev_VmwareVmInfo.getInterfaceUuid(),
+                                     prev_VmwareVmInfo.getVrouterIpAddress());
+                    vncDB.syncAddPortPerVirtualMachineInterface(
+                            vnUuid, curVmwareVmUuid,
+                            cur_VmwareVmInfo.getMacAddress(),
+                            cur_VmwareVmInfo.getName(),
+                            cur_VmwareVmInfo.getVrouterIpAddress(),
+                            cur_VmwareVmInfo.getHostName(),
+                            curVmwareVNInfo.getIsolatedVlanId(),
+                            curVmwareVNInfo.getPrimaryVlanId(), cur_VmwareVmInfo);
+                }
                 prevVmwareItem = prevVmwareIter.hasNext() ? prevVmwareIter.next() : null;
-                curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
+                curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null; 
             } else if (cmp > 0){
                 // Delete Vnc virtual machine
                 vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid);
@@ -288,7 +307,7 @@ class VCenterMonitorTask implements Runnable {
                         curVmwareVmInfo.getVrouterIpAddress(),
                         curVmwareVmInfo.getHostName(),
                         curVmwareVNInfo.getIsolatedVlanId(),
-                        curVmwareVNInfo.getPrimaryVlanId());
+                        curVmwareVNInfo.getPrimaryVlanId(), curVmwareVmInfo);
                 curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
             }
         }       
@@ -302,7 +321,7 @@ class VCenterMonitorTask implements Runnable {
                     curVmwareVmInfo.getVrouterIpAddress(),
                     curVmwareVmInfo.getHostName(), 
                     curVmwareVNInfo.getIsolatedVlanId(),
-                    curVmwareVNInfo.getPrimaryVlanId());
+                    curVmwareVNInfo.getPrimaryVlanId(), curVmwareVmInfo);
             curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
         }
         while (prevVmwareItem != null) {

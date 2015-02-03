@@ -154,7 +154,38 @@ public class VncDB {
 
         return true;
     }
-    
+    void DeletePort(String vmInterfaceUuid, String vrouterIpAddress)
+                    throws IOException {
+
+        s_logger.info("Delete Port given VMI (uuid = " + vmInterfaceUuid + ")");
+
+        // Unplug notification to vrouter
+        if (vrouterIpAddress == null) {
+            s_logger.info("Virtual machine interface: " + vmInterfaceUuid +
+                    " delete notification NOT sent");
+            return;
+        }
+        ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
+        if (vrouterApi == null) {
+            vrouterApi = new ContrailVRouterApi(
+                    InetAddress.getByName(vrouterIpAddress),
+                    vrouterApiPort, false);
+            vrouterApiMap.put(vrouterIpAddress, vrouterApi);
+        }
+        boolean ret = vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
+        if ( ret == true) {
+            s_logger.info("VRouterAPi Delete Port success - port uuid: "
+                          + vmInterfaceUuid + ")");
+        } else {
+            // log failure but don't worry. Periodic KeepAlive task will
+            // attempt to connect to vRouter Agent and ports that are not
+            // replayed by client(plugin) will be deleted by vRouter Agent.
+            s_logger.info("VRouterAPi Delete Port failure - port uuid: "
+                          + vmInterfaceUuid + ")");
+        }
+    }
+   
+ 
     private void DeleteVirtualMachineInternal(
             VirtualMachineInterface vmInterface) throws IOException {
 
@@ -354,7 +385,8 @@ public class VncDB {
     
     public void CreateVirtualMachine(String vnUuid, String vmUuid,
             String macAddress, String vmName, String vrouterIpAddress,
-            String hostName, short isolatedVlanId, short primaryVlanId) throws IOException {
+            String hostName, short isolatedVlanId, short primaryVlanId,
+            VmwareVirtualMachineInfo vmwareVmInfo) throws IOException {
         s_logger.info("Create Virtual Machine : " 
                        + ", VM: " + vmName + " (" + vmUuid + ")" 
                        + ", VN: " + vnUuid
@@ -425,6 +457,7 @@ public class VncDB {
         vmInterface.setMacAddresses(macAddrType);
         vmInterface.setIdPerms(vCenterIdPerms);
         apiConnector.create(vmInterface);
+        vmwareVmInfo.setInterfaceUuid(vmiUuid);
         s_logger.debug("Created virtual machine interface:" + vmInterfaceName + 
                 ", vmiUuid :" + vmiUuid);
 
@@ -487,12 +520,13 @@ public class VncDB {
 
     public void syncAddPortPerVirtualMachineInterface(String vnUuid, String vmUuid,
             String macAddress, String vmName, String vrouterIpAddress,
-            String hostName, short isolatedVlanId, short primaryVlanId) throws IOException {
-        s_logger.debug("syncAddPortPerVirtualMachineInterface : " 
+            String hostName, short isolatedVlanId, short primaryVlanId,
+            VmwareVirtualMachineInfo vmwareVmInfo) throws IOException {
+        s_logger.debug("syncAddPortPerVirtualMachineInterface : "
                       + ", VN: " + vnUuid
                       + ", VM: " + vmName + " (" + vmUuid + ")"
                       + ", vrouterIpAddress: " + vrouterIpAddress
-                      + ", hostName: " + hostName 
+                      + ", hostName: " + hostName
                       + ", vlan: " + isolatedVlanId + "/" + primaryVlanId);
 
         // Virtual network
@@ -513,7 +547,6 @@ public class VncDB {
                     apiConnector.findById(VirtualMachineInterface.class,
                             vmInterfaceRef.getUuid());
         }
-
         if (vmInterface == null) {
             s_logger.warn("Virtual machine: " + vmName
                           + " has no network interface");
@@ -531,7 +564,6 @@ public class VncDB {
                     apiConnector.findById(InstanceIp.class,
                             instanceIpRef.getUuid());
         }
-
         if (instanceIp == null) {
             s_logger.warn("Virtual machine interface: " + vmInterface.getName()
                           + " has no ip address");
@@ -546,6 +578,8 @@ public class VncDB {
                 + " AddPort notification NOT sent since vrouter-ip address missing");
             return;
         }
+        vmwareVmInfo.setInterfaceUuid(vmInterface.getUuid());
+
         try {
             ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
             if (vrouterApi == null) {
@@ -558,17 +592,17 @@ public class VncDB {
                                UUID.fromString(vmUuid), vmInterface.getName(),
                                InetAddress.getByName(vmIpAddress),
                                Utils.parseMacAddress(macAddress),
-                               UUID.fromString(vnUuid), isolatedVlanId, 
+                               UUID.fromString(vnUuid), isolatedVlanId,
                                primaryVlanId, vmName);
             if ( ret == true) {
                 s_logger.info("VRouterAPi Add Port success - interface name: "
-                              +  vmInterface.getDisplayName() 
+                              +  vmInterface.getDisplayName()
                               + "(" + vmInterface.getName() + ")");
             } else {
                 // log failure but don't worry. Periodic KeepAlive task will
                 // attempt to connect to vRouter Agent and replay AddPorts.
                 s_logger.error("VRouterAPi Add Port failed - interface name: "
-                              +  vmInterface.getDisplayName() 
+                              +  vmInterface.getDisplayName()
                               + "(" + vmInterface.getName() + ")");
             }
         }catch(Throwable e) {
@@ -618,7 +652,8 @@ public class VncDB {
             String vrouterIpAddr = vmInfo.getVrouterIpAddress();
             String hostName = vmInfo.getHostName();
             CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName,
-                    vrouterIpAddr, hostName, isolatedVlanId, primaryVlanId);
+                    vrouterIpAddr, hostName, isolatedVlanId, primaryVlanId,
+                    vmInfo);
         }
         s_logger.info("Create Virtual Network: Done");
     }

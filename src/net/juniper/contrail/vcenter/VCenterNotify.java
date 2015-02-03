@@ -53,6 +53,11 @@ import com.vmware.vim25.mo.VirtualMachine;
 import com.vmware.vim25.mo.DistributedVirtualPortgroup;
 import com.vmware.vim25.RuntimeFault;
 import com.vmware.vim25.InvalidProperty;
+import com.vmware.vim25.MigrationEvent;
+import com.vmware.vim25.VmEmigratingEvent; 
+import com.vmware.vim25.VmMigratedEvent; 
+import com.vmware.vim25.VmBeingMigratedEvent; 
+import com.vmware.vim25.VmBeingHotMigratedEvent; 
 
 import com.google.common.base.Throwables;
 
@@ -109,11 +114,11 @@ public class VCenterNotify implements Runnable
         // Add as many events you want to track relating to vm.
         // Refer to API Data Object vmEvent and see the extends class list for
         // elaborate list of vmEvents
-        eventFilter.setType(new String[] { "VmPoweredOffEvent", "VmPoweredOnEvent", 
+        eventFilter.setType(new String[] { "VmPoweredOnEvent", "VmPoweredOffEvent", 
                                            "VmRenamedEvent", 
                                            "DVPortgroupCreatedEvent", "DVPortgroupDestroyedEvent", 
                                            "DVPortgroupReconfiguredEvent", "DVPortgroupRenamedEvent", 
-                                           "DvsPortCreatedEvent", "DvsPortDeletedEvent", "DvsPortJoinPortgroupEvent", "DvsPortLeavePortgroupEvent"});
+                                           "DvsPortCreatedEvent", "DvsPortDeletedEvent", "DvsPortJoinPortgroupEvent", "DvsPortLeavePortgroupEvent","MigrationEvent","VmEmigratingEvent","VmMigratedEvent","VmBeingMigratedEvent","VmBeingHotMigratedEvent"});
 
         // create the EventHistoryCollector to monitor events for a VM
         // and get the ManagedObjectReference of the EventHistoryCollector
@@ -199,15 +204,15 @@ public class VCenterNotify implements Runnable
             Object value = changes[pci].getVal();
             PropertyChangeOp op = changes[pci].getOp();
             if (value != null && op!= PropertyChangeOp.remove) {
-                System.out.println("===============");
-                System.out.println("\nEvent Details follows:");
+                s_logger.info("===============");
+                s_logger.info("\nEvent Details follows:");
                 if (value instanceof ArrayOfEvent) {
                     ArrayOfEvent aoe = (ArrayOfEvent) value;
                     Event[] evts = aoe.getEvent();
                     for (int evtID = 0; evtID < evts.length; ++evtID)
                     {
                         Event anEvent = evts[evtID];
-                        System.out.println("\n----------" + "\n Event ID: "
+                        s_logger.info("\n----------" + "\n Event ID: "
                                 + anEvent.getKey() + "\n Event: "
                                 + anEvent.getClass().getName()
                                 + "\n FullFormattedMessage: "
@@ -235,6 +240,16 @@ public class VCenterNotify implements Runnable
                         s_logger.error(stackTrace); 
                         e.printStackTrace();
                     }
+                } else if (value instanceof VmMigratedEvent) {
+                    printVmEvent(value);
+                    try {
+                        monitorTask.syncVmwareVirtualNetworks();
+                    } catch (Exception e) {
+                        String stackTrace = Throwables.getStackTraceAsString(e);
+                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
+                        s_logger.error(stackTrace); 
+                        e.printStackTrace();
+                    }
 
                 } else if (value instanceof DVPortgroupCreatedEvent) {
                     printDvsPortgroupEvent(value);
@@ -253,7 +268,7 @@ public class VCenterNotify implements Runnable
                     printDvsPortgroupEvent(value);
                 } else if (value instanceof DvsEvent) {
                     DvsEvent anEvent = (DvsEvent) value;
-                    System.out.println("\n----------" + "\n Event ID: "
+                    s_logger.info("\n----------" + "\n Event ID: "
                             + anEvent.getKey() + "\n Event: "
                             + anEvent.getClass().getName()
                             + "\n FullFormattedMessage: "
@@ -263,18 +278,18 @@ public class VCenterNotify implements Runnable
                             + "\n----------\n");
                 } else {
                     Event anEvent = (Event) value;
-                    System.out.println("\n----------" 
+                    s_logger.info("\n----------" 
                             + "\n Event ID: " + anEvent.getKey() 
                             + "\n Event: " + anEvent.getClass().getName()
                             + "\n FullFormattedMessage: " + anEvent.getFullFormattedMessage()
                             + "\n----------\n");
                 }
-                System.out.println("===============");
+                s_logger.info("===============");
             } else if (value != null && op == PropertyChangeOp.remove) {
 
             }
         }
-        System.out.println("+++++++++++++Update Processing Complete +++++++++++++++++++++");
+        s_logger.info("+++++++++++++Update Processing Complete +++++++++++++++++++++");
     }
 
 

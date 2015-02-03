@@ -24,6 +24,7 @@ class VmwareVirtualMachineInfo {
     private String vrouterIpAddress;
     private String macAddress;
     private String name;
+    private String interfaceUuid;
     
     public VmwareVirtualMachineInfo(String name, String hostName, 
             String vrouterIpAddress, String macAddress) {
@@ -64,4 +65,12 @@ class VmwareVirtualMachineInfo {
     public void setName(String name) {
         this.name = name;
     }
+    public String getInterfaceUuid() {
+        return interfaceUuid;
+    }
+
+    public void setInterfaceUuid(String uuid) {
+        this.interfaceUuid = uuid;
+    }
+
 }
