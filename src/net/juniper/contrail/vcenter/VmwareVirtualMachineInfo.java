@@ -18,6 +18,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
 
+import com.vmware.vim25.VirtualMachinePowerState;
 
 class VmwareVirtualMachineInfo {
     private String hostName;
@@ -25,13 +26,16 @@ class VmwareVirtualMachineInfo {
     private String macAddress;
     private String name;
     private String interfaceUuid;
+    private VirtualMachinePowerState powerState;
     
     public VmwareVirtualMachineInfo(String name, String hostName, 
-            String vrouterIpAddress, String macAddress) {
-        this.name = name;
-        this.hostName = hostName;
+            String vrouterIpAddress, String macAddress,
+            VirtualMachinePowerState powerState) {
+        this.name             = name;
+        this.hostName         = hostName;
         this.vrouterIpAddress = vrouterIpAddress;
-        this.macAddress = macAddress;
+        this.macAddress       = macAddress;
+        this.powerState       = powerState;
     }
 
     public String getHostName() {
@@ -65,6 +69,7 @@ class VmwareVirtualMachineInfo {
     public void setName(String name) {
         this.name = name;
     }
+
     public String getInterfaceUuid() {
         return interfaceUuid;
     }
@@ -73,4 +78,24 @@ class VmwareVirtualMachineInfo {
         this.interfaceUuid = uuid;
     }
 
+    public VirtualMachinePowerState getPowerState() {
+        return powerState;
+    }
+
+    public void setPowerState(VirtualMachinePowerState powerState) {
+        this.powerState = powerState;
+    }
+
+    public boolean isPowerStateEqual(VirtualMachinePowerState powerState) {
+        if (this.powerState == powerState)
+            return true;
+        else
+            return false;
+    }
+    public boolean isPoweredOnState() {
+        if (powerState == VirtualMachinePowerState.poweredOn)
+            return true;
+        else
+            return false;
+    }
 }

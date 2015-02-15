@@ -24,6 +24,7 @@ import net.juniper.contrail.api.types.InstanceIp;
 import net.juniper.contrail.api.types.FloatingIp;
 import net.juniper.contrail.api.types.MacAddressesType;
 import net.juniper.contrail.api.types.NetworkIpam;
+import net.juniper.contrail.api.types.SecurityGroup;
 import net.juniper.contrail.api.types.SubnetType;
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
@@ -154,7 +155,8 @@ public class VncDB {
 
         return true;
     }
-    void DeletePort(String vmInterfaceUuid, String vrouterIpAddress)
+
+    void VifUnplug(String vmInterfaceUuid, String vrouterIpAddress)
                     throws IOException {
 
         s_logger.info("Delete Port given VMI (uuid = " + vmInterfaceUuid + ")");
@@ -189,18 +191,62 @@ public class VncDB {
     private void DeleteVirtualMachineInternal(
             VirtualMachineInterface vmInterface) throws IOException {
 
-        s_logger.debug("Delete Virtual Machine given VMI (uuid = " + vmInterface.getUuid() + ")");
+        String vmInterfaceUuid = vmInterface.getUuid();
+        s_logger.debug("Delete Virtual Machine given VMI (uuid = " + vmInterfaceUuid + ")");
 
+        // Clear security-group associations if it exists on VMInterface
+        List<ObjectReference<ApiPropertyBase>> secGroupRefs = 
+                vmInterface.getSecurityGroup();
+        if ((secGroupRefs != null) && !secGroupRefs.isEmpty()) {
+            s_logger.info("SecurityGroup association exists for VMInterface:" + vmInterface.getUuid());
+            SecurityGroup secGroup = (SecurityGroup)
+                apiConnector.findById(SecurityGroup.class, 
+                                      secGroupRefs.get(0).getUuid());
+            VirtualMachineInterface vmi = new VirtualMachineInterface();
+            vmi.setParent(vmInterface.getParent());
+            vmi.setName(vmInterface.getName());
+            vmi.setUuid(vmInterface.getUuid());
+            vmi.addSecurityGroup(secGroup);
+            vmi.clearSecurityGroup();
+            apiConnector.update(vmi);
+            vmInterface.clearSecurityGroup();
+            s_logger.info("Removed SecurityGroup association for VMInterface:" + vmInterface.getUuid());
+        }
+
+        // Clear flloating-ip associations if it exists on VMInterface
+        List<ObjectReference<ApiPropertyBase>> floatingIpRefs = 
+                vmInterface.getFloatingIpBackRefs();
+        if ((floatingIpRefs != null) && !floatingIpRefs.isEmpty()) {
+            s_logger.info("floatingIp association exists for VMInterface:" + vmInterface.getUuid());
+            // there can be one floating-ip per VMI.
+            FloatingIp floatingIp = (FloatingIp)
+                apiConnector.findById(FloatingIp.class, 
+                                      floatingIpRefs.get(0).getUuid());
+            // clear VMInterface back reference.
+            FloatingIp fip = new FloatingIp();
+            fip.setParent(floatingIp.getParent());
+            fip.setName(floatingIp.getName());
+            fip.setUuid(floatingIp.getUuid());
+            fip.setVirtualMachineInterface(vmInterface);
+            fip.clearVirtualMachineInterface();
+            apiConnector.update(fip);
+            floatingIp.clearVirtualMachineInterface();
+            s_logger.info("Removed floatingIp association for VMInterface:" + vmInterface.getUuid());
+        }
+           
+        // delete instancIp
         List<ObjectReference<ApiPropertyBase>> instanceIpRefs = 
                 vmInterface.getInstanceIpBackRefs();
         for (ObjectReference<ApiPropertyBase> instanceIpRef : 
             Utils.safe(instanceIpRefs)) {
-            s_logger.info("Delete instance IP: " + instanceIpRef.getReferredName());
-            apiConnector.delete(InstanceIp.class, instanceIpRef.getUuid());
+            s_logger.info("Delete instance IP: " + 
+                    instanceIpRef.getReferredName());
+            apiConnector.delete(InstanceIp.class, 
+                    instanceIpRef.getUuid());
         }
+
         // There should only be one virtual machine hanging off the virtual
         // machine interface
-        //String vmUuid = vmInterface.getParentUuid();   
         List<ObjectReference<ApiPropertyBase>> vmRefs = vmInterface.getVirtualMachine();
         if (vmRefs == null || vmRefs.size() == 0) {
             s_logger.error("Virtual Machine Interface : " + vmInterface.getDisplayName() + 
@@ -220,53 +266,41 @@ public class VncDB {
             return;
         }
 
-        if ((vm.getVirtualMachineInterfaces() == null) || 
-             vm.getVirtualMachineInterfaces().isEmpty()) {
-            s_logger.debug("Delete virtual machine: " + vm.getName());
-            apiConnector.delete(VirtualMachine.class, vmRef.getUuid());      
-            return;
-        }
-
+        // If this is the only interface on this VM,
+        // delete Virtual Machine as well after deleting last VMI
         boolean deleteVm = false;
-        if (vm.getVirtualMachineInterfaces().size() == 1) {
+        if (vm.getVirtualMachineInterfaceBackRefs().size() == 1) {
             deleteVm = true;
         }
-        // Extract VRouter IP address from display name
+        
+        // delete VMInterface
+        s_logger.info("Delete virtual machine interface: " + 
+                vmInterface.getName());
+        apiConnector.delete(vmInterface);
+
+        // Send Unplug notification to vrouter
         String vrouterIpAddress = vm.getDisplayName();
-        String vmInterfaceName = vmInterface.getName();
-        String vmInterfaceDisplayName = vmInterface.getDisplayName();
-        s_logger.debug("Delete virtual machine interface: " + vmInterfaceName);
-        String vmInterfaceUuid = vmInterface.getUuid();
-        apiConnector.delete(VirtualMachineInterface.class,
-                vmInterfaceUuid);
-        if (deleteVm) {
-            s_logger.debug("Delete virtual machine: " + vm.getName());
-            apiConnector.delete(VirtualMachine.class, vmRef.getUuid());      
+        if (vrouterIpAddress == null) {
+            ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
+            if (vrouterApi == null) {
+                vrouterApi = new ContrailVRouterApi(
+                        InetAddress.getByName(vrouterIpAddress), 
+                        vrouterApiPort, false);
+                vrouterApiMap.put(vrouterIpAddress, vrouterApi);
+            }
+            vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
+        } else {
+            s_logger.warn("Virtual machine interace: " + vmInterfaceUuid + 
+                    " DeletePort notification NOT sent");
         }
 
-        // Unplug notification to vrouter
-        if (vrouterIpAddress == null) {
-            s_logger.debug("Virtual machine interface: " + vmInterfaceUuid + 
-                    " delete notification NOT sent");
-            return;
-        }
-        ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
-        if (vrouterApi == null) {
-            vrouterApi = new ContrailVRouterApi(
-                    InetAddress.getByName(vrouterIpAddress), 
-                    vrouterApiPort, false);
-            vrouterApiMap.put(vrouterIpAddress, vrouterApi);
-        }
-        boolean ret = vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
-        if ( ret == true) {
-            s_logger.debug("VRouterAPi Delete Port success - port name: "
-                          + vmInterfaceName + "(" + vmInterfaceDisplayName + ")");
+        // delete VirtualMachine or may-be-not 
+        if (deleteVm == true) {
+            apiConnector.delete(VirtualMachine.class, vm.getUuid());
+            s_logger.info("Delete Virtual Machine (uuid = " + vm.getUuid() + ") Done.");
         } else {
-            // log failure but don't worry. Periodic KeepAlive task will
-            // attempt to connect to vRouter Agent and ports that are not
-            // replayed by client(plugin) will be deleted by vRouter Agent.
-            s_logger.warn("VRouterAPi Delete Port failure - port name: "
-                          + vmInterfaceName + "(" + vmInterfaceDisplayName + ")");
+            s_logger.info("Virtual Machine (uuid = " + vm.getUuid() + ") not deleted"
+                          + " yet as more interfaces to be deleted.");
         }
     }
 
@@ -318,6 +352,25 @@ public class VncDB {
               deleteVm = true;
             }
 
+            // Clear security-group associations if it exists on VMInterface
+            List<ObjectReference<ApiPropertyBase>> secGroupRefs = 
+                    vmInterface.getSecurityGroup();
+            if ((secGroupRefs != null) && !secGroupRefs.isEmpty()) {
+                s_logger.info("SecurityGroup association exists for VMInterface:" + vmInterface.getUuid());
+                SecurityGroup secGroup = (SecurityGroup)
+                    apiConnector.findById(SecurityGroup.class, 
+                                          secGroupRefs.get(0).getUuid());
+                VirtualMachineInterface vmi = new VirtualMachineInterface();
+                vmi.setParent(vmInterface.getParent());
+                vmi.setName(vmInterface.getName());
+                vmi.setUuid(vmInterface.getUuid());
+                vmi.addSecurityGroup(secGroup);
+                vmi.clearSecurityGroup();
+                apiConnector.update(vmi);
+                vmInterface.clearSecurityGroup();
+                s_logger.info("Removed SecurityGroup association for VMInterface:" + vmInterface.getUuid());
+            }
+
             // Clear flloating-ip associations if it exists on VMInterface
             List<ObjectReference<ApiPropertyBase>> floatingIpRefs = 
                     vmInterface.getFloatingIpBackRefs();
@@ -334,9 +387,8 @@ public class VncDB {
                 fip.setUuid(floatingIp.getUuid());
                 fip.setVirtualMachineInterface(vmInterface);
                 fip.clearVirtualMachineInterface();
-
-                floatingIp.clearVirtualMachineInterface();
                 apiConnector.update(fip);
+                floatingIp.clearVirtualMachineInterface();
                 s_logger.info("Removed floatingIp association for VMInterface:" + vmInterface.getUuid());
             }
            
@@ -493,24 +545,25 @@ public class VncDB {
                          vrouterApiPort, false);
                    vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
-            boolean ret = vrouterApi.AddPort(UUID.fromString(vmiUuid),
+            if (vmwareVmInfo.isPoweredOnState()) {
+                boolean ret = vrouterApi.AddPort(UUID.fromString(vmiUuid),
                                          UUID.fromString(vmUuid), vmInterface.getName(),
                                          InetAddress.getByName(vmIpAddress),
                                          Utils.parseMacAddress(macAddress),
                                          UUID.fromString(vnUuid), isolatedVlanId, 
                                          primaryVlanId, vmName);
-            if ( ret == true) {
-                s_logger.info("VRouterAPi Add Port success - interface name: "
-                              +  vmInterface.getDisplayName() 
-                              + "(" + vmInterface.getName() + ")");
-            } else {
-                // log failure but don't worry. Periodic KeepAlive task will
-                // attempt to connect to vRouter Agent and replay AddPorts.
-                s_logger.error("VRouterAPi Add Port failed - interface name: "
-                              +  vmInterface.getDisplayName() 
-                              + "(" + vmInterface.getName() + ")");
+                if ( ret == true) {
+                    s_logger.info("VRouterAPi Add Port success - interface name: "
+                                  +  vmInterface.getDisplayName() 
+                                  + "(" + vmInterface.getName() + ")");
+                } else {
+                    // log failure but don't worry. Periodic KeepAlive task will
+                    // attempt to connect to vRouter Agent and replay AddPorts.
+                    s_logger.error("VRouterAPi Add Port failed - interface name: "
+                                  +  vmInterface.getDisplayName() 
+                                  + "(" + vmInterface.getName() + ")");
+                }
             }
-
         }catch(Throwable e) {
             s_logger.error("Exception : " + e);
             e.printStackTrace();
@@ -518,11 +571,11 @@ public class VncDB {
         s_logger.info("Create Virtual Machine : Done");
     }
 
-    public void syncAddPortPerVirtualMachineInterface(String vnUuid, String vmUuid,
+    public void VifPlug(String vnUuid, String vmUuid,
             String macAddress, String vmName, String vrouterIpAddress,
             String hostName, short isolatedVlanId, short primaryVlanId,
             VmwareVirtualMachineInfo vmwareVmInfo) throws IOException {
-        s_logger.debug("syncAddPortPerVirtualMachineInterface : "
+        s_logger.debug("VifPlug : "
                       + ", VN: " + vnUuid
                       + ", VM: " + vmName + " (" + vmUuid + ")"
                       + ", vrouterIpAddress: " + vrouterIpAddress
@@ -663,7 +716,7 @@ public class VncDB {
         s_logger.info("Delete virtual network: " + uuid);
         VirtualNetwork network = (VirtualNetwork) apiConnector.findById(
                 VirtualNetwork.class, uuid);
-        apiConnector.read(network);
+        //apiConnector.read(network);
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs = 
                 network.getVirtualMachineInterfaceBackRefs();
         for (ObjectReference<ApiPropertyBase> vmInterfaceRef : 

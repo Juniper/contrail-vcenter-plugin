@@ -82,6 +82,8 @@ public class VCenterDB {
 
     public boolean Initialize() {
 
+        s_logger.info("Trying to Connect to vCenter Server : " + "("
+                                + vcenterUrl + "," + vcenterUsername + ")");
         // Connect to VCenter
         if (serviceInstance == null) {
             try {
@@ -111,7 +113,7 @@ public class VCenterDB {
             }
         }
 
-        s_logger.error("Get rootfolder for vCenter ");
+        s_logger.error("Got rootfolder for vCenter ");
 
         if (inventoryNavigator == null) {
             inventoryNavigator = new InventoryNavigator(rootFolder);
@@ -120,7 +122,7 @@ public class VCenterDB {
                 return false;
             }
         }
-        s_logger.error("Get InventoryNavigator for vCenter ");
+        s_logger.error("Got InventoryNavigator for vCenter ");
 
         if (ipPoolManager == null) {
             ipPoolManager = serviceInstance.getIpPoolManager();
@@ -129,7 +131,7 @@ public class VCenterDB {
                 return false;
             }
         }
-        s_logger.error("Get ipPoolManager for vCenter ");
+        s_logger.error("Got ipPoolManager for vCenter ");
 
         // Search contrailDc
         if (contrailDC == null) {
@@ -363,11 +365,11 @@ public class VCenterDB {
         VirtualMachineRuntimeInfo vmRuntimeInfo = vcenterVm.getRuntime();
         VirtualMachinePowerState powerState =
                 vmRuntimeInfo.getPowerState();
-        if (powerState != VirtualMachinePowerState.poweredOn) {
-            s_logger.debug("dvPg: " + dvPgName + " Ignoring vm: " +
+        //if (powerState != VirtualMachinePowerState.poweredOn) {
+            s_logger.debug("dvPg: " + dvPgName + " VM: " +
                     vmName + " Power State: " + powerState);
-            return null;
-        }
+        //    return null;
+        //}
 
         // Extract configuration info
         VirtualMachineConfigInfo vmConfigInfo = vcenterVm.getConfig();
@@ -400,7 +402,7 @@ public class VCenterDB {
         // found valid vm instance.
         VmwareVirtualMachineInfo vmInfo = new
                 VmwareVirtualMachineInfo(vmName, hostName,
-                        vrouterIpAddress, vmMac);
+                        vrouterIpAddress, vmMac, powerState);
 
         return vmInfo;
     }
