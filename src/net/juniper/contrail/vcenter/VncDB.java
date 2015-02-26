@@ -66,6 +66,22 @@ public class VncDB {
 
     }
     
+    public void setApiConnector(ApiConnector _apiConnector) {
+        apiConnector = _apiConnector;
+    }
+
+    public ApiConnector getApiConnector() {
+        return apiConnector;
+    }
+
+    public IdPermsType getVCenterIdPerms() {
+        return vCenterIdPerms;
+    }
+
+    public Project getVCenterProject() {
+        return vCenterProject;
+    }
+
     public boolean isVncApiServerAlive() {
         if (apiConnector == null) {
             apiConnector = ApiConnectorFactory.build(apiServerAddress,
@@ -78,7 +94,6 @@ public class VncDB {
 
         // Read project list as a life check
         s_logger.info(" Checking if api-server is alive and kicking..");
-        Short count =10; // 10 sec total
 
         try {
             List<Project> projects = (List<Project>) apiConnector.list(Project.class, null);
@@ -156,37 +171,6 @@ public class VncDB {
         return true;
     }
 
-    void VifUnplug(String vmInterfaceUuid, String vrouterIpAddress)
-                    throws IOException {
-
-        s_logger.info("Delete Port given VMI (uuid = " + vmInterfaceUuid + ")");
-
-        // Unplug notification to vrouter
-        if (vrouterIpAddress == null) {
-            s_logger.info("Virtual machine interface: " + vmInterfaceUuid +
-                    " delete notification NOT sent");
-            return;
-        }
-        ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
-        if (vrouterApi == null) {
-            vrouterApi = new ContrailVRouterApi(
-                    InetAddress.getByName(vrouterIpAddress),
-                    vrouterApiPort, false);
-            vrouterApiMap.put(vrouterIpAddress, vrouterApi);
-        }
-        boolean ret = vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
-        if ( ret == true) {
-            s_logger.info("VRouterAPi Delete Port success - port uuid: "
-                          + vmInterfaceUuid + ")");
-        } else {
-            // log failure but don't worry. Periodic KeepAlive task will
-            // attempt to connect to vRouter Agent and ports that are not
-            // replayed by client(plugin) will be deleted by vRouter Agent.
-            s_logger.info("VRouterAPi Delete Port failure - port uuid: "
-                          + vmInterfaceUuid + ")");
-        }
-    }
-   
  
     private void DeleteVirtualMachineInternal(
             VirtualMachineInterface vmInterface) throws IOException {
@@ -280,7 +264,7 @@ public class VncDB {
 
         // Send Unplug notification to vrouter
         String vrouterIpAddress = vm.getDisplayName();
-        if (vrouterIpAddress == null) {
+        if (vrouterIpAddress != null) {
             ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
             if (vrouterApi == null) {
                 vrouterApi = new ContrailVRouterApi(
@@ -664,6 +648,37 @@ public class VncDB {
         }
     }
 
+    void VifUnplug(String vmInterfaceUuid, String vrouterIpAddress)
+                    throws IOException {
+
+        s_logger.info("Delete Port given VMI (uuid = " + vmInterfaceUuid + ")");
+
+        // Unplug notification to vrouter
+        if (vrouterIpAddress == null) {
+            s_logger.info("Virtual machine interface: " + vmInterfaceUuid +
+                    " delete notification NOT sent");
+            return;
+        }
+        ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
+        if (vrouterApi == null) {
+            vrouterApi = new ContrailVRouterApi(
+                    InetAddress.getByName(vrouterIpAddress),
+                    vrouterApiPort, false);
+            vrouterApiMap.put(vrouterIpAddress, vrouterApi);
+        }
+        boolean ret = vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
+        if ( ret == true) {
+            s_logger.info("VRouterAPi Delete Port success - port uuid: "
+                          + vmInterfaceUuid + ")");
+        } else {
+            // log failure but don't worry. Periodic KeepAlive task will
+            // attempt to connect to vRouter Agent and ports that are not
+            // replayed by client(plugin) will be deleted by vRouter Agent.
+            s_logger.info("VRouterAPi Delete Port failure - port uuid: "
+                          + vmInterfaceUuid + ")");
+        }
+    }
+
     public void CreateVirtualNetwork(String vnUuid, String vnName,
             String subnetAddr, String subnetMask, String gatewayAddr, 
             short isolatedVlanId, short primaryVlanId,
@@ -719,11 +734,21 @@ public class VncDB {
         //apiConnector.read(network);
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs = 
                 network.getVirtualMachineInterfaceBackRefs();
+        if (vmInterfaceRefs == null || vmInterfaceRefs.size() == 0) {
+            s_logger.debug("Virtual network: " + network + 
+                    " NO associated virtual machine interfaces");
+            apiConnector.delete(VirtualNetwork.class, network.getUuid());     
+            s_logger.info("Delete virtual network: Done");
+            return;
+        }
         for (ObjectReference<ApiPropertyBase> vmInterfaceRef : 
                 Utils.safe(vmInterfaceRefs)) {
             VirtualMachineInterface vmInterface = (VirtualMachineInterface)
                     apiConnector.findById(VirtualMachineInterface.class,
                             vmInterfaceRef.getUuid());
+            if (vmInterface == null) {
+                continue;
+            }
             DeleteVirtualMachineInternal(vmInterface);
         }
         apiConnector.delete(VirtualNetwork.class, network.getUuid());     
@@ -784,11 +809,19 @@ public class VncDB {
                     new TreeMap<String, VncVirtualMachineInfo>();
             for (ObjectReference<ApiPropertyBase> vmInterfaceRef :
                 Utils.safe(vmInterfaceRefs)) {
+
+                if (vmInterfaceRef == null) {
+                    continue;
+                }
+
                 VirtualMachineInterface vmInterface =
                         (VirtualMachineInterface) apiConnector.findById(
                                 VirtualMachineInterface.class,
                                 vmInterfaceRef.getUuid());
-                apiConnector.read(vmInterface);
+                if (vmInterface == null) {
+                    continue;
+                }
+                //apiConnector.read(vmInterface);
                 // Ignore Vnc VMInterfaces where "creator" isn't "vcenter-plugin"
                 if (!vmInterface.getIdPerms().getCreator().equals(VNC_VCENTER_PLUGIN)) {
                     continue;

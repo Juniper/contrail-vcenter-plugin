@@ -466,6 +466,7 @@ class VCenterMonitorTask implements Runnable {
                 s_logger.error("Error while syncVirtualNetworks: " + e); 
                 s_logger.error(stackTrace); 
                 e.printStackTrace();
+                return;
             }
             setAddPortSyncAtPluginStart(false);
             return;
