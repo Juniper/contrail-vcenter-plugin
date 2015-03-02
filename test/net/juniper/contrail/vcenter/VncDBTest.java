@@ -40,6 +40,7 @@ import org.apache.commons.net.util.SubnetUtils;
 
 import net.juniper.contrail.api.ApiConnector;
 import net.juniper.contrail.api.ApiConnectorMock;
+import net.juniper.contrail.api.ApiConnectorFactory;
 import net.juniper.contrail.api.ApiPropertyBase;
 import net.juniper.contrail.api.ObjectReference;
 import net.juniper.contrail.api.types.InstanceIp;

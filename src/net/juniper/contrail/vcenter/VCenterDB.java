@@ -193,16 +193,32 @@ public class VCenterDB {
       return serviceInstance;
     }
 
+    public void setServiceInstance(ServiceInstance _serviceInstance) {
+      serviceInstance = _serviceInstance;
+    }
+
     public IpPoolManager getIpPoolManager() {
       return ipPoolManager;
+    }
+
+    public void setIpPoolManager(IpPoolManager _ipPoolManager) {
+      ipPoolManager = _ipPoolManager;
     }
 
     public InventoryNavigator getInventoryNavigator() {
       return inventoryNavigator;
     }
 
+    public void setInventoryNavigator(InventoryNavigator _inventoryNavigator) {
+      inventoryNavigator = _inventoryNavigator;
+    }
+
     public Datacenter getDatacenter() {
       return contrailDC;
+    }
+
+    public void setDatacenter(Datacenter _dc) {
+      contrailDC = _dc;
     }
 
     public IpPool getIpPool(
@@ -644,5 +660,5 @@ public class VCenterDB {
             vnInfos.put(vnUuid, vnInfo);
         }
         return vnInfos;
-    }   
+    }
 }

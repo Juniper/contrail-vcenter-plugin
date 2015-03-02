@@ -39,7 +39,9 @@ class VCenterMonitorTask implements Runnable {
         vcenterDB = new VCenterDB(vcenterUrl, vcenterUsername, vcenterPassword,
                                   vcenterDcName, vcenterDvsName);
         vncDB     = new VncDB(apiServerAddress, apiServerPort);
+    }
 
+    public void Initialize() {
         // Initialize the databases
         if (vncDB.Initialize() == true) {
             VncDBInitCompelete = true;
@@ -53,6 +55,14 @@ class VCenterMonitorTask implements Runnable {
         return vcenterDB;
     }
 
+    public void setVCenterDB(VCenterDB _vcenterDB) {
+        vcenterDB = _vcenterDB;
+    }
+
+    public VncDB getVncDB() {
+        return vncDB;
+    }
+
     public void setAddPortSyncAtPluginStart(boolean _AddPortSyncAtPluginStart)
     {
         AddPortSyncAtPluginStart = _AddPortSyncAtPluginStart;
@@ -63,7 +73,7 @@ class VCenterMonitorTask implements Runnable {
         return AddPortSyncAtPluginStart;
     }
 
-    private void syncVirtualMachines(String vnUuid, 
+    void syncVirtualMachines(String vnUuid, 
             VmwareVirtualNetworkInfo vmwareNetworkInfo,
             VncVirtualNetworkInfo vncNetworkInfo) throws IOException {
         String vncVnName = vncNetworkInfo.getName();
@@ -126,6 +136,7 @@ class VCenterMonitorTask implements Runnable {
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
             }
         }       
+
         while (vmwareItem != null) {
             // Create
             String vmwareVmUuid = vmwareItem.getKey();
@@ -139,6 +150,7 @@ class VCenterMonitorTask implements Runnable {
                     vmwareNetworkInfo.getPrimaryVlanId(), vmwareVmInfo);
             vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
         }
+
         while (vncItem != null) {
             // Delete
             vncDB.DeleteVirtualMachine(vncItem.getValue());
@@ -232,7 +244,7 @@ class VCenterMonitorTask implements Runnable {
         s_logger.info("Syncing Vnc and VCenter DBs : Done");
     }
 
-    private void syncVmwareVirtualMachines(String vnUuid,
+    void syncVmwareVirtualMachines(String vnUuid,
             VmwareVirtualNetworkInfo curVmwareVNInfo,
             VmwareVirtualNetworkInfo prevVmwareVNInfo) throws IOException {
         String prevVmwareVnName = prevVmwareVNInfo.getName();
