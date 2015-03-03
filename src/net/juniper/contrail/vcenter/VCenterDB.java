@@ -67,7 +67,7 @@ public class VCenterDB {
     private InventoryNavigator inventoryNavigator;
     private IpPoolManager ipPoolManager;
     private Datacenter contrailDC;
-    private VmwareDistributedVirtualSwitch contrailDvsTemp;
+    private VmwareDistributedVirtualSwitch contrailDVS;
     private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
@@ -154,9 +154,9 @@ public class VCenterDB {
         s_logger.error("Found " + contrailDataCenterName + " DC on vCenter ");
 
         // Search contrailDvSwitch
-        if (contrailDC == null) {
+        if (contrailDVS == null) {
             try {
-                contrailDvsTemp = (VmwareDistributedVirtualSwitch) 
+                contrailDVS = (VmwareDistributedVirtualSwitch)
                                 inventoryNavigator.searchManagedEntity(
                                         "VmwareDistributedVirtualSwitch",
                                         contrailDvSwitchName);
@@ -168,7 +168,7 @@ public class VCenterDB {
                     return false;
             }
 
-            if (contrailDvsTemp == null) {
+            if (contrailDVS == null) {
                 s_logger.error("Failed to find " + contrailDvSwitchName + 
                                " DVSwitch on vCenter");
                 return false;
