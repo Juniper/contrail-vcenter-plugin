@@ -109,6 +109,8 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         // Fill vmMapInfos such that 2 VMs will be created
         // as part of CreateVirtualNetwork() call
@@ -131,7 +133,8 @@ public class VCenterMonitorTaskTest extends TestCase {
         // Create virtual-network on api-server
         // This call should also result in VM creation on api-server
         _vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
-                                isolatedVlanId, primaryVlanId, vmMapInfos);
+                                    isolatedVlanId, primaryVlanId,
+                                    ipPoolEnabled, range, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -165,7 +168,7 @@ public class VCenterMonitorTaskTest extends TestCase {
         VmwareVirtualNetworkInfo vmwareNetworkInfo = new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   null, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
 
         //Sync virtual-machines between Vnc & VCenter
         _vcenterMonitorTask.syncVirtualMachines(vncItem.getKey(),
@@ -189,6 +192,8 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2 # 230";
 
         // Fill vmMapInfos as null such that no VM will be created
         // as part of CreateVirtualNetwork() call
@@ -196,7 +201,8 @@ public class VCenterMonitorTaskTest extends TestCase {
 
         // Create virtual-network on api-server
         _vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
-                                isolatedVlanId, primaryVlanId, vmMapInfos);
+                                    isolatedVlanId, primaryVlanId,
+                                    ipPoolEnabled, range, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -243,7 +249,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   vmInfos, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
 
         //Sync virtual-machines between Vnc & VCenter
         _vcenterMonitorTask.syncVirtualMachines(vncItem.getKey(),
@@ -266,6 +272,8 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         String vmUuidA            = UUID.randomUUID().toString();
         String macAddressA        = "00:11:22:33:44:55";
@@ -286,7 +294,8 @@ public class VCenterMonitorTaskTest extends TestCase {
 
         // Create virtual-network on api-server
         _vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
-                                isolatedVlanId, primaryVlanId, vmMapInfos);
+                                    isolatedVlanId, primaryVlanId,
+                                    ipPoolEnabled, range, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -333,7 +342,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   vmInfos, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
 
         //Sync virtual-machines between Vnc & VCenter
         _vcenterMonitorTask.syncVirtualMachines(vncItem.getKey(),
@@ -365,13 +374,16 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2 # 230";
 
         // Set vmMapInfos to null
         SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos = null;
 
         // Create virtual-network on api-server
         _vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
-                                isolatedVlanId, primaryVlanId, vmMapInfos);
+                                    isolatedVlanId, primaryVlanId,
+                                    ipPoolEnabled, range, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -399,13 +411,16 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         SortedMap<String, VmwareVirtualNetworkInfo> vnInfos =
                 new TreeMap<String, VmwareVirtualNetworkInfo>();
 
         VmwareVirtualNetworkInfo vnInfo = new
                 VmwareVirtualNetworkInfo(vnName, isolatedVlanId, primaryVlanId, 
-                                    null, subnetAddr, subnetMask, gatewayAddr);
+                                    null, subnetAddr, subnetMask, gatewayAddr, 
+                                    ipPoolEnabled, range);
         vnInfos.put(vnUuid, vnInfo);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnInfos);
 
@@ -429,14 +444,16 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddrA    = "192.168.2.1";
         short primaryVlanIdA   = 200;
         short isolatedVlanIdA  = 201;
+        boolean ipPoolEnabledA = true;
+        String rangeA          = "192.18.2.2 # 230";
 
         // Set vmMapInfos to null
         SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos = null;
 
         // Create virtual-network on api-server
-        _vncDB.CreateVirtualNetwork(vnUuidA, vnNameA, subnetAddrA, subnetMaskA, 
-                                    gatewayAddrA, isolatedVlanIdA, 
-                                    primaryVlanIdA, vmMapInfos);
+        _vncDB.CreateVirtualNetwork(vnUuidA, vnNameA, subnetAddrA, subnetMaskA, gatewayAddrA,
+                                    isolatedVlanIdA, primaryVlanIdA,
+                                    ipPoolEnabledA, rangeA, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuidA);
@@ -449,6 +466,8 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddrB    = "192.168.3.1";
         short primaryVlanIdB   = 300;
         short isolatedVlanIdB  = 301;
+        boolean ipPoolEnabledB = true;
+        String rangeB          = "192.18.3.2#230";
 
         SortedMap<String, VmwareVirtualNetworkInfo> vnInfos =
                 new TreeMap<String, VmwareVirtualNetworkInfo>();
@@ -456,7 +475,8 @@ public class VCenterMonitorTaskTest extends TestCase {
         VmwareVirtualNetworkInfo vnInfo = new
                 VmwareVirtualNetworkInfo(vnNameB, isolatedVlanIdB, 
                                     primaryVlanIdB, null, subnetAddrB, 
-                                    subnetMaskB, gatewayAddrB);
+                                    subnetMaskB, gatewayAddrB,
+                                    ipPoolEnabledB, rangeB);
         vnInfos.put(vnUuidB, vnInfo);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnInfos);
 
@@ -484,6 +504,8 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         String vmUuidA            = UUID.randomUUID().toString();
         String vmNameA            = "VM-A";
@@ -503,8 +525,8 @@ public class VCenterMonitorTaskTest extends TestCase {
 
         // Create virtual-network on api-server
         _vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, 
-                                    gatewayAddr, isolatedVlanId, 
-                                    primaryVlanId, vmMapInfos);
+                                    gatewayAddr, isolatedVlanId, primaryVlanId, 
+                                    ipPoolEnabled, range, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -515,14 +537,14 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   vmMapInfos, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
 
         // Populate currVmwareVirtualNetworkInfo , no VMs
         VmwareVirtualNetworkInfo currVmwareVNInfo =
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   null, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
 
         _vcenterMonitorTask.syncVmwareVirtualMachines(vnUuid,
                                      currVmwareVNInfo, prevVmwareVNInfo);
@@ -545,11 +567,13 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         // Create virtual-network on api-server
         _vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, 
-                                    gatewayAddr, isolatedVlanId, 
-                                    primaryVlanId, null);
+                                    gatewayAddr, isolatedVlanId, primaryVlanId, 
+                                    ipPoolEnabled, range, null);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -560,7 +584,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   null, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
 
         // Populate currVmwareVirtualMachineInfo with VM-B info
         SortedMap<String, VmwareVirtualMachineInfo> vmInfos = 
@@ -582,7 +606,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   vmInfos, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
  
         _vcenterMonitorTask.syncVmwareVirtualMachines(vnUuid,
                                      currVmwareVNInfo, prevVmwareVNInfo);
@@ -605,6 +629,8 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         String vmUuidA            = UUID.randomUUID().toString();
         String vmNameA            = "VM-A";
@@ -624,8 +650,8 @@ public class VCenterMonitorTaskTest extends TestCase {
 
         // Create virtual-network on api-server
         _vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, 
-                                    gatewayAddr, isolatedVlanId, 
-                                    primaryVlanId, vmMapInfos);
+                                    gatewayAddr, isolatedVlanId, primaryVlanId, 
+                                    ipPoolEnabled, range, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -636,7 +662,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   vmMapInfos, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
 
 
         String vmUuidB            = UUID.randomUUID().toString();
@@ -658,7 +684,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   vmMapInfosB, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
  
         _vcenterMonitorTask.syncVmwareVirtualMachines(vnUuid,
                                      currVmwareVNInfo, prevVmwareVNInfo);
@@ -685,11 +711,13 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         // Create virtual-network on api-server
         _vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, 
-                                    gatewayAddr, isolatedVlanId, 
-                                    primaryVlanId, null);
+                                    gatewayAddr, isolatedVlanId, primaryVlanId, 
+                                    ipPoolEnabled, range, null);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -702,7 +730,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   null, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
         vnMapInfos.put(vnUuid, prevVmwareVNInfo);
         when(_vcenterDB.getPrevVmwareVNInfos()).thenReturn(vnMapInfos);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(null);
@@ -727,6 +755,8 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddr    = "192.168.3.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.3.2#230";
 
         // Verify virtual-network TestVN-B doesn't exist
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -739,7 +769,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnName, isolatedVlanId, primaryVlanId,
                                                   null, subnetAddr, subnetMask,
-                                                  gatewayAddr);
+                                                  gatewayAddr, ipPoolEnabled, range);
         vnMapInfos.put(vnUuid, currVmwareVNInfo);
         when(_vcenterDB.getPrevVmwareVNInfos()).thenReturn(null);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnMapInfos);
@@ -763,11 +793,13 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddrA    = "192.168.2.1";
         short primaryVlanIdA   = 200;
         short isolatedVlanIdA  = 201;
+        boolean ipPoolEnabledA= true;
+        String rangeA         = "192.18.2.2#230";
 
         // Create virtual-network on api-server
         _vncDB.CreateVirtualNetwork(vnUuidA, vnNameA, subnetAddrA, subnetMaskA, 
-                                    gatewayAddrA, isolatedVlanIdA, 
-                                    primaryVlanIdA, null);
+                                    gatewayAddrA, isolatedVlanIdA, primaryVlanIdA, 
+                                    ipPoolEnabledA, rangeA, null);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuidA);
@@ -780,7 +812,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                             new VmwareVirtualNetworkInfo(
                                                   vnNameA, isolatedVlanIdA, primaryVlanIdA,
                                                   null, subnetAddrA, subnetMaskA,
-                                                  gatewayAddrA);
+                                                  gatewayAddrA, ipPoolEnabledA, rangeA);
         vnMapInfosA.put(vnUuidA, prevVmwareVNInfo);
         when(_vcenterDB.getPrevVmwareVNInfos()).thenReturn(vnMapInfosA);
 
@@ -792,13 +824,15 @@ public class VCenterMonitorTaskTest extends TestCase {
         String gatewayAddrB    = "192.168.4.1";
         short primaryVlanIdB   = 200;
         short isolatedVlanIdB  = 201;
+        boolean ipPoolEnabledB= true;
+        String rangeB         = "192.18.4.2#230";
         SortedMap<String, VmwareVirtualNetworkInfo> vnMapInfosB = 
                                new TreeMap<String, VmwareVirtualNetworkInfo>();
         VmwareVirtualNetworkInfo currVmwareVNInfo = 
                                             new VmwareVirtualNetworkInfo(
                                                   vnNameB, isolatedVlanIdB, primaryVlanIdB,
                                                   null, subnetAddrB, subnetMaskB,
-                                                  gatewayAddrB);
+                                                  gatewayAddrB, ipPoolEnabledB, rangeB);
         vnMapInfosB.put(vnUuidB, currVmwareVNInfo);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnMapInfosB);
 

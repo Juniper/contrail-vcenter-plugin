@@ -104,6 +104,8 @@ public class VncDBTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         // Keep vmInfo as null for now to not create any VMs on api-server
         // as part og CreateVirtualNetwork call
@@ -111,7 +113,8 @@ public class VncDBTest extends TestCase {
 
         // Create virtual-network on api-server
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
-                                isolatedVlanId, primaryVlanId, vmMapInfos);
+                                isolatedVlanId, primaryVlanId, 
+                                ipPoolEnabled, range, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -136,6 +139,8 @@ public class VncDBTest extends TestCase {
         String gatewayAddr       = "192.168.3.1";
         short isolatedVlanId     = 300;
         short primaryVlanId      = 301;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         // Keep vmInfo as null for now to not create any VMs on api-server
         // as part og CreateVirtualNetwork call
@@ -143,7 +148,8 @@ public class VncDBTest extends TestCase {
 
         // Create virtual-network
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
-                                isolatedVlanId, primaryVlanId, vmMapInfos);
+                                isolatedVlanId, primaryVlanId,
+                                ipPoolEnabled, range, vmMapInfos);
         // Verify virtual-network creation
         VirtualNetwork vn = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
         assertNotNull(vn);
@@ -267,11 +273,14 @@ public class VncDBTest extends TestCase {
         String gatewayAddr       = "192.168.4.1";
         short isolatedVlanId     = 400;
         short primaryVlanId      = 401;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         // Create virtual-network
         SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos = null;
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
-                                isolatedVlanId, primaryVlanId, vmMapInfos);
+                                isolatedVlanId, primaryVlanId,
+                                ipPoolEnabled, range, vmMapInfos);
         // Verify virtual-network creation
         VirtualNetwork vn = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
         assertNotNull(vn);
@@ -395,6 +404,8 @@ public class VncDBTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         // Keep vmInfo as null for now to not create any VMs on api-server
         // as part og CreateVirtualNetwork call
@@ -402,7 +413,8 @@ public class VncDBTest extends TestCase {
 
         // Create virtual-network on api-server
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
-                                isolatedVlanId, primaryVlanId, vmMapInfos);
+                                isolatedVlanId, primaryVlanId,
+                                ipPoolEnabled, range, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -528,6 +540,8 @@ public class VncDBTest extends TestCase {
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
 
         // Fill vmMapInfos such that 2 VMs will be created
         // as part of CreateVirtualNetwork() call
@@ -550,7 +564,8 @@ public class VncDBTest extends TestCase {
         // Create virtual-network on api-server
         // This call should also result in VM creation on api-server
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
-                                isolatedVlanId, primaryVlanId, vmMapInfos);
+                                isolatedVlanId, primaryVlanId,
+                                ipPoolEnabled, range, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
