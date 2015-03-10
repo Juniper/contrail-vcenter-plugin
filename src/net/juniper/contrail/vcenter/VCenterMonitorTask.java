@@ -215,8 +215,11 @@ class VCenterMonitorTask implements Runnable {
                 String vmwareVnName = vnInfo.getName();
                 short isolatedVlanId = vnInfo.getIsolatedVlanId();
                 short primaryVlanId = vnInfo.getPrimaryVlanId();
+                boolean ipPoolEnabld = vnInfo.getIpPoolEnabled();
+                String range = vnInfo.getRange();
                 vncDB.CreateVirtualNetwork(vmwareVnUuid, vmwareVnName, subnetAddr,
-                        subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId, vmInfos);
+                        subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId, 
+                        ipPoolEnabld, range, vmInfos);
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
             }
         }
@@ -231,8 +234,11 @@ class VCenterMonitorTask implements Runnable {
             String vmwareVnName = vnInfo.getName();
             short isolatedVlanId = vnInfo.getIsolatedVlanId();
             short primaryVlanId = vnInfo.getPrimaryVlanId();
+            boolean ipPoolEnabld = vnInfo.getIpPoolEnabled();
+            String range = vnInfo.getRange();
             vncDB.CreateVirtualNetwork(vmwareVnUuid, vmwareVnName, subnetAddr,
-                    subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId, vmInfos);
+                    subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId,
+                    ipPoolEnabld, range, vmInfos);
             vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
         }
         while (vncItem != null) {
@@ -414,8 +420,11 @@ class VCenterMonitorTask implements Runnable {
                 String vmwareVnName = vnInfo.getName();
                 short isolatedVlanId = vnInfo.getIsolatedVlanId();
                 short primaryVlanId = vnInfo.getPrimaryVlanId();
+                boolean ipPoolEnabld = vnInfo.getIpPoolEnabled();
+                String range = vnInfo.getRange();
                 vncDB.CreateVirtualNetwork(curVmwareVnUuid, vmwareVnName, subnetAddr,
-                        subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId, vmInfos);
+                        subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId,
+                        ipPoolEnabld, range, vmInfos);
                 curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
             }
         }
@@ -430,8 +439,11 @@ class VCenterMonitorTask implements Runnable {
             String vmwareVnName = vnInfo.getName();
             short isolatedVlanId = vnInfo.getIsolatedVlanId();
             short primaryVlanId = vnInfo.getPrimaryVlanId();
+            boolean ipPoolEnabld = vnInfo.getIpPoolEnabled();
+            String range = vnInfo.getRange();
             vncDB.CreateVirtualNetwork(vmwareVnUuid, vmwareVnName, subnetAddr,
-                    subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId, vmInfos);
+                    subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId,
+                        ipPoolEnabld, range, vmInfos);
             curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
         }
         while (prevVmwareItem != null) {

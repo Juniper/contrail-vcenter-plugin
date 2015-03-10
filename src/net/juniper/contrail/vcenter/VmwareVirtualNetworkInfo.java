@@ -23,10 +23,13 @@ class VmwareVirtualNetworkInfo {
     private String subnetAddress;
     private String subnetMask;
     private String gatewayAddress;
+    private boolean ipPoolEnabled;
+    private String range;
     
     public VmwareVirtualNetworkInfo(String name, short isolatedVlanId,
             short primaryVlanId, SortedMap<String, VmwareVirtualMachineInfo> vmInfo,
-            String subnetAddress, String subnetMask, String gatewayAddress) {
+            String subnetAddress, String subnetMask, String gatewayAddress,
+            boolean ipPoolEnabled, String range) {
         this.name = name;
         this.isolatedVlanId = isolatedVlanId;
         this.primaryVlanId = primaryVlanId;
@@ -34,6 +37,8 @@ class VmwareVirtualNetworkInfo {
         this.subnetAddress = subnetAddress;
         this.subnetMask = subnetMask;
         this.gatewayAddress = gatewayAddress;
+        this.ipPoolEnabled = ipPoolEnabled;
+        this.range = range;
     }
     
     public String getName() {
@@ -58,6 +63,22 @@ class VmwareVirtualNetworkInfo {
 
     public void setPrimaryVlanId(short vlanId) {
         this.primaryVlanId = vlanId;
+    }
+
+    public boolean getIpPoolEnabled() {
+        return ipPoolEnabled;
+    }
+
+    public void setIpPoolEnabled(boolean _ipPoolEnabled) {
+        this.ipPoolEnabled = _ipPoolEnabled;
+    }
+
+    public String getRange() {
+        return range;
+    }
+
+    public void setRange(String _range) {
+        this.range = _range;
     }
 
     public SortedMap<String, VmwareVirtualMachineInfo> getVmInfo() {

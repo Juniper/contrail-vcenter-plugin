@@ -6,11 +6,13 @@ package net.juniper.contrail.vcenter;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.TreeMap;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import org.apache.log4j.Logger;
@@ -25,6 +27,7 @@ import net.juniper.contrail.api.types.FloatingIp;
 import net.juniper.contrail.api.types.MacAddressesType;
 import net.juniper.contrail.api.types.NetworkIpam;
 import net.juniper.contrail.api.types.SecurityGroup;
+import net.juniper.contrail.api.types.PolicyEntriesType;
 import net.juniper.contrail.api.types.SubnetType;
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
@@ -45,11 +48,13 @@ public class VncDB {
     private ApiConnector apiConnector;
     private Project vCenterProject;
     private NetworkIpam vCenterIpam;
+    private SecurityGroup vCenterDefSecGrp;
     private IdPermsType vCenterIdPerms;
 
     public static final String VNC_ROOT_DOMAIN     = "default-domain";
     public static final String VNC_VCENTER_PROJECT = "vCenter";
     public static final String VNC_VCENTER_IPAM    = "vCenter-ipam";
+    public static final String VNC_VCENTER_DEFAULT_SG    = "default";
     public static final String VNC_VCENTER_PLUGIN  = "vcenter-plugin";
     
     public VncDB(String apiServerAddress, int apiServerPort) {
@@ -167,6 +172,69 @@ public class VncDB {
         } else {
             s_logger.info(" vCenter Ipam present, continue ");
         }
+
+        // Check if VMWare vCenter default security-group exists on VNC. If not, create one.
+        try {
+            vCenterDefSecGrp = (SecurityGroup) apiConnector.findByFQN(SecurityGroup.class,
+                       VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_DEFAULT_SG);
+        } catch (IOException e) {
+            return false;
+        }
+
+        if (vCenterDefSecGrp == null) {
+            s_logger.info(" vCenter default Security-group not present, creating ...");
+            vCenterDefSecGrp = new SecurityGroup();
+            vCenterDefSecGrp.setParent(vCenterProject);
+            vCenterDefSecGrp.setName("default");
+            vCenterDefSecGrp.setIdPerms(vCenterIdPerms);
+
+            PolicyEntriesType sg_rules = new PolicyEntriesType();
+
+            PolicyEntriesType.PolicyRuleType ingress_rule = 
+                              new PolicyEntriesType.PolicyRuleType(
+                                      null,
+                                      UUID.randomUUID().toString(),
+                                      ">",
+                                      "any",
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null)}),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
+                                       null, //application
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null) }),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
+                                       null, // action_list
+                                       "IPv4"); // ethertype
+            sg_rules.addPolicyRule(ingress_rule);
+
+            PolicyEntriesType.PolicyRuleType egress_rule  = 
+                              new PolicyEntriesType.PolicyRuleType(
+                                      null,
+                                      UUID.randomUUID().toString(),
+                                      ">",
+                                      "any",
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null) }),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
+                                       null, //application
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(new SubnetType("0.0.0.0", 0), null, null, null) }),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
+                                       null, // action_list
+                                       "IPv4"); // ethertype);
+            sg_rules.addPolicyRule(egress_rule);
+
+            vCenterDefSecGrp.setEntries(sg_rules);
+
+            try {
+                if (!apiConnector.create(vCenterDefSecGrp)) {
+                    s_logger.error("Unable to create Ipam: " + vCenterIpam.getName());
+                }
+            } catch (IOException e) { 
+                s_logger.error("Exception : " + e);
+                e.printStackTrace();
+                return false;
+            }
+        } else {
+            s_logger.info(" vCenter Ipam present, continue ");
+        }
+
 
         return true;
     }
@@ -485,6 +553,7 @@ public class VncDB {
         vmInterface.setDisplayName(vmInterfaceName);
         vmInterface.setUuid(vmiUuid);
         vmInterface.setParent(vCenterProject);
+        vmInterface.setSecurityGroup(vCenterDefSecGrp);
         vmInterface.setName(vmiUuid);
         vmInterface.setVirtualNetwork(network);
         vmInterface.addVirtualMachine(vm);
@@ -682,6 +751,7 @@ public class VncDB {
     public void CreateVirtualNetwork(String vnUuid, String vnName,
             String subnetAddr, String subnetMask, String gatewayAddr, 
             short isolatedVlanId, short primaryVlanId,
+            boolean ipPoolEnabled, String range,
             SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos) throws
             IOException {
         s_logger.info("Create Virtual Network: " 
@@ -696,13 +766,32 @@ public class VncDB {
         vn.setParent(vCenterProject);
         SubnetUtils subnetUtils = new SubnetUtils(subnetAddr, subnetMask);  
         String cidr = subnetUtils.getInfo().getCidrSignature();
-        VnSubnetsType subnet = new VnSubnetsType();
         String[] addr_pair = cidr.split("\\/");
+
+        List<VnSubnetsType.IpamSubnetType.AllocationPoolType> allocation_pools = null;
+        if (ipPoolEnabled == true && !range.isEmpty()) {
+            String[] pools = range.split("\\#");
+            if (pools.length == 2) {
+                allocation_pools = new ArrayList<VnSubnetsType.IpamSubnetType.AllocationPoolType>();
+                String start = (pools[0]).replace(" ","");
+                String num   = (pools[1]).replace(" ","");
+                String[] bytes = start.split("\\.");
+                String end   = bytes[0] + "." + bytes[1] + "." + bytes[2] + "."
+                               + Integer.toString(Integer.parseInt(bytes[3]) +  Integer.parseInt(num) - 1);
+                s_logger.info("Subnet IP Range :  Start:"  + start + " End:" + end);
+                VnSubnetsType.IpamSubnetType.AllocationPoolType pool1 = new 
+                       VnSubnetsType.IpamSubnetType.AllocationPoolType(start, end);
+                allocation_pools.add(pool1);
+            }
+
+        }
+
+        VnSubnetsType subnet = new VnSubnetsType();
         subnet.addIpamSubnets(new VnSubnetsType.IpamSubnetType(
                                    new SubnetType(addr_pair[0],
                                        Integer.parseInt(addr_pair[1])), gatewayAddr,
                                        null, UUID.randomUUID().toString(), true, null,
-                                       null, false, null, null, vn.getName() + "-subnet"));
+                                       allocation_pools, false, null, null, vn.getName() + "-subnet"));
 
         vn.setNetworkIpam(vCenterIpam, subnet);
         apiConnector.create(vn); 

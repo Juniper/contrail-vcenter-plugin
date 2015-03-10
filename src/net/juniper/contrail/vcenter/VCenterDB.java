@@ -656,7 +656,9 @@ public class VCenterDB {
                             primaryVlanId, vmInfo,
                             ipConfigInfo.getSubnetAddress(),
                             ipConfigInfo.getNetmask(),
-                            ipConfigInfo.getGateway());
+                            ipConfigInfo.getGateway(),
+                            ipConfigInfo.getIpPoolEnabled(),
+                            ipConfigInfo.getRange());
             vnInfos.put(vnUuid, vnInfo);
         }
         return vnInfos;
