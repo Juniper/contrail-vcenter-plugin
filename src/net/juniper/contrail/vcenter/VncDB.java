@@ -378,11 +378,18 @@ public class VncDB {
         String vrouterIpAddress = vm.getDisplayName();
 
         // Delete InstanceIp, VMInterface & VM
-        boolean deleteVm = false;
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
                 vm.getVirtualMachineInterfaceBackRefs();
+        if (vmInterfaceRefs == null && vmInterfaceRefs.size() == 0) {
+            s_logger.warn("Virtual Machine has NO interface");
+            apiConnector.delete(VirtualMachine.class, vmUuid);
+            s_logger.info("Delete Virtual Machine (uuid = " + vmUuid + ") Done.");
+            return;
+        }
+
         s_logger.info("Virtual Machine has " + vmInterfaceRefs.size() 
                       + " interfaces");
+        boolean deleteVm = true;
         for (ObjectReference<ApiPropertyBase> vmInterfaceRef :
              Utils.safe(vmInterfaceRefs)) {
             String vmInterfaceUuid = vmInterfaceRef.getUuid();
@@ -722,10 +729,14 @@ public class VncDB {
 
         s_logger.info("Delete Port given VMI (uuid = " + vmInterfaceUuid + ")");
 
+        if (vmInterfaceUuid == null) {
+            s_logger.warn("Virtual machine interface UUID is null" );
+            return;
+        }
         // Unplug notification to vrouter
         if (vrouterIpAddress == null) {
-            s_logger.info("Virtual machine interface: " + vmInterfaceUuid +
-                    " delete notification NOT sent");
+            s_logger.warn("Virtual machine interface: " + vmInterfaceUuid +
+                    " deletePORT  notification NOT sent");
             return;
         }
         ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
@@ -818,9 +829,17 @@ public class VncDB {
     public void DeleteVirtualNetwork(String uuid) 
             throws IOException {
         s_logger.info("Delete virtual network: " + uuid);
+        if (uuid == null) {
+            s_logger.warn("Virtual network delete request with null uuid");
+            return;
+        }
         VirtualNetwork network = (VirtualNetwork) apiConnector.findById(
                 VirtualNetwork.class, uuid);
-        //apiConnector.read(network);
+        if (network == null) {
+            s_logger.warn("Virtual network with uuid =" + uuid + "doesn't exist");
+            return;
+        }
+
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs = 
                 network.getVirtualMachineInterfaceBackRefs();
         if (vmInterfaceRefs == null || vmInterfaceRefs.size() == 0) {
@@ -910,8 +929,10 @@ public class VncDB {
                 if (vmInterface == null) {
                     continue;
                 }
-                //apiConnector.read(vmInterface);
                 // Ignore Vnc VMInterfaces where "creator" isn't "vcenter-plugin"
+                if (vmInterface.getIdPerms().getCreator() == null) {
+                    continue;
+                }
                 if (!vmInterface.getIdPerms().getCreator().equals(VNC_VCENTER_PLUGIN)) {
                     continue;
                 }
