@@ -663,7 +663,6 @@ public class VncDBTest extends TestCase {
         assertNull(vn2);
     }
 
-
     @Test
     public void testPopulateVirtualNetworkInfo() throws IOException {
         SortedMap<String, VncVirtualNetworkInfo> VncVnInfo = null;
@@ -674,5 +673,15 @@ public class VncDBTest extends TestCase {
             fail("testPopulateVirtualNetworkInfo failed");
         }
         assertNull(VncVnInfo);
+    }
+
+    @Test
+    public void testDeleteVirtualNetworkNullInput() throws IOException {
+        vncDB.DeleteVirtualNetwork(null);
+    }
+
+    @Test
+    public void testDeleteVirtualMachineNullInput() throws IOException {
+        vncDB.DeleteVirtualMachine(null, null);
     }
 }
