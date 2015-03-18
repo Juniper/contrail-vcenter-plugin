@@ -1,4 +1,7 @@
 
+SRC_VER := $(shell cat ./controller/src/base/version.info)
+BUILDNUM ?= $(shell date -u +%m%d%Y)
+export BUILDTAG ?= $(SRC_VER)-$(BUILDNUM)
 
 vijava-deb:
 	(cd vijava && make all)
@@ -16,7 +19,7 @@ install-package-deb:
 	$(eval BUILDDIR=./build/packages)
 	mkdir -p ${BUILDDIR}
 	cp -ar vcenter-plugin/packages/* ${BUILDDIR}
-	(cd ${BUILDDIR}; debuild -i -us -uc -b)
+	(cd ${BUILDDIR}; debuild --preserve-envvar=BUILDTAG -i -us -uc -b)
 	@echo "Wrote: build/contrail-vcenter-plugin_all.deb"
 
 clean-install-package:
