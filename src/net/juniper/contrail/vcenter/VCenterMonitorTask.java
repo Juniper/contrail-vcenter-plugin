@@ -117,6 +117,11 @@ class VCenterMonitorTask implements Runnable {
                             vmwareNetworkInfo.getIsolatedVlanId(),
                             vmwareNetworkInfo.getPrimaryVlanId(), vmwareVmInfo);
                 }
+                if ((vmwareVmInfo.isPoweredOnState() == true)
+                    && (vmwareNetworkInfo.getExternalIpam() == true)
+                    && (vmwareVmInfo.getIpAddress() != null) ) {
+                    vncDB.CreateVMInterfaceInstanceIp(vnUuid, vmwareVmUuid, vmwareVmInfo);
+                }
                 vncItem = vncIter.hasNext() ? vncIter.next() : null;
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
             } else if (cmp > 0){
@@ -132,10 +137,16 @@ class VCenterMonitorTask implements Runnable {
                         vmwareVmInfo.getVrouterIpAddress(),
                         vmwareVmInfo.getHostName(),
                         vmwareNetworkInfo.getIsolatedVlanId(),
-                        vmwareNetworkInfo.getPrimaryVlanId(), vmwareVmInfo);
+                        vmwareNetworkInfo.getPrimaryVlanId(),
+                        vmwareNetworkInfo.getExternalIpam(), vmwareVmInfo);
+                if (vmwareVmInfo.isPoweredOnState() 
+                    && vmwareNetworkInfo.getExternalIpam() 
+                    && vmwareVmInfo.getIpAddress() != null ) {
+                    vncDB.CreateVMInterfaceInstanceIp(vnUuid, vmwareVmUuid, vmwareVmInfo);
+                }
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
             }
-        }       
+        }
 
         while (vmwareItem != null) {
             // Create
@@ -147,7 +158,13 @@ class VCenterMonitorTask implements Runnable {
                     vmwareVmInfo.getVrouterIpAddress(),
                     vmwareVmInfo.getHostName(), 
                     vmwareNetworkInfo.getIsolatedVlanId(),
-                    vmwareNetworkInfo.getPrimaryVlanId(), vmwareVmInfo);
+                    vmwareNetworkInfo.getPrimaryVlanId(),
+                    vmwareNetworkInfo.getExternalIpam(), vmwareVmInfo);
+            if (vmwareVmInfo.isPoweredOnState() 
+                && vmwareNetworkInfo.getExternalIpam() 
+                && vmwareVmInfo.getIpAddress() != null ) {
+                vncDB.CreateVMInterfaceInstanceIp(vnUuid, vmwareVmUuid, vmwareVmInfo);
+            }
             vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
         }
 
@@ -217,9 +234,10 @@ class VCenterMonitorTask implements Runnable {
                 short primaryVlanId = vnInfo.getPrimaryVlanId();
                 boolean ipPoolEnabld = vnInfo.getIpPoolEnabled();
                 String range = vnInfo.getRange();
+                boolean externalIpam = vnInfo.getExternalIpam();
                 vncDB.CreateVirtualNetwork(vmwareVnUuid, vmwareVnName, subnetAddr,
                         subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId, 
-                        ipPoolEnabld, range, vmInfos);
+                        ipPoolEnabld, range, externalIpam, vmInfos);
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
             }
         }
@@ -236,9 +254,10 @@ class VCenterMonitorTask implements Runnable {
             short primaryVlanId = vnInfo.getPrimaryVlanId();
             boolean ipPoolEnabld = vnInfo.getIpPoolEnabled();
             String range = vnInfo.getRange();
+            boolean externalIpam = vnInfo.getExternalIpam();
             vncDB.CreateVirtualNetwork(vmwareVnUuid, vmwareVnName, subnetAddr,
                     subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId,
-                    ipPoolEnabld, range, vmInfos);
+                    ipPoolEnabld, range, externalIpam, vmInfos);
             vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
         }
         while (vncItem != null) {
@@ -324,6 +343,14 @@ class VCenterMonitorTask implements Runnable {
                         }
                     }
                 }
+
+                if (curVmwareVmInfo.isPoweredOnState() 
+                    && curVmwareVNInfo.getExternalIpam() 
+                    && (curVmwareVmInfo.getIpAddress() != null) 
+                    && !curVmwareVmInfo.getIpAddress().equals(prevVmwareVmInfo.getIpAddress())) {
+                    vncDB.CreateVMInterfaceInstanceIp(vnUuid, curVmwareVmUuid, curVmwareVmInfo);
+                }
+
                 prevVmwareItem = prevVmwareIter.hasNext() ? prevVmwareIter.next() : null;
                 curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null; 
             } else if (cmp > 0){
@@ -339,7 +366,13 @@ class VCenterMonitorTask implements Runnable {
                         curVmwareVmInfo.getVrouterIpAddress(),
                         curVmwareVmInfo.getHostName(),
                         curVmwareVNInfo.getIsolatedVlanId(),
-                        curVmwareVNInfo.getPrimaryVlanId(), curVmwareVmInfo);
+                        curVmwareVNInfo.getPrimaryVlanId(),
+                        curVmwareVNInfo.getExternalIpam(), curVmwareVmInfo);
+                if (curVmwareVmInfo.isPoweredOnState() 
+                    && curVmwareVNInfo.getExternalIpam() 
+                    && curVmwareVmInfo.getIpAddress() != null ) {
+                    vncDB.CreateVMInterfaceInstanceIp(vnUuid, curVmwareVmUuid, curVmwareVmInfo);
+                }
                 curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
             }
         }       
@@ -353,7 +386,13 @@ class VCenterMonitorTask implements Runnable {
                     curVmwareVmInfo.getVrouterIpAddress(),
                     curVmwareVmInfo.getHostName(), 
                     curVmwareVNInfo.getIsolatedVlanId(),
-                    curVmwareVNInfo.getPrimaryVlanId(), curVmwareVmInfo);
+                    curVmwareVNInfo.getPrimaryVlanId(),
+                    curVmwareVNInfo.getExternalIpam(), curVmwareVmInfo);
+            if (curVmwareVmInfo.isPoweredOnState() 
+                && curVmwareVNInfo.getExternalIpam() 
+                && curVmwareVmInfo.getIpAddress() != null ) {
+                vncDB.CreateVMInterfaceInstanceIp(vnUuid, curVmwareVmUuid, curVmwareVmInfo);
+            }
             curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
         }
         while (prevVmwareItem != null) {
@@ -422,9 +461,10 @@ class VCenterMonitorTask implements Runnable {
                 short primaryVlanId = vnInfo.getPrimaryVlanId();
                 boolean ipPoolEnabld = vnInfo.getIpPoolEnabled();
                 String range = vnInfo.getRange();
+                boolean externalIpam = vnInfo.getExternalIpam();
                 vncDB.CreateVirtualNetwork(curVmwareVnUuid, vmwareVnName, subnetAddr,
                         subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId,
-                        ipPoolEnabld, range, vmInfos);
+                        ipPoolEnabld, range, externalIpam, vmInfos);
                 curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
             }
         }
@@ -441,9 +481,10 @@ class VCenterMonitorTask implements Runnable {
             short primaryVlanId = vnInfo.getPrimaryVlanId();
             boolean ipPoolEnabld = vnInfo.getIpPoolEnabled();
             String range = vnInfo.getRange();
+            boolean externalIpam = vnInfo.getExternalIpam();
             vncDB.CreateVirtualNetwork(vmwareVnUuid, vmwareVnName, subnetAddr,
                     subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId,
-                        ipPoolEnabld, range, vmInfos);
+                        ipPoolEnabld, range, externalIpam, vmInfos);
             curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null;
         }
         while (prevVmwareItem != null) {

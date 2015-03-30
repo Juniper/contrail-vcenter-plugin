@@ -79,6 +79,10 @@ public class VncDB {
         return apiConnector;
     }
 
+    public HashMap<String, ContrailVRouterApi>  getVRouterApiMap() {
+        return vrouterApiMap;
+    }
+
     public IdPermsType getVCenterIdPerms() {
         return vCenterIdPerms;
     }
@@ -232,7 +236,7 @@ public class VncDB {
                 return false;
             }
         } else {
-            s_logger.info(" vCenter Ipam present, continue ");
+            s_logger.info(" vCenter default sec-group present, continue ");
         }
 
 
@@ -303,7 +307,13 @@ public class VncDB {
         if (vmRefs == null || vmRefs.size() == 0) {
             s_logger.error("Virtual Machine Interface : " + vmInterface.getDisplayName() + 
                     " NO associated virtual machine ");
+            // delete VMInterface
+            s_logger.info("Delete virtual machine interface: " + 
+                          vmInterface.getName());
+            apiConnector.delete(vmInterface);
+            return;
         }
+
         if (vmRefs.size() > 1) {
             s_logger.error("Virtual Machine Interface : " + vmInterface.getDisplayName() + 
                            "is associated with" + "(" + vmRefs.size() + ")" + " virtual machines ");
@@ -497,7 +507,7 @@ public class VncDB {
     public void CreateVirtualMachine(String vnUuid, String vmUuid,
             String macAddress, String vmName, String vrouterIpAddress,
             String hostName, short isolatedVlanId, short primaryVlanId,
-            VmwareVirtualMachineInfo vmwareVmInfo) throws IOException {
+            boolean external_ipam, VmwareVirtualMachineInfo vmwareVmInfo) throws IOException {
         s_logger.info("Create Virtual Machine : " 
                        + ", VM: " + vmName + " (" + vmUuid + ")" 
                        + ", VN: " + vnUuid
@@ -574,22 +584,25 @@ public class VncDB {
                 ", vmiUuid :" + vmiUuid);
 
         // Instance Ip
-        String instanceIpName = "ip-" + network.getName() + "-" + vmName;
-        String instIpUuid = UUID.randomUUID().toString();
-        InstanceIp instanceIp = new InstanceIp();
-        instanceIp.setDisplayName(instanceIpName);
-        instanceIp.setUuid(instIpUuid);
-        instanceIp.setName(instIpUuid);
-        instanceIp.setVirtualNetwork(network);
-        instanceIp.setVirtualMachineInterface(vmInterface);
-        instanceIp.setIdPerms(vCenterIdPerms);
-        apiConnector.create(instanceIp);
+        String vmIpAddress = null; 
+        if (external_ipam != true) {
+            String instanceIpName = "ip-" + network.getName() + "-" + vmName;
+            String instIpUuid = UUID.randomUUID().toString();
+            InstanceIp instanceIp = new InstanceIp();
+            instanceIp.setDisplayName(instanceIpName);
+            instanceIp.setUuid(instIpUuid);
+            instanceIp.setName(instIpUuid);
+            instanceIp.setVirtualNetwork(network);
+            instanceIp.setVirtualMachineInterface(vmInterface);
+            instanceIp.setIdPerms(vCenterIdPerms);
+            apiConnector.create(instanceIp);
 
-        // Read back to get assigned IP address
-        apiConnector.read(instanceIp);
-        String vmIpAddress = instanceIp.getAddress();
-        s_logger.debug("Created instance IP:" + instanceIp.getName() + ": " + 
-                vmIpAddress);
+            // Read back to get assigned IP address
+            //apiConnector.read(instanceIp);
+            vmIpAddress = instanceIp.getAddress();
+            s_logger.debug("Created instance IP:" + instanceIp.getName() + ": " + 
+                            vmIpAddress);
+        }
 
         // Plug notification to vrouter
         if (vrouterIpAddress == null) {
@@ -629,6 +642,90 @@ public class VncDB {
             e.printStackTrace();
         }
         s_logger.info("Create Virtual Machine : Done");
+    }
+
+    public void CreateVMInterfaceInstanceIp(String vnUuid, String vmUuid,
+            VmwareVirtualMachineInfo vmwareVmInfo) throws IOException {
+        s_logger.info("Create VM instance Ip : " 
+                       + ", VM: " + vmUuid 
+                       + ", VN: " + vnUuid
+                       + ", IP: " + vmwareVmInfo.getIpAddress());
+        
+        // Virtual Network
+        VirtualNetwork network = (VirtualNetwork) apiConnector.findById(
+                VirtualNetwork.class, vnUuid);
+        if (network == null) {
+            s_logger.warn("Create VM InstanceIp requested with invalid VN: " + vnUuid
+                       + ", VM: " + vmUuid);
+            return;
+        }
+
+        // Virtual Machine
+        VirtualMachine vm = (VirtualMachine) apiConnector.findById(
+                VirtualMachine.class, vmUuid);
+        if (vm == null) {
+            s_logger.warn("Create VM InstanceIp requested with invalid VM: " + vmUuid
+                       + ", VN: " + vnUuid);
+            return;
+        }
+
+        // find VMI matching vmUuid & vnUuid
+        List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
+                vm.getVirtualMachineInterfaceBackRefs();
+        for (ObjectReference<ApiPropertyBase> vmInterfaceRef :
+            Utils.safe(vmInterfaceRefs)) {
+            String vmInterfaceUuid = vmInterfaceRef.getUuid();
+            VirtualMachineInterface vmInterface = (VirtualMachineInterface)
+                    apiConnector.findById(VirtualMachineInterface.class, 
+                            vmInterfaceUuid);
+            List<ObjectReference<ApiPropertyBase>> vnRefs =
+                                            vmInterface.getVirtualNetwork();
+            for (ObjectReference<ApiPropertyBase> vnRef : vnRefs) {
+                if (vnRef.getUuid().equals(vnUuid)) {
+                    s_logger.debug("VMI exits with vnUuid =" + vnUuid 
+                                 + " vmUuid = " + vmUuid + " no need to create new ");
+
+                    // check if instqnce-ip exists
+                    List<ObjectReference<ApiPropertyBase>> instIpRefs =
+                                            vmInterface.getInstanceIpBackRefs();
+                    if ((instIpRefs != null) && !instIpRefs.isEmpty()) {
+                        ObjectReference<ApiPropertyBase> ipRef = instIpRefs.get(0);
+                        InstanceIp instIp = (InstanceIp) apiConnector.findById(
+                                                  InstanceIp.class, ipRef.getUuid());
+
+                        if (instIp.getAddress().equals(vmwareVmInfo.getIpAddress())) {
+                            // same instanceIp.
+                            s_logger.info("VM instance Ip (" + vmwareVmInfo.getIpAddress() +
+                                           ") exists..skip creation and return" );
+                            return;
+                        }
+                        // ip address on interface changed.
+                        // delete old ip
+                        s_logger.info("Deleting instance IP:" + instIp.getName() + ": " + 
+                                        instIp.getAddress());
+                        apiConnector.delete(instIp);
+                    }
+
+                    // Add new ip address to interface
+                    if (vmwareVmInfo.getIpAddress() != null) {
+                        String instanceIpName = "ip-" + network.getName() + "-" + vm.getName();
+                        String instIpUuid = UUID.randomUUID().toString();
+                        InstanceIp instanceIp = new InstanceIp();
+                        instanceIp.setDisplayName(instanceIpName);
+                        instanceIp.setUuid(instIpUuid);
+                        instanceIp.setName(instIpUuid);
+                        instanceIp.setVirtualNetwork(network);
+                        instanceIp.setVirtualMachineInterface(vmInterface);
+                        instanceIp.setIdPerms(vCenterIdPerms);
+                        instanceIp.setAddress(vmwareVmInfo.getIpAddress());
+                        apiConnector.create(instanceIp);
+                        s_logger.info("Created instance IP:" + instanceIp.getName() + ": " + 
+                                        instanceIp.getAddress());
+                    }
+                    return;
+                }
+            }
+        }
     }
 
     public void VifPlug(String vnUuid, String vmUuid,
@@ -677,13 +774,16 @@ public class VncDB {
                     apiConnector.findById(InstanceIp.class,
                             instanceIpRef.getUuid());
         }
-        if (instanceIp == null) {
-            s_logger.warn("Virtual machine interface: " + vmInterface.getName()
-                          + " has no ip address");
-            return;
-        }
+        //if (instanceIp == null) {
+        //    s_logger.warn("Virtual machine interface: " + vmInterface.getName()
+        //                  + " has no ip address");
+        //    return;
+        //}
 
-        String vmIpAddress = instanceIp.getAddress();
+        String vmIpAddress = null;
+        if (instanceIp != null) {
+            vmIpAddress = instanceIp.getAddress();
+        }
 
         // Plug notification to vrouter
         if (vrouterIpAddress == null) {
@@ -762,19 +862,21 @@ public class VncDB {
     public void CreateVirtualNetwork(String vnUuid, String vnName,
             String subnetAddr, String subnetMask, String gatewayAddr, 
             short isolatedVlanId, short primaryVlanId,
-            boolean ipPoolEnabled, String range,
+            boolean ipPoolEnabled, String range, boolean externalIpam,
             SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos) throws
             IOException {
         s_logger.info("Create Virtual Network: " 
                         + vnName + " (" + vnUuid + ")"
                         + ", Subnet/Mask/GW: " 
-                        + subnetAddr + "/" + subnetMask + "/" + gatewayAddr);
+                        + subnetAddr + "/" + subnetMask + "/" + gatewayAddr
+                        + ", externalIpam " + externalIpam);
         VirtualNetwork vn = new VirtualNetwork();
         vn.setName(vnName);
         vn.setDisplayName(vnName);
         vn.setUuid(vnUuid);
         vn.setIdPerms(vCenterIdPerms);
         vn.setParent(vCenterProject);
+        vn.setExternalIpam(externalIpam);
         SubnetUtils subnetUtils = new SubnetUtils(subnetAddr, subnetMask);  
         String cidr = subnetUtils.getInfo().getCidrSignature();
         String[] addr_pair = cidr.split("\\/");
@@ -821,24 +923,27 @@ public class VncDB {
             String hostName = vmInfo.getHostName();
             CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName,
                     vrouterIpAddr, hostName, isolatedVlanId, primaryVlanId,
-                    vmInfo);
+                    externalIpam, vmInfo);
         }
         s_logger.info("Create Virtual Network: Done");
     }
     
     public void DeleteVirtualNetwork(String uuid) 
             throws IOException {
-        s_logger.info("Delete virtual network: " + uuid);
         if (uuid == null) {
+            s_logger.info("Delete virtual network: " + uuid);
             s_logger.warn("Virtual network delete request with null uuid");
             return;
         }
         VirtualNetwork network = (VirtualNetwork) apiConnector.findById(
                 VirtualNetwork.class, uuid);
         if (network == null) {
+            s_logger.info("Delete virtual network: " + uuid);
             s_logger.warn("Virtual network with uuid =" + uuid + "doesn't exist");
             return;
         }
+        s_logger.info("Delete virtual network: " + network.getName() +
+                     " (" + uuid + ")");
 
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs = 
                 network.getVirtualMachineInterfaceBackRefs();
@@ -846,7 +951,7 @@ public class VncDB {
             s_logger.debug("Virtual network: " + network + 
                     " NO associated virtual machine interfaces");
             apiConnector.delete(VirtualNetwork.class, network.getUuid());     
-            s_logger.info("Delete virtual network: Done");
+            s_logger.info("Delete virtual network: " + network.getName() + " Done");
             return;
         }
         for (ObjectReference<ApiPropertyBase> vmInterfaceRef : 
@@ -860,7 +965,7 @@ public class VncDB {
             DeleteVirtualMachineInternal(vmInterface);
         }
         apiConnector.delete(VirtualNetwork.class, network.getUuid());     
-        s_logger.info("Delete virtual network: Done");
+        s_logger.info("Delete virtual network: " + network.getName() + " Done");
     }
     
     private static boolean doIgnoreVirtualNetwork(String name) {
