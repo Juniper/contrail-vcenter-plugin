@@ -39,6 +39,7 @@ import com.vmware.vim25.VirtualMachineRuntimeInfo;
 import com.vmware.vim25.VmwareDistributedVirtualSwitchPvlanSpec;
 import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanIdSpec;
 import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanSpec;
+import com.vmware.vim25.DistributedVirtualSwitchKeyedOpaqueBlob;
 import com.vmware.vim25.VMwareDVSConfigInfo;
 import com.vmware.vim25.VMwareDVSPvlanMapEntry;
 import com.vmware.vim25.mo.Datacenter;
@@ -304,12 +305,12 @@ public class VCenterDB {
                 if (networkName == null) {
                     continue;
                 }
-                Network network = (Network) 
+                Network network = (Network)
                         inventoryNavigator.searchManagedEntity("Network",
                                 networkName);
                 if (network == null) {
                     s_logger.debug("dvPg: " + dvPgName + "host: " + 
-                            hostName + " vm: " + vmName + " network: " + 
+                            hostName + " vm: " + vmName + " network: " +
                             networkName + " NOT found");
                     continue;
                 }
@@ -322,22 +323,16 @@ public class VCenterDB {
                 }
                 NetIpConfigInfo ipConfigInfo = nicInfo.getIpConfig();
                 if (ipConfigInfo == null) {
-                    s_logger.error("dvPg: " + dvPgName + "host: " + 
-                            hostName + " vm: " + vmName + " network: " + 
-                            networkName + " IP config info NOT present");
                     continue;
                 }
-                NetIpConfigInfoIpAddress[] ipAddrConfigInfos = 
+                NetIpConfigInfoIpAddress[] ipAddrConfigInfos =
                         ipConfigInfo.getIpAddress();
-                if (ipAddrConfigInfos == null || 
+                if (ipAddrConfigInfos == null ||
                         ipAddrConfigInfos.length == 0) {
-                    s_logger.error("dvPg: " + dvPgName + "host: " + 
-                            hostName + " vm: " + vmName + " network: " + 
-                            networkName + " IP addresses NOT present");
                     continue;
 
                 }
-                for (NetIpConfigInfoIpAddress ipAddrConfigInfo : 
+                for (NetIpConfigInfoIpAddress ipAddrConfigInfo :
                     ipAddrConfigInfos) {
                     String ipAddress = ipAddrConfigInfo.getIpAddress();
                     // Choose IPv4 only
@@ -351,7 +346,74 @@ public class VCenterDB {
         }
         return null;
     }
+
+    private String getVirtualMachineIpAddress(VirtualMachine vm, String dvPgName)
+                    throws Exception {
+
+        // Assumption here is that VMware Tools are installed
+        // and IP address is available
+        GuestInfo guestInfo = vm.getGuest();
+        String vmName = vm.getName();
+        if (guestInfo == null) {
+            s_logger.debug("dvPg: " + dvPgName + " vm:" + vm.getName()
+                    + " GuestInfo - VMware Tools " + " NOT installed");
+            return null;
+        }
+        GuestNicInfo[] nicInfos = guestInfo.getNet();
+        if (nicInfos == null) {
+            s_logger.debug("dvPg: " + dvPgName + " vm:" + vm.getName()
+                    + " GuestNicInfo - VMware Tools " + " NOT installed");
+            return null;
+        }
+        for (GuestNicInfo nicInfo : nicInfos) {
+            // Extract the IP address associated with simple port
+            // group. Assumption here is that Contrail VRouter VM will
+            // have only one standard port group
+            String networkName = nicInfo.getNetwork();
+            if (networkName == null) {
+                continue;
+            }
+
+            if (!networkName.equals(dvPgName)) {
+                continue;
+            }
+
+            Network network = (Network) 
+                    inventoryNavigator.searchManagedEntity("Network",
+                            networkName);
+            if (network == null) {
+                s_logger.debug("dvPg: " + dvPgName
+                        + " vm: " + vmName + " network: " + 
+                        networkName + " NOT found");
+                continue;
+            }
+            if (network instanceof DistributedVirtualPortgroup) {
+                NetIpConfigInfo ipConfigInfo = nicInfo.getIpConfig();
+                if (ipConfigInfo == null) {
+                    continue;
+                }
+                NetIpConfigInfoIpAddress[] ipAddrConfigInfos = 
+                        ipConfigInfo.getIpAddress();
+                if (ipAddrConfigInfos == null || 
+                        ipAddrConfigInfos.length == 0) {
+                    continue;
+
+                }
+                for (NetIpConfigInfoIpAddress ipAddrConfigInfo : 
+                    ipAddrConfigInfos) {
+                    String ipAddress = ipAddrConfigInfo.getIpAddress();
+                    // Choose IPv4 only
+                    InetAddress ipAddr = InetAddress.getByName(ipAddress);
+                    if (ipAddr instanceof Inet4Address) {
+                        return ipAddress;
+                    }
+                }
+            }
+        }
+        return null;
+    }
     
+
     public boolean doIgnoreVirtualMachine(String vmName) {
         // Ignore contrailVRouterVMs since those should not be reflected in
         // Contrail VNC
@@ -425,7 +487,8 @@ public class VCenterDB {
 
     private SortedMap<String, VmwareVirtualMachineInfo> 
         populateVirtualMachineInfo(
-                DistributedVirtualPortgroup portGroup) throws Exception {
+                DistributedVirtualPortgroup portGroup,
+                boolean externalIpam) throws Exception {
         String dvPgName = portGroup.getName();
         // Get list of virtual machines connected to the port group
         VirtualMachine[] vms = portGroup.getVms();
@@ -445,6 +508,13 @@ public class VCenterDB {
             if (vmInfo == null) {
                 continue;
             }
+            if ((externalIpam == true) && (vmInfo.isPoweredOnState())) {
+                String ipAddress = getVirtualMachineIpAddress(vm, dvPgName);
+                if (ipAddress != null) {
+                  // Ensure that ip-address is within subnet range
+                }
+                vmInfo.setIpAddress(ipAddress);
+            }
             vmInfos.put(instanceUuid, vmInfo);
         }
         if (vmInfos.size() == 0) {
@@ -452,7 +522,7 @@ public class VCenterDB {
         }
         return vmInfos;
     }
-    
+
     private static boolean doIgnoreVirtualNetwork(DVPortSetting portSetting) {
         // Ignore dvPgs that do not have PVLAN configured
         if (portSetting instanceof VMwareDVSPortSetting) {
@@ -557,6 +627,31 @@ public class VCenterDB {
         return vlan;
     }
 
+    public boolean getExternalIpamInfo(DVPortgroupConfigInfo configInfo, String vnName) throws Exception {
+
+        DistributedVirtualSwitchKeyedOpaqueBlob[] opaqueBlobs
+                             = configInfo.getVendorSpecificConfig();
+
+        if ((opaqueBlobs == null) || (opaqueBlobs.length == 0)) {
+            return false;
+        }
+
+        for (DistributedVirtualSwitchKeyedOpaqueBlob opaqueBlob : opaqueBlobs) {
+          s_logger.debug("pg (" + vnName + ") " + "opaqueBlob: key ("
+                       + opaqueBlob.getKey() + " )  opaqueData ("
+                       + opaqueBlob.getOpaqueData() + ")");
+          if (opaqueBlob.getKey().equals("external_ipam")) {
+              if (opaqueBlob.getOpaqueData().equals("true")) {
+                return true;
+              } else {
+                return false;
+              }
+          }
+        }
+        return false;
+    }
+
+
     public SortedMap<String, VmwareVirtualNetworkInfo> 
         populateVirtualNetworkInfo() throws Exception {
 
@@ -648,9 +743,12 @@ public class VCenterDB {
             short primaryVlanId   = vlan.get("primary-vlan");
             short isolatedVlanId  = vlan.get("secondary-vlan");
 
+            // Read externalIpam from custom field
+            boolean externalIpam = getExternalIpamInfo(configInfo, vnName);
+
             // Populate associated VMs
             SortedMap<String, VmwareVirtualMachineInfo> vmInfo = 
-                    populateVirtualMachineInfo(dvPg);
+                    populateVirtualMachineInfo(dvPg, externalIpam);
             VmwareVirtualNetworkInfo vnInfo = new
                     VmwareVirtualNetworkInfo(vnName, isolatedVlanId, 
                             primaryVlanId, vmInfo,
@@ -658,7 +756,8 @@ public class VCenterDB {
                             ipConfigInfo.getNetmask(),
                             ipConfigInfo.getGateway(),
                             ipConfigInfo.getIpPoolEnabled(),
-                            ipConfigInfo.getRange());
+                            ipConfigInfo.getRange(),
+                            externalIpam);
             vnInfos.put(vnUuid, vnInfo);
         }
         return vnInfos;

@@ -24,6 +24,7 @@ class VmwareVirtualMachineInfo {
     private String hostName;
     private String vrouterIpAddress;
     private String macAddress;
+    private String ipAddress;
     private String name;
     private String interfaceUuid;
     private VirtualMachinePowerState powerState;
@@ -60,6 +61,14 @@ class VmwareVirtualMachineInfo {
 
     public void setMacAddress(String macAddress) {
         this.macAddress = macAddress;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
     }
 
     public String getName() {

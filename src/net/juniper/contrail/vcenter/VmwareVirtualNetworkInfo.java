@@ -25,11 +25,12 @@ class VmwareVirtualNetworkInfo {
     private String gatewayAddress;
     private boolean ipPoolEnabled;
     private String range;
+    private boolean externalIpam;
     
     public VmwareVirtualNetworkInfo(String name, short isolatedVlanId,
             short primaryVlanId, SortedMap<String, VmwareVirtualMachineInfo> vmInfo,
             String subnetAddress, String subnetMask, String gatewayAddress,
-            boolean ipPoolEnabled, String range) {
+            boolean ipPoolEnabled, String range, boolean externalIpam) {
         this.name = name;
         this.isolatedVlanId = isolatedVlanId;
         this.primaryVlanId = primaryVlanId;
@@ -39,6 +40,7 @@ class VmwareVirtualNetworkInfo {
         this.gatewayAddress = gatewayAddress;
         this.ipPoolEnabled = ipPoolEnabled;
         this.range = range;
+        this.externalIpam = externalIpam;
     }
     
     public String getName() {
@@ -111,6 +113,14 @@ class VmwareVirtualNetworkInfo {
 
     public void setGatewayAddress(String gatewayAddress) {
         this.gatewayAddress = gatewayAddress;
+    }
+
+    public boolean getExternalIpam() {
+        return externalIpam;
+    }
+
+    public void setExternalIpam(boolean externalIpam) {
+        this.externalIpam = externalIpam;
     }
 }
 

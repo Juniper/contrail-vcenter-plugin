@@ -106,6 +106,7 @@ public class VncDBTest extends TestCase {
         short isolatedVlanId  = 201;
         boolean ipPoolEnabled = true;
         String range          = "192.18.2.2#230";
+        boolean externalIpam  = false;
 
         // Keep vmInfo as null for now to not create any VMs on api-server
         // as part og CreateVirtualNetwork call
@@ -114,7 +115,7 @@ public class VncDBTest extends TestCase {
         // Create virtual-network on api-server
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
                                 isolatedVlanId, primaryVlanId, 
-                                ipPoolEnabled, range, vmMapInfos);
+                                ipPoolEnabled, range, externalIpam, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -141,6 +142,7 @@ public class VncDBTest extends TestCase {
         short primaryVlanId      = 301;
         boolean ipPoolEnabled = true;
         String range          = "192.18.2.2#230";
+        boolean externalIpam  = false;
 
         // Keep vmInfo as null for now to not create any VMs on api-server
         // as part og CreateVirtualNetwork call
@@ -149,7 +151,7 @@ public class VncDBTest extends TestCase {
         // Create virtual-network
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
                                 isolatedVlanId, primaryVlanId,
-                                ipPoolEnabled, range, vmMapInfos);
+                                ipPoolEnabled, range, externalIpam, vmMapInfos);
         // Verify virtual-network creation
         VirtualNetwork vn = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
         assertNotNull(vn);
@@ -168,7 +170,7 @@ public class VncDBTest extends TestCase {
         vncDB.CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName, 
                                    vrouterIpAddress, hostName, 
                                    isolatedVlanId, primaryVlanId,
-                                   vmwareVmInfo);
+                                   externalIpam, vmwareVmInfo);
 
         // Verify virtual-machine is created on api-server
         VirtualMachine vm = (VirtualMachine) _api.findById(VirtualMachine.class, vmUuid);
@@ -275,12 +277,13 @@ public class VncDBTest extends TestCase {
         short primaryVlanId      = 401;
         boolean ipPoolEnabled = true;
         String range          = "192.18.2.2#230";
+        boolean externalIpam  = false;
 
         // Create virtual-network
         SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos = null;
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
                                 isolatedVlanId, primaryVlanId,
-                                ipPoolEnabled, range, vmMapInfos);
+                                ipPoolEnabled, range, externalIpam, vmMapInfos);
         // Verify virtual-network creation
         VirtualNetwork vn = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
         assertNotNull(vn);
@@ -299,7 +302,7 @@ public class VncDBTest extends TestCase {
         vncDB.CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName, 
                                    vrouterIpAddress, hostName, 
                                    isolatedVlanId, primaryVlanId,
-                                   vmwareVmInfo);
+                                   externalIpam, vmwareVmInfo);
 
         // Verify virtual-machine is created on api-server
         VirtualMachine vm = (VirtualMachine) _api.findById(VirtualMachine.class, vmUuid);
@@ -406,6 +409,7 @@ public class VncDBTest extends TestCase {
         short isolatedVlanId  = 201;
         boolean ipPoolEnabled = true;
         String range          = "192.18.2.2#230";
+        boolean externalIpam  = false;
 
         // Keep vmInfo as null for now to not create any VMs on api-server
         // as part og CreateVirtualNetwork call
@@ -414,7 +418,7 @@ public class VncDBTest extends TestCase {
         // Create virtual-network on api-server
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
                                 isolatedVlanId, primaryVlanId,
-                                ipPoolEnabled, range, vmMapInfos);
+                                ipPoolEnabled, range, externalIpam, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
@@ -436,7 +440,7 @@ public class VncDBTest extends TestCase {
         vncDB.CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName, 
                                    vrouterIpAddress, hostName, 
                                    isolatedVlanId, primaryVlanId,
-                                   vmwareVmInfo);
+                                   externalIpam, vmwareVmInfo);
 
         // Verify virtual-machine is created on api-server
         VirtualMachine vm = (VirtualMachine) _api.findById(VirtualMachine.class, vmUuid);
@@ -542,6 +546,7 @@ public class VncDBTest extends TestCase {
         short isolatedVlanId  = 201;
         boolean ipPoolEnabled = true;
         String range          = "192.18.2.2#230";
+        boolean externalIpam  = false;
 
         // Fill vmMapInfos such that 2 VMs will be created
         // as part of CreateVirtualNetwork() call
@@ -565,7 +570,7 @@ public class VncDBTest extends TestCase {
         // This call should also result in VM creation on api-server
         vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask, gatewayAddr, 
                                 isolatedVlanId, primaryVlanId,
-                                ipPoolEnabled, range, vmMapInfos);
+                                ipPoolEnabled, range, externalIpam, vmMapInfos);
 
         // Verify virtual-network creation
         VirtualNetwork vn = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
