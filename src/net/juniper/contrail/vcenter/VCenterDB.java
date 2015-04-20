@@ -71,6 +71,8 @@ public class VCenterDB {
     private VmwareDistributedVirtualSwitch contrailDVS;
     private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
+    private HashMap<String, String> esxiToVRouterIpMap;
+
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
                      String contrailDvsName) {
@@ -79,6 +81,9 @@ public class VCenterDB {
         this.vcenterPassword        = vcenterPassword;
         this.contrailDataCenterName = contrailDcName;
         this.contrailDvSwitchName   = contrailDvsName;
+
+        // Create ESXi host to vRouerVM Ip address map
+        esxiToVRouterIpMap = new HashMap<String, String>();
     }
 
     public boolean Initialize() {
@@ -152,7 +157,7 @@ public class VCenterDB {
                 return false;
             }
         }
-        s_logger.error("Found " + contrailDataCenterName + " DC on vCenter ");
+        s_logger.info("Found " + contrailDataCenterName + " DC on vCenter ");
 
         // Search contrailDvSwitch
         if (contrailDVS == null) {
@@ -175,7 +180,7 @@ public class VCenterDB {
                 return false;
             }
         }
-        s_logger.error("Found " + contrailDvSwitchName + " DVSwitch on vCenter ");
+        s_logger.info("Found " + contrailDvSwitchName + " DVSwitch on vCenter ");
 
         // All well on vCenter front.
         return true;
@@ -271,7 +276,83 @@ public class VCenterDB {
                 vmConfigInfo + " MAC Address NOT found");
         return null;
     }
-    
+
+    private String getVRouterVMIpFabricAddress(String dvPgName,
+            String hostName, HostSystem host, String vmNamePrefix)
+                    throws Exception {
+        // Find if vRouter Ip Fabric mapping exists..
+        String vRouterIpAddress = esxiToVRouterIpMap.get(hostName);
+        if (vRouterIpAddress != null) {
+            return vRouterIpAddress;
+        }
+
+        VirtualMachine[] vms = host.getVms();
+        for (VirtualMachine vm : vms) {
+            String vmName = vm.getName();
+            if (!vmName.toLowerCase().contains(vmNamePrefix.toLowerCase())) {
+                continue;
+            }
+            // XXX Assumption here is that VMware Tools are installed
+            // and IP address is available
+            GuestInfo guestInfo = vm.getGuest();
+            if (guestInfo == null) {
+                s_logger.debug("dvPg: " + dvPgName + " host: " + hostName +
+                        " vm:" + vmName + " GuestInfo - VMware Tools " +
+                        " NOT installed");
+                continue;
+            }
+            GuestNicInfo[] nicInfos = guestInfo.getNet();
+            if (nicInfos == null) {
+                s_logger.debug("dvPg: " + dvPgName + " host: " + hostName +
+                        " vm:" + vmName + " GuestNicInfo - VMware Tools " +
+                        " NOT installed");
+                continue;
+            }
+            for (GuestNicInfo nicInfo : nicInfos) {
+                // Extract the IP address associated with simple port
+                // group. Assumption here is that Contrail VRouter VM will
+                // have only one standard port group
+                String networkName = nicInfo.getNetwork();
+                if (networkName == null || !networkName.equals("contrail-fab-pg")) {
+                    continue;
+                }
+                Network network = (Network)
+                        inventoryNavigator.searchManagedEntity("Network",
+                                networkName);
+                if (network == null) {
+                    s_logger.debug("dvPg: " + dvPgName + "host: " +
+                            hostName + " vm: " + vmName + " network: " +
+                            networkName + " NOT found");
+                    continue;
+                }
+                NetIpConfigInfo ipConfigInfo = nicInfo.getIpConfig();
+                if (ipConfigInfo == null) {
+                    continue;
+                }
+                NetIpConfigInfoIpAddress[] ipAddrConfigInfos =
+                        ipConfigInfo.getIpAddress();
+                if (ipAddrConfigInfos == null ||
+                        ipAddrConfigInfos.length == 0) {
+                    continue;
+
+                }
+                for (NetIpConfigInfoIpAddress ipAddrConfigInfo :
+                    ipAddrConfigInfos) {
+                    String ipAddress = ipAddrConfigInfo.getIpAddress();
+                    // Choose IPv4 only
+                    InetAddress ipAddr = InetAddress.getByName(ipAddress);
+                    if (ipAddr instanceof Inet4Address) {
+                       // found vRouter VM ip-fabric address. Store it.
+                        esxiToVRouterIpMap.put(hostName, ipAddress);
+                        return ipAddress;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+
     private String getVirtualMachineIpAddress(String dvPgName,
             String hostName, HostSystem host, String vmNamePrefix) 
                     throws Exception {
@@ -468,7 +549,7 @@ public class VCenterDB {
         String hostName = host.getName();
 
         // Get Contrail VRouter virtual machine information from the host
-        String vrouterIpAddress = getVirtualMachineIpAddress(dvPgName,
+        String vrouterIpAddress = getVRouterVMIpFabricAddress(dvPgName,
                 hostName, host, contrailVRouterVmNamePrefix);
         if (vrouterIpAddress == null) {
             s_logger.error("ContrailVM not found on ESXi host: " 
@@ -656,28 +737,28 @@ public class VCenterDB {
         populateVirtualNetworkInfo() throws Exception {
 
         // Search contrailDvSwitch
-        VmwareDistributedVirtualSwitch contrailDvs = 
-                (VmwareDistributedVirtualSwitch) 
-                inventoryNavigator.searchManagedEntity(
-                        "VmwareDistributedVirtualSwitch",
-                        contrailDvSwitchName);
-        if (contrailDvs == null) {
+        //VmwareDistributedVirtualSwitch contrailDvs =
+        //        (VmwareDistributedVirtualSwitch)
+        //        inventoryNavigator.searchManagedEntity(
+        //                "VmwareDistributedVirtualSwitch",
+        //                contrailDvSwitchName);
+        if (contrailDVS == null) {
             s_logger.error("dvSwitch: " + contrailDvSwitchName + 
                     " NOT configured");
             return null;
         }
         // Extract distributed virtual port groups 
-        DistributedVirtualPortgroup[] dvPgs = contrailDvs.getPortgroup();
+        DistributedVirtualPortgroup[] dvPgs = contrailDVS.getPortgroup();
         if (dvPgs == null || dvPgs.length == 0) {
             s_logger.error("dvSwitch: " + contrailDvSwitchName + 
                     " Distributed portgroups NOT configured");
             return null;
         }
         // Extract IP Pools
-        Datacenter contrailDC = (Datacenter) inventoryNavigator.
-                searchManagedEntity(
-                "Datacenter",
-                contrailDataCenterName);
+        //Datacenter contrailDC = (Datacenter) inventoryNavigator.
+        //        searchManagedEntity(
+        //        "Datacenter",
+        //        contrailDataCenterName);
         IpPool[] ipPools = ipPoolManager.queryIpPools(contrailDC);
         if (ipPools == null || ipPools.length == 0) {
             s_logger.debug("dvSwitch: " + contrailDvSwitchName +
@@ -687,7 +768,7 @@ public class VCenterDB {
         }
 
         // Extract private vlan entries for the virtual switch
-        VMwareDVSConfigInfo dvsConfigInfo = (VMwareDVSConfigInfo) contrailDvs.getConfig();
+        VMwareDVSConfigInfo dvsConfigInfo = (VMwareDVSConfigInfo) contrailDVS.getConfig();
         if (dvsConfigInfo == null) {
             s_logger.error("dvSwitch: " + contrailDvSwitchName +
                     " Datacenter: " + contrailDC.getName() + " ConfigInfo " +
