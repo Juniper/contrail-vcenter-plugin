@@ -524,14 +524,8 @@ public class VCenterDB {
         VirtualMachineRuntimeInfo vmRuntimeInfo = vcenterVm.getRuntime();
         VirtualMachinePowerState powerState =
                 vmRuntimeInfo.getPowerState();
-        //if (powerState != VirtualMachinePowerState.poweredOn) {
             s_logger.debug("dvPg: " + dvPgName + " VM: " +
                     vmName + " Power State: " + powerState);
-        //    return null;
-        //}
-
-        // Extract configuration info
-        VirtualMachineConfigInfo vmConfigInfo = vcenterVm.getConfig();
 
         // Extract MAC address
         String vmMac = getVirtualMachineMacAddress(vmConfigInfo,
@@ -585,7 +579,8 @@ public class VCenterDB {
             VirtualMachineConfigInfo vmConfigInfo = vm.getConfig();
             String instanceUuid = vmConfigInfo.getInstanceUuid();
 
-            VmwareVirtualMachineInfo vmInfo = fillVmwareVirtualMachineInfo(vm, portGroup);
+            VmwareVirtualMachineInfo vmInfo = fillVmwareVirtualMachineInfo(vm, vmConfigInfo,
+                                                                           portGroup);
             if (vmInfo == null) {
                 continue;
             }
@@ -605,7 +600,7 @@ public class VCenterDB {
     }
 
     private static boolean doIgnoreVirtualNetwork(DVPortSetting portSetting) {
-        // Ignore dvPgs that do not have PVLAN configured
+        // Ignore dvPgs that do not have PVLAN/VLAN configured
         if (portSetting instanceof VMwareDVSPortSetting) {
             VMwareDVSPortSetting vPortSetting = 
                     (VMwareDVSPortSetting) portSetting;
@@ -621,50 +616,12 @@ public class VCenterDB {
         return true;
     }
 
-    public HashMap<String, Short> getVlanInfo(DistributedVirtualPortgroup dvPg) throws Exception {
+    public HashMap<String, Short> getVlanInfo(DistributedVirtualPortgroup dvPg,
+        DVPortgroupConfigInfo configInfo, DVPortSetting portSetting,
+        VMwareDVSPvlanMapEntry[] pvlanMapArray) throws Exception {
 
         // Create HashMap which will store private vlan info
         HashMap<String, Short> vlan = new HashMap<String, Short>();
-
-        // Extract dvPg configuration info and port setting
-        DVPortgroupConfigInfo configInfo = dvPg.getConfig();
-        DVPortSetting portSetting = configInfo.getDefaultPortConfig();
-
-        // Search contrailDvSwitch
-        VmwareDistributedVirtualSwitch contrailDvs = 
-                (VmwareDistributedVirtualSwitch) 
-                inventoryNavigator.searchManagedEntity(
-                        "VmwareDistributedVirtualSwitch",
-                        contrailDvSwitchName);
-        if (contrailDvs == null) {
-            s_logger.error("dvSwitch: " + contrailDvSwitchName + 
-                    " NOT configured");
-            return null;
-        }
-
-        // Extract private vlan entries for the virtual switch
-        VMwareDVSConfigInfo dvsConfigInfo = (VMwareDVSConfigInfo) contrailDvs.getConfig();
-        if (dvsConfigInfo == null) {
-            s_logger.error("dvSwitch: " + contrailDvSwitchName +
-                    " Datacenter: " + contrailDC.getName() + " ConfigInfo " +
-                    "is empty");
-            return null;
-        }
-
-        if (!(dvsConfigInfo instanceof VMwareDVSConfigInfo)) {
-            s_logger.error("dvSwitch: " + contrailDvSwitchName +
-                    " Datacenter: " + contrailDC.getName() + " ConfigInfo " +
-                    "isn't instanceof VMwareDVSConfigInfo");
-            return null;
-        }
-
-        VMwareDVSPvlanMapEntry[] pvlanMapArray = dvsConfigInfo.getPvlanConfig();
-        if (pvlanMapArray == null) {
-            s_logger.error("dvSwitch: " + contrailDvSwitchName +
-                    " Datacenter: " + contrailDC.getName() + " Private VLAN NOT" +
-                    "configured");
-            return null;
-        }
 
         if (portSetting instanceof VMwareDVSPortSetting) {
             VMwareDVSPortSetting vPortSetting = 
@@ -816,7 +773,8 @@ public class VCenterDB {
             IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
 
             // get pvlan/vlan info for the portgroup.
-            HashMap<String, Short> vlan = getVlanInfo(dvPg);
+            HashMap<String, Short> vlan = getVlanInfo(dvPg, configInfo, portSetting,
+                                                      pvlanMapArray);
             if (vlan == null) {
                 s_logger.debug("no pvlan/vlan is associated to dvPg: " + dvPg.getName());
                 return null;
@@ -824,7 +782,7 @@ public class VCenterDB {
             short primaryVlanId   = vlan.get("primary-vlan");
             short isolatedVlanId  = vlan.get("secondary-vlan");
 
-            // Read externalIpam from custom field
+            // Read externalIpam flag from custom field
             boolean externalIpam = getExternalIpamInfo(configInfo, vnName);
 
             // Populate associated VMs
