@@ -371,7 +371,7 @@ public class VncDB {
         DeleteVirtualMachineInternal(vmInfo.getVmInterfaceInfo());
     }
     
-    public void DeleteVirtualMachine(String vmUuid, String vnUuid) throws IOException {
+    public void DeleteVirtualMachine(String vmUuid, String vnUuid, String vrouterIpAddress) throws IOException {
 
         s_logger.info("Delete Virtual Machine (vmUuid = " + vmUuid
                        + " vnUuid = " + vnUuid + ")");
@@ -385,7 +385,7 @@ public class VncDB {
         }
 
         // Extract VRouter IP address from display name
-        String vrouterIpAddress = vm.getDisplayName();
+        //String vrouterIpAddress = vm.getDisplayName();
 
         // Delete InstanceIp, VMInterface & VM
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
