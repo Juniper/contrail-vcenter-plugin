@@ -64,6 +64,7 @@ public class VCenterMonitor {
     private static String _vcenterPassword   = "Contrail123!";
     private static String _vcenterDcName     = "Datacenter";
     private static String _vcenterDvsName    = "dvSwitch";
+    private static String _vcenterIpFabricPg = "contrail-fab-pg";
     private static String _apiServerAddress  = "10.84.13.23";
     private static int _apiServerPort        = 8082;
     private static String _zookeeperAddrPort  = "127.0.0.1:2181";
@@ -95,6 +96,7 @@ public class VCenterMonitor {
                 _vcenterDvsName = configProps.getProperty("vcenter.dvswitch");
                 _apiServerAddress = configProps.getProperty("api.hostname");
                 _zookeeperAddrPort = configProps.getProperty("zookeeper.serverlist");
+                _vcenterIpFabricPg = configProps.getProperty("vcenter.ipfabricpg");
 		String portStr = configProps.getProperty("api.port");
                 if (portStr != null && portStr.length() > 0) {
                     _apiServerPort = Integer.parseInt(portStr);
@@ -131,8 +133,8 @@ public class VCenterMonitor {
         // Launch the periodic VCenterMonitorTask
         VCenterMonitorTask _monitorTask = new VCenterMonitorTask(_vcenterURL, 
                               _vcenterUsername, _vcenterPassword, 
-                              _vcenterDcName, _vcenterDvsName, 
-                              _apiServerAddress, _apiServerPort);
+                              _vcenterDcName, _vcenterDvsName,
+                              _apiServerAddress, _apiServerPort, _vcenterIpFabricPg);
        
         scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 2,
                 TimeUnit.SECONDS);

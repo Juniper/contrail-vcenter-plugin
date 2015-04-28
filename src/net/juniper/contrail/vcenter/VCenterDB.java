@@ -62,6 +62,7 @@ public class VCenterDB {
     private final String vcenterUrl;
     private final String vcenterUsername;
     private final String vcenterPassword;
+    private final String contrailIpFabricPgName;
     
     private ServiceInstance serviceInstance;
     private Folder rootFolder;
@@ -75,13 +76,15 @@ public class VCenterDB {
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
-                     String contrailDvsName) {
+                     String contrailDvsName, String ipFabricPgName) {
         this.vcenterUrl             = vcenterUrl;
         this.vcenterUsername        = vcenterUsername;
         this.vcenterPassword        = vcenterPassword;
         this.contrailDataCenterName = contrailDcName;
         this.contrailDvSwitchName   = contrailDvsName;
+        this.contrailIpFabricPgName = ipFabricPgName;
 
+        s_logger.info("VCenterDB(" + contrailDvsName + ", " + ipFabricPgName + ")");
         // Create ESXi host to vRouerVM Ip address map
         esxiToVRouterIpMap = new HashMap<String, String>();
     }
@@ -313,7 +316,7 @@ public class VCenterDB {
                 // group. Assumption here is that Contrail VRouter VM will
                 // have only one standard port group
                 String networkName = nicInfo.getNetwork();
-                if (networkName == null || !networkName.equals("contrail-fab-pg")) {
+                if (networkName == null || !networkName.equals(contrailIpFabricPgName)) {
                     continue;
                 }
                 Network network = (Network)
@@ -507,6 +510,7 @@ public class VCenterDB {
     
     VmwareVirtualMachineInfo fillVmwareVirtualMachineInfo(
                                        VirtualMachine vcenterVm,
+                                       VirtualMachineConfigInfo vmConfigInfo,
                                        DistributedVirtualPortgroup portGroup)
                                        throws Exception {
         // Name

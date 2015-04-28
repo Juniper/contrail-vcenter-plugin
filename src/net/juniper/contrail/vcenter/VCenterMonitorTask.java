@@ -34,10 +34,10 @@ class VCenterMonitorTask implements Runnable {
     
     public VCenterMonitorTask(String vcenterUrl, String vcenterUsername,
                               String vcenterPassword, String vcenterDcName,
-                              String vcenterDvsName, String apiServerAddress, 
-                              int apiServerPort) throws Exception {
+                              String vcenterDvsName, String apiServerAddress,
+                              int apiServerPort, String vcenterIpFabricPg) throws Exception {
         vcenterDB = new VCenterDB(vcenterUrl, vcenterUsername, vcenterPassword,
-                                  vcenterDcName, vcenterDvsName);
+                                  vcenterDcName, vcenterDvsName, vcenterIpFabricPg);
         vncDB     = new VncDB(apiServerAddress, apiServerPort);
     }
 
