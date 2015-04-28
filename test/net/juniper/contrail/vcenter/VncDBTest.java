@@ -375,7 +375,7 @@ public class VncDBTest extends TestCase {
 
 
         // Delete virtual-machine from api-server
-        vncDB.DeleteVirtualMachine(vmUuid, vnUuid);
+        vncDB.DeleteVirtualMachine(vmUuid, vnUuid, vrouterIpAddress);
 
         // Verify instance-ip is deleted from  api-server
         InstanceIp ip1 =(InstanceIp) _api.findById(InstanceIp.class, instanceIp.getUuid());
@@ -687,6 +687,6 @@ public class VncDBTest extends TestCase {
 
     @Test
     public void testDeleteVirtualMachineNullInput() throws IOException {
-        vncDB.DeleteVirtualMachine(null, null);
+        vncDB.DeleteVirtualMachine(null, null, null);
     }
 }
