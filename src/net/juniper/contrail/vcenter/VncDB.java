@@ -747,15 +747,28 @@ public class VncDB {
         VirtualMachine vm = (VirtualMachine) apiConnector.findById(
                 VirtualMachine.class, vmUuid);
 
-        // Virtual machine interface
+        // find Virtual Machine Interfce matching vmUuid & vnUuid
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
                 vm.getVirtualMachineInterfaceBackRefs();
         VirtualMachineInterface vmInterface = null;
         for (ObjectReference<ApiPropertyBase> vmInterfaceRef :
                 Utils.safe(vmInterfaceRefs)) {
-            vmInterface = (VirtualMachineInterface)
+            VirtualMachineInterface vmiTmp = (VirtualMachineInterface)
                     apiConnector.findById(VirtualMachineInterface.class,
                             vmInterfaceRef.getUuid());
+
+            if (vmiTmp == null) {
+                s_logger.warn("Virtual machine (" + vmName
+                              + ") interface ref with no network interface");
+                continue;
+            }
+            List<ObjectReference<ApiPropertyBase>> vnRefs =
+                                            vmiTmp.getVirtualNetwork();
+            for (ObjectReference<ApiPropertyBase> vnRef : vnRefs) {
+                if (vnRef.getUuid().equals(vnUuid)) {
+                    vmInterface = vmiTmp;
+                }
+            }
         }
         if (vmInterface == null) {
             s_logger.warn("Virtual machine: " + vmName
