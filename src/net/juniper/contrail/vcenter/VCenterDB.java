@@ -510,6 +510,7 @@ public class VCenterDB {
     
     VmwareVirtualMachineInfo fillVmwareVirtualMachineInfo(
                                        VirtualMachine vcenterVm,
+                                       VirtualMachineConfigInfo vmConfigInfo,
                                        DistributedVirtualPortgroup portGroup)
                                        throws Exception {
         // Name
