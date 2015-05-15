@@ -34,6 +34,9 @@ override_dh_auto_build:
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/apache/curator/curator-framework/2.7.0/curator-framework-2.7.0.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/apache/curator/curator-client/2.7.0/curator-client-2.7.0.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/apache/curator/curator-recipes/2.7.0/curator-recipes-2.7.0.jar
+	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/pacesys/openstack4j-core/2.0.1/openstack4j-core-2.0.1.jar
+	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/pacesys/openstack4j/connectors/openstack4j-jersey2/2.0.1/openstack4j-jersey2-2.0.1.jar
+	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/pacesys/openstack4j/2.0.1/openstack4j-2.0.1-withdeps.jar
 
 
 override_dh_auto_clean:
