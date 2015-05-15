@@ -17,3 +17,6 @@ target/libthrift-0.8.0.jar usr/share/contrail-vcenter-plugin/lib
 target/log4j-1.2.16.jar usr/share/contrail-vcenter-plugin/lib
 target/slf4j-api-1.5.8.jar usr/share/contrail-vcenter-plugin/lib
 target/slf4j-simple-1.5.8.jar usr/share/contrail-vcenter-plugin/lib
+target/openstack4j-jersey2-2.0.1.jar usr/share/contrail-vcenter-plugin/lib
+target/openstack4j-2.0.1-withdeps.jar usr/share/contrail-vcenter-plugin/lib
+target/openstack4j-core-2.0.1.jar /usr/share/contrail-vcenter-plugin/lib
