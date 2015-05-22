@@ -46,7 +46,7 @@ class VCenterMonitorTask implements Runnable {
         if (vncDB.Initialize() == true) {
             VncDBInitCompelete = true;
         }
-        if (vcenterDB.Initialize() == true) {
+        if (vcenterDB.Initialize() == true && vcenterDB.Initialize_data() == true) {
             VcenterDBInitCompelete = true;
         }
     }
@@ -139,8 +139,8 @@ class VCenterMonitorTask implements Runnable {
                         vmwareNetworkInfo.getIsolatedVlanId(),
                         vmwareNetworkInfo.getPrimaryVlanId(),
                         vmwareNetworkInfo.getExternalIpam(), vmwareVmInfo);
-                if (vmwareVmInfo.isPoweredOnState() 
-                    && vmwareNetworkInfo.getExternalIpam() 
+                if (vmwareVmInfo.isPoweredOnState()
+                    && vmwareNetworkInfo.getExternalIpam()
                     && vmwareVmInfo.getIpAddress() != null ) {
                     vncDB.CreateVMInterfaceInstanceIp(vnUuid, vmwareVmUuid, vmwareVmInfo);
                 }
@@ -160,8 +160,8 @@ class VCenterMonitorTask implements Runnable {
                     vmwareNetworkInfo.getIsolatedVlanId(),
                     vmwareNetworkInfo.getPrimaryVlanId(),
                     vmwareNetworkInfo.getExternalIpam(), vmwareVmInfo);
-            if (vmwareVmInfo.isPoweredOnState() 
-                && vmwareNetworkInfo.getExternalIpam() 
+            if (vmwareVmInfo.isPoweredOnState()
+                && vmwareNetworkInfo.getExternalIpam()
                 && vmwareVmInfo.getIpAddress() != null ) {
                 vncDB.CreateVMInterfaceInstanceIp(vnUuid, vmwareVmUuid, vmwareVmInfo);
             }
@@ -177,8 +177,8 @@ class VCenterMonitorTask implements Runnable {
     
     public void syncVirtualNetworks() throws Exception {
         s_logger.info("Syncing Vnc and VCenter DBs");
-        SortedMap<String, VmwareVirtualNetworkInfo> vmwareVirtualNetworkInfos =
-                vcenterDB.populateVirtualNetworkInfo();
+        SortedMap<String, VmwareVirtualNetworkInfo>  
+        	vmwareVirtualNetworkInfos = vcenterDB.populateVirtualNetworkInfo();
         SortedMap<String, VncVirtualNetworkInfo> vncVirtualNetworkInfos =
                 vncDB.populateVirtualNetworkInfo();
         s_logger.debug("VNs vmware size: "
@@ -302,13 +302,13 @@ class VCenterMonitorTask implements Runnable {
             String curVmwareVmUuid = curVmwareItem.getKey();
             String prevVmwareVmUuid = prevVmwareItem.getKey();
             Integer cmp = curVmwareVmUuid.compareTo(prevVmwareVmUuid);
+            VmwareVirtualMachineInfo prevVmwareVmInfo = prevVmwareItem.getValue();
+            String prev_vrouter = prevVmwareVmInfo.getVrouterIpAddress();
             if (cmp == 0) {
                 //If VM has migrated from one host to other, uuid is same, so handle it
                 VmwareVirtualMachineInfo curVmwareVmInfo = curVmwareItem.getValue();
-                VmwareVirtualMachineInfo prevVmwareVmInfo = prevVmwareItem.getValue();
                 curVmwareVmInfo.setInterfaceUuid(prevVmwareVmInfo.getInterfaceUuid());
                 String cur_vrouter  = curVmwareVmInfo.getVrouterIpAddress();
-                String prev_vrouter = prevVmwareVmInfo.getVrouterIpAddress();
                 Integer cmp_vrouter = prev_vrouter.compareTo(cur_vrouter);
                 if (cmp_vrouter != 0) {
                     s_logger.info("\nuuids are same, but the vrouters are different. "
@@ -346,7 +346,7 @@ class VCenterMonitorTask implements Runnable {
 
                 if (curVmwareVmInfo.isPoweredOnState() 
                     && curVmwareVNInfo.getExternalIpam() 
-                    && (curVmwareVmInfo.getIpAddress() != null) 
+                    && (curVmwareVmInfo.getIpAddress() != null)
                     && !curVmwareVmInfo.getIpAddress().equals(prevVmwareVmInfo.getIpAddress())) {
                     vncDB.CreateVMInterfaceInstanceIp(vnUuid, curVmwareVmUuid, curVmwareVmInfo);
                 }
@@ -355,7 +355,7 @@ class VCenterMonitorTask implements Runnable {
                 curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null; 
             } else if (cmp > 0){
                 // Delete Vnc virtual machine
-                vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid);
+                vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid, prev_vrouter);
                 prevVmwareItem = prevVmwareIter.hasNext() ? prevVmwareIter.next() : null;
             } else if (cmp < 0){
                 // create VMWare virtual machine in VNC
@@ -397,15 +397,16 @@ class VCenterMonitorTask implements Runnable {
         }
         while (prevVmwareItem != null) {
             // Delete
-            vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid);
+            VmwareVirtualMachineInfo prevVmwareVmInfo = prevVmwareItem.getValue();
+            String prev_vrouter = prevVmwareVmInfo.getVrouterIpAddress();
+            vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid, prev_vrouter);
             prevVmwareItem = prevVmwareIter.hasNext() ? prevVmwareIter.next() : null;
         }
     }
 
-    public void syncVmwareVirtualNetworks() throws Exception {
+    public void syncVmwareVirtualNetworks() throws  Exception {
         s_logger.debug("Syncing VCenter Currrent and Previous DBs");
-        SortedMap<String, VmwareVirtualNetworkInfo> curVmwareVNInfos =
-                vcenterDB.populateVirtualNetworkInfo();
+        SortedMap<String, VmwareVirtualNetworkInfo>  curVmwareVNInfos = vcenterDB.populateVirtualNetworkInfo();
         SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos =
                 vcenterDB.getPrevVmwareVNInfos();
         s_logger.debug("VNs cur-vmware size: "
@@ -510,7 +511,7 @@ class VCenterMonitorTask implements Runnable {
             }
 
             if (VcenterDBInitCompelete == false) {
-                if (vcenterDB.Initialize() == true) {
+                if (vcenterDB.Initialize() == true && vcenterDB.Initialize_data() == true) {
                     VcenterDBInitCompelete = true;
                 }
             }
@@ -526,12 +527,20 @@ class VCenterMonitorTask implements Runnable {
             // Clear the flag  on first run of syncVirtualNetworks.
             try {
                 syncVirtualNetworks();
-            } catch (Exception e) {
+	    } catch (Exception e) {
                 String stackTrace = Throwables.getStackTraceAsString(e);
                 s_logger.error("Error while syncVirtualNetworks: " + e); 
                 s_logger.error(stackTrace); 
                 e.printStackTrace();
-                return;
+                if (stackTrace.contains("java.net.ConnectException: Connection refused"))       {
+                        //Remote Exception. Some issue with connection to vcenter-server
+                        // Exception on accessing remote objects.
+                        // Try to reinitialize the VCenter connection.
+                        //For some reasom RemoteException not thrown
+                        s_logger.error("Problem with connection to vCenter-Server");
+                        s_logger.error("Restart connection and reSync");
+                        vcenterDB.connectRetry();
+                }
             }
             setAddPortSyncAtPluginStart(false);
             return;
@@ -541,6 +550,7 @@ class VCenterMonitorTask implements Runnable {
         try {
             vncDB.vrouterAgentPeriodicConnectionCheck();
         } catch (Exception e) {
+
             String stackTrace = Throwables.getStackTraceAsString(e);
             s_logger.error("Error while vrouterAgentPeriodicConnectionCheck: " + e); 
             s_logger.error(stackTrace); 
@@ -556,6 +566,15 @@ class VCenterMonitorTask implements Runnable {
                 s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
                 s_logger.error(stackTrace); 
                 e.printStackTrace();
+                if (stackTrace.contains("java.net.ConnectException: Connection refused")) 	{
+			//Remote Exception. Some issue with connection to vcenter-server
+                	// Exception on accessing remote objects.
+                	// Try to reinitialize the VCenter connection.
+                        //For some reasom RemoteException not thrown
+                	s_logger.error("Problem with connection to vCenter-Server");
+                	s_logger.error("Restart connection and reSync");
+                	vcenterDB.connectRetry();
+            	}
             }
         } 
 
