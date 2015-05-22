@@ -4,15 +4,18 @@
 
 package net.juniper.contrail.vcenter;
 
+import java.io.*;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.SortedMap;
+import java.util.Scanner;
 import java.util.UUID;
 import java.net.MalformedURLException;
 import java.rmi.RemoteException;
+import java.io.FileNotFoundException;
 import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.RuntimeFault;
 
@@ -57,6 +60,7 @@ public class VCenterDB {
     private static final Logger s_logger =
             Logger.getLogger(VCenterDB.class);
     private static final String contrailVRouterVmNamePrefix = "contrailVM";
+    private static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
     private final String contrailDvSwitchName;
     private final String contrailDataCenterName;
     private final String vcenterUrl;
@@ -90,6 +94,10 @@ public class VCenterDB {
     }
 
     public boolean Initialize() {
+
+        // Build ESXi to VRouterIp Map
+        if (buildEsxiToVRouterIpMap() == false)
+            return false;
 
         s_logger.info("Trying to Connect to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + ")");
@@ -189,6 +197,23 @@ public class VCenterDB {
         return true;
     }
 
+    public boolean buildEsxiToVRouterIpMap() {
+        try {
+            File file = new File("/etc/contrail/ESXiToVRouterIp.map");
+            Scanner input = new Scanner(file);
+            while(input.hasNext()) {
+                String nextLine = input.nextLine();
+                String[] part = nextLine.split(":");
+                s_logger.info(" ESXi IP Address:" + part[0] + " vRouter-IP-Address: " + part[1]);
+                esxiToVRouterIpMap.put(part[0], part[1]);
+            }
+        } catch (FileNotFoundException e) {
+            s_logger.error("file not found :" + esxiToVRouterIpMapFile);
+            return false;
+        }
+        return true;
+    }
+
     public void setPrevVmwareVNInfos(
                     SortedMap<String, VmwareVirtualNetworkInfo> _prevVmwareVNInfos) {
         prevVmwareVNInfos = _prevVmwareVNInfos;
@@ -216,21 +241,15 @@ public class VCenterDB {
 
     public IpPool getIpPool(
             DistributedVirtualPortgroup portGroup, IpPool[] ipPools) {
-        NetworkSummary summary = portGroup.getSummary();
-        Integer poolid = summary.getIpPoolId();
-        if (poolid == null) {
-            s_logger.debug("dvPg: " + portGroup.getName() + 
-                    " IpPool NOT configured");
-            return null;
-        }
-        // Validate that the IpPool id exists
+        // Validate that the IpPool name matches PG names 
+        String IpPoolForPG = "ip-pool-for-" + portGroup.getName();
         for (IpPool pool : ipPools) {
-            if (pool.id == poolid.intValue()) {
+            if (IpPoolForPG.equals(pool.getName())) {
                 return pool;
             }
         }
         s_logger.error("dvPg: " + portGroup.getName() + 
-                " INVALID IpPoolId " + poolid);
+                " No VALID IpPool found");
         return null;
     }
     
