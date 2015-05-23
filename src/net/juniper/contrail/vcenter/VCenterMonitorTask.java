@@ -302,13 +302,13 @@ class VCenterMonitorTask implements Runnable {
             String curVmwareVmUuid = curVmwareItem.getKey();
             String prevVmwareVmUuid = prevVmwareItem.getKey();
             Integer cmp = curVmwareVmUuid.compareTo(prevVmwareVmUuid);
-            VmwareVirtualMachineInfo prevVmwareVmInfo = prevVmwareItem.getValue();
-            String prev_vrouter = prevVmwareVmInfo.getVrouterIpAddress();
             if (cmp == 0) {
                 //If VM has migrated from one host to other, uuid is same, so handle it
                 VmwareVirtualMachineInfo curVmwareVmInfo = curVmwareItem.getValue();
+                VmwareVirtualMachineInfo prevVmwareVmInfo = prevVmwareItem.getValue();
                 curVmwareVmInfo.setInterfaceUuid(prevVmwareVmInfo.getInterfaceUuid());
                 String cur_vrouter  = curVmwareVmInfo.getVrouterIpAddress();
+                String prev_vrouter = prevVmwareVmInfo.getVrouterIpAddress();
                 Integer cmp_vrouter = prev_vrouter.compareTo(cur_vrouter);
                 if (cmp_vrouter != 0) {
                     s_logger.info("\nuuids are same, but the vrouters are different. "
@@ -355,7 +355,7 @@ class VCenterMonitorTask implements Runnable {
                 curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null; 
             } else if (cmp > 0){
                 // Delete Vnc virtual machine
-                vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid, prev_vrouter);
+                vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid);
                 prevVmwareItem = prevVmwareIter.hasNext() ? prevVmwareIter.next() : null;
             } else if (cmp < 0){
                 // create VMWare virtual machine in VNC
@@ -399,7 +399,7 @@ class VCenterMonitorTask implements Runnable {
             // Delete
             VmwareVirtualMachineInfo prevVmwareVmInfo = prevVmwareItem.getValue();
             String prev_vrouter = prevVmwareVmInfo.getVrouterIpAddress();
-            vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid, prev_vrouter);
+            vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid);
             prevVmwareItem = prevVmwareIter.hasNext() ? prevVmwareIter.next() : null;
         }
     }
