@@ -310,8 +310,6 @@ public class VCenterDB {
                 return pool;
             }
         }
-        s_logger.error("dvPg: " + portGroup.getName() + 
-                " No VALID IpPool found");
         return null;
     }
     
