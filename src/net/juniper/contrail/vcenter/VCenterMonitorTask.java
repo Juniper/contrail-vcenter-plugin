@@ -142,7 +142,7 @@ class VCenterMonitorTask implements Runnable {
                         vmwareNetworkInfo.getExternalIpam(), vmwareVmInfo);
                 if (vmwareVmInfo.isPoweredOnState()
                     && vmwareNetworkInfo.getExternalIpam()
-                    && vmwareVmInfo.getIpAddress() != null ) {
+                    && (vmwareVmInfo.getIpAddress() != null)) {
                     vncDB.CreateVMInterfaceInstanceIp(vnUuid, vmwareVmUuid, vmwareVmInfo);
                 }
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
