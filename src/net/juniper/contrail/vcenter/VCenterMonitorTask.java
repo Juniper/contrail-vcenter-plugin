@@ -30,6 +30,7 @@ class VCenterMonitorTask implements Runnable {
     private boolean AddPortSyncAtPluginStart = true;
     private boolean VncDBInitCompelete = false;
     private boolean VcenterDBInitCompelete = false;
+    public boolean VCenterNotifyForceRefresh = false;
     private static short iteration = 0;
     
     public VCenterMonitorTask(String vcenterUrl, String vcenterUsername,
@@ -540,6 +541,7 @@ class VCenterMonitorTask implements Runnable {
                         s_logger.error("Problem with connection to vCenter-Server");
                         s_logger.error("Restart connection and reSync");
                         vcenterDB.connectRetry();
+                        this.VCenterNotifyForceRefresh = true;
                 }
             }
             setAddPortSyncAtPluginStart(false);
