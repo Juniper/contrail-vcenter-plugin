@@ -390,7 +390,7 @@ public class VncDB {
         // Delete InstanceIp, VMInterface & VM
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
                 vm.getVirtualMachineInterfaceBackRefs();
-        if (vmInterfaceRefs == null && vmInterfaceRefs.size() == 0) {
+        if ((vmInterfaceRefs == null) || (vmInterfaceRefs.size() == 0)) {
             s_logger.warn("Virtual Machine has NO interface");
             apiConnector.delete(VirtualMachine.class, vmUuid);
             s_logger.info("Delete Virtual Machine (uuid = " + vmUuid + ") Done.");
