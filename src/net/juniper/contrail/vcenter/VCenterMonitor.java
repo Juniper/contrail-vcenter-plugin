@@ -136,7 +136,7 @@ public class VCenterMonitor {
                               _vcenterDcName, _vcenterDvsName,
                               _apiServerAddress, _apiServerPort, _vcenterIpFabricPg);
        
-        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 2,
+        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 4, //4 second periodic
                 TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));

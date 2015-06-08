@@ -141,7 +141,7 @@ class VCenterMonitorTask implements Runnable {
                         vmwareNetworkInfo.getPrimaryVlanId(),
                         vmwareNetworkInfo.getExternalIpam(), vmwareVmInfo);
                 if (vmwareVmInfo.isPoweredOnState()
-                    && vmwareNetworkInfo.getExternalIpam()
+                    && (vmwareNetworkInfo.getExternalIpam() == true)
                     && (vmwareVmInfo.getIpAddress() != null)) {
                     vncDB.CreateVMInterfaceInstanceIp(vnUuid, vmwareVmUuid, vmwareVmInfo);
                 }
@@ -151,6 +151,7 @@ class VCenterMonitorTask implements Runnable {
 
         while (vmwareItem != null) {
             // Create
+            s_logger.info("Entering mistery loop .... DEADBEEF ");
             String vmwareVmUuid = vmwareItem.getKey();
             VmwareVirtualMachineInfo vmwareVmInfo = vmwareItem.getValue();
             vncDB.CreateVirtualMachine(vnUuid, vmwareVmUuid,
@@ -162,7 +163,7 @@ class VCenterMonitorTask implements Runnable {
                     vmwareNetworkInfo.getPrimaryVlanId(),
                     vmwareNetworkInfo.getExternalIpam(), vmwareVmInfo);
             if (vmwareVmInfo.isPoweredOnState()
-                && vmwareNetworkInfo.getExternalIpam()
+                && (vmwareNetworkInfo.getExternalIpam() == true)
                 && vmwareVmInfo.getIpAddress() != null ) {
                 vncDB.CreateVMInterfaceInstanceIp(vnUuid, vmwareVmUuid, vmwareVmInfo);
             }
@@ -346,7 +347,7 @@ class VCenterMonitorTask implements Runnable {
                 }
 
                 if (curVmwareVmInfo.isPoweredOnState() 
-                    && curVmwareVNInfo.getExternalIpam() 
+                    && (curVmwareVNInfo.getExternalIpam() == true)
                     && (curVmwareVmInfo.getIpAddress() != null)
                     && !curVmwareVmInfo.getIpAddress().equals(prevVmwareVmInfo.getIpAddress())) {
                     vncDB.CreateVMInterfaceInstanceIp(vnUuid, curVmwareVmUuid, curVmwareVmInfo);
@@ -370,7 +371,7 @@ class VCenterMonitorTask implements Runnable {
                         curVmwareVNInfo.getPrimaryVlanId(),
                         curVmwareVNInfo.getExternalIpam(), curVmwareVmInfo);
                 if (curVmwareVmInfo.isPoweredOnState() 
-                    && curVmwareVNInfo.getExternalIpam() 
+                    && (curVmwareVNInfo.getExternalIpam() == true)
                     && curVmwareVmInfo.getIpAddress() != null ) {
                     vncDB.CreateVMInterfaceInstanceIp(vnUuid, curVmwareVmUuid, curVmwareVmInfo);
                 }
@@ -548,37 +549,37 @@ class VCenterMonitorTask implements Runnable {
             return;
         }
 
-        // 2 second timeout. run KeepAlive with vRouer Agent.
-        try {
-            vncDB.vrouterAgentPeriodicConnectionCheck();
-        } catch (Exception e) {
-
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error("Error while vrouterAgentPeriodicConnectionCheck: " + e); 
-            s_logger.error(stackTrace); 
-            e.printStackTrace();
-        }
-
-        // 4 sec timeout. Compare current and prev VCenterDB.
+        // 8 second timeout. run KeepAlive with vRouer Agent.
         if (iteration == 0) {
             try {
-                syncVmwareVirtualNetworks();
+                vncDB.vrouterAgentPeriodicConnectionCheck();
             } catch (Exception e) {
+
                 String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
+                s_logger.error("Error while vrouterAgentPeriodicConnectionCheck: " + e); 
                 s_logger.error(stackTrace); 
                 e.printStackTrace();
-                if (stackTrace.contains("java.net.ConnectException: Connection refused")) 	{
-			//Remote Exception. Some issue with connection to vcenter-server
-                	// Exception on accessing remote objects.
-                	// Try to reinitialize the VCenter connection.
-                        //For some reasom RemoteException not thrown
-                	s_logger.error("Problem with connection to vCenter-Server");
-                	s_logger.error("Restart connection and reSync");
-                	vcenterDB.connectRetry();
-            	}
             }
         } 
+
+        // 4 sec timeout. Compare current and prev VCenterDB.
+        try {
+            syncVmwareVirtualNetworks();
+        } catch (Exception e) {
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
+            s_logger.error(stackTrace); 
+            e.printStackTrace();
+            if (stackTrace.contains("java.net.ConnectException: Connection refused")) 	{
+                //Remote Exception. Some issue with connection to vcenter-server
+                // Exception on accessing remote objects.
+                // Try to reinitialize the VCenter connection.
+                //For some reasom RemoteException not thrown
+                s_logger.error("Problem with connection to vCenter-Server");
+                s_logger.error("Restart connection and reSync");
+                vcenterDB.connectRetry();
+            }
+        }
 
         // Increment
         iteration++;

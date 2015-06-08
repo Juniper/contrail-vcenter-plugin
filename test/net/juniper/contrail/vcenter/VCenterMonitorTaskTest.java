@@ -527,6 +527,145 @@ public class VCenterMonitorTaskTest extends TestCase {
         assertNotNull(vnB);
     }
 
+    //  VNC     : 0 VN
+    //  VCENTER : 1 VN (TestVN-B)  & VM (VM-B) : VmPoweredOff
+    //  After virtual-network sync, Vnc should have 1 VN (TestVN-B) & VM (VM-B).
+    @Test
+    public void TestSyncVirtualNetworksTC4() throws Exception {
+        String vnUuid         = UUID.randomUUID().toString();
+        String vnName         = "TestVN-TC4";
+        String subnetAddr     = "192.168.2.0";
+        String subnetMask     = "255.255.255.0";
+        String gatewayAddr    = "192.168.2.1";
+        short primaryVlanId   = 200;
+        short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
+        boolean externalIpam  = true;
+
+        String vmUuidB            = UUID.randomUUID().toString();
+        String vmNameB            = "VM-B-TC4";
+        String hostNameB          = "VM-B-HostName";
+        String ipAddressB          = "192.168.2.100";
+        String vrouterIpAddressB  = "10.84.24.45";
+        String macAddressB        = "00:11:22:33:44:56";
+        VmwareVirtualMachineInfo vmInfo = new
+                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                                         vrouterIpAddressB, macAddressB, 
+                                         VirtualMachinePowerState.poweredOff);
+        vmInfo.setIpAddress(ipAddressB);
+        SortedMap<String, VmwareVirtualMachineInfo> vmInfos = 
+                                    new TreeMap<String, VmwareVirtualMachineInfo>();
+        vmInfos.put(vmUuidB, vmInfo);
+
+        SortedMap<String, VmwareVirtualNetworkInfo> vnInfos =
+                new TreeMap<String, VmwareVirtualNetworkInfo>();
+
+        VmwareVirtualNetworkInfo vnInfo = new
+                VmwareVirtualNetworkInfo(vnName, isolatedVlanId, primaryVlanId, 
+                                    vmInfos, subnetAddr, subnetMask, gatewayAddr, 
+                                    ipPoolEnabled, range, externalIpam);
+        vnInfos.put(vnUuid, vnInfo);
+        when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnInfos);
+
+        //Sync virtual-networks between Vnc & VCenter
+        _vcenterMonitorTask.syncVirtualNetworks();
+
+        // TestVN-B should be created on api-server since it's present on VCenter
+        VirtualNetwork vn =(VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
+        assertNotNull(vn);
+
+        // MN-B should be created on api-server since it's present on VCenter
+        VirtualMachine vmB =(VirtualMachine) _api.findById(VirtualMachine.class, vmUuidB);
+        assertNotNull(vmB);
+
+        List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
+                vmB.getVirtualMachineInterfaceBackRefs();
+        assertNotNull(vmInterfaceRefs);
+        assertEquals(1, vmInterfaceRefs.size());
+
+        String vmInterfaceUuid = vmInterfaceRefs.get(0).getUuid();
+        VirtualMachineInterface vmInterface = (VirtualMachineInterface)
+                                  _api.findById(VirtualMachineInterface.class, 
+                                                vmInterfaceUuid);
+        assertNotNull(vmInterface);
+
+        // Check that instance-ip is null
+        List<ObjectReference<ApiPropertyBase>> instanceIpRefs = 
+                vmInterface.getInstanceIpBackRefs();
+        assertNull(instanceIpRefs);
+
+    }
+
+    //  VNC     : 0 VN
+    //  VCENTER : 1 VN (TestVN-B)  & VM (VM-B) : VmPoweredOn
+    //  After virtual-network sync, Vnc should have 1 VN (TestVN-B) & VM (VM-B).
+    @Test
+    public void TestSyncVirtualNetworksTC5() throws Exception {
+        String vnUuid         = UUID.randomUUID().toString();
+        String vnName         = "TestVN-TC5";
+        String subnetAddr     = "192.168.2.0";
+        String subnetMask     = "255.255.255.0";
+        String gatewayAddr    = "192.168.2.1";
+        short primaryVlanId   = 200;
+        short isolatedVlanId  = 201;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.2.2#230";
+        boolean externalIpam  = true;
+
+        String vmUuidB            = UUID.randomUUID().toString();
+        String vmNameB            = "VM-B-TC5";
+        String hostNameB          = "VM-B-HostName";
+        String ipAddressB          = "192.168.2.100";
+        String vrouterIpAddressB  = "10.84.24.45";
+        String macAddressB        = "00:11:22:33:44:56";
+        VmwareVirtualMachineInfo vmInfo = new
+                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                                         vrouterIpAddressB, macAddressB, 
+                                         VirtualMachinePowerState.poweredOn);
+        vmInfo.setIpAddress(ipAddressB);
+        SortedMap<String, VmwareVirtualMachineInfo> vmInfos = 
+                                    new TreeMap<String, VmwareVirtualMachineInfo>();
+        vmInfos.put(vmUuidB, vmInfo);
+
+        SortedMap<String, VmwareVirtualNetworkInfo> vnInfos =
+                new TreeMap<String, VmwareVirtualNetworkInfo>();
+
+        VmwareVirtualNetworkInfo vnInfo = new
+                VmwareVirtualNetworkInfo(vnName, isolatedVlanId, primaryVlanId, 
+                                    vmInfos, subnetAddr, subnetMask, gatewayAddr, 
+                                    ipPoolEnabled, range, externalIpam);
+        vnInfos.put(vnUuid, vnInfo);
+        when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnInfos);
+
+        //Sync virtual-networks between Vnc & VCenter
+        _vcenterMonitorTask.syncVirtualNetworks();
+
+        // TestVN-B should be created on api-server since it's present on VCenter
+        VirtualNetwork vn =(VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
+        assertNotNull(vn);
+
+        // MN-B should be created on api-server since it's present on VCenter
+        VirtualMachine vmB =(VirtualMachine) _api.findById(VirtualMachine.class, vmUuidB);
+        assertNotNull(vmB);
+
+        List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
+                vmB.getVirtualMachineInterfaceBackRefs();
+        assertNotNull(vmInterfaceRefs);
+        assertEquals(1, vmInterfaceRefs.size());
+
+        String vmInterfaceUuid = vmInterfaceRefs.get(0).getUuid();
+        VirtualMachineInterface vmInterface = (VirtualMachineInterface)
+                                  _api.findById(VirtualMachineInterface.class, 
+                                                vmInterfaceUuid);
+        assertNotNull(vmInterface);
+
+        // Check that instance-ip is null
+        List<ObjectReference<ApiPropertyBase>> instanceIpRefs = 
+                vmInterface.getInstanceIpBackRefs();
+        assertNotNull(instanceIpRefs);
+
+    }
     //  prevVCenterINfo : 1 VN & 1 VM (VM-A)
     //  currVCenterINfo : 1 VN 
     //  Afert Virtual-machine sync, Vnc shouldn't have any VMs.
