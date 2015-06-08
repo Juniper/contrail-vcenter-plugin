@@ -56,6 +56,7 @@ import com.vmware.vim25.mo.ServiceInstance;
 import com.vmware.vim25.mo.VirtualMachine;
 import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
 
+
 public class VCenterDB {
     private static final Logger s_logger =
             Logger.getLogger(VCenterDB.class);
@@ -76,7 +77,8 @@ public class VCenterDB {
     private VmwareDistributedVirtualSwitch contrailDVS;
     private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
-    private HashMap<String, String> esxiToVRouterIpMap;
+    public HashMap<String, String> esxiToVRouterIpMap;
+    public  static HashMap<String, Boolean> vRouterActiveMap;
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
@@ -91,6 +93,7 @@ public class VCenterDB {
         s_logger.info("VCenterDB(" + contrailDvsName + ", " + ipFabricPgName + ")");
         // Create ESXi host to vRouerVM Ip address map
         esxiToVRouterIpMap = new HashMap<String, String>();
+        vRouterActiveMap = new HashMap<String, Boolean>();
     }
 
     public boolean Initialize() {
@@ -268,6 +271,7 @@ public class VCenterDB {
                 String[] part = nextLine.split(":");
                 s_logger.info(" ESXi IP Address:" + part[0] + " vRouter-IP-Address: " + part[1]);
                 esxiToVRouterIpMap.put(part[0], part[1]);
+                vRouterActiveMap.put(part[1], true);
             }
         } catch (FileNotFoundException e) {
             s_logger.error("file not found :" + esxiToVRouterIpMapFile);

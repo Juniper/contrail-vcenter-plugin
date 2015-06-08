@@ -550,7 +550,7 @@ class VCenterMonitorTask implements Runnable {
 
         // 2 second timeout. run KeepAlive with vRouer Agent.
         try {
-            vncDB.vrouterAgentPeriodicConnectionCheck();
+            vncDB.vrouterAgentPeriodicConnectionCheck(vcenterDB.vRouterActiveMap);
         } catch (Exception e) {
 
             String stackTrace = Throwables.getStackTraceAsString(e);
