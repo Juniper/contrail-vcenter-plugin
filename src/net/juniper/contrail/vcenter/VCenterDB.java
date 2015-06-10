@@ -76,7 +76,8 @@ public class VCenterDB {
     private VmwareDistributedVirtualSwitch contrailDVS;
     private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
-    private HashMap<String, String> esxiToVRouterIpMap;
+    public HashMap<String, String> esxiToVRouterIpMap;
+    public  static HashMap<String, Boolean> vRouterActiveMap;
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
@@ -91,6 +92,7 @@ public class VCenterDB {
         s_logger.info("VCenterDB(" + contrailDvsName + ", " + ipFabricPgName + ")");
         // Create ESXi host to vRouerVM Ip address map
         esxiToVRouterIpMap = new HashMap<String, String>();
+        vRouterActiveMap = new HashMap<String, Boolean>();
     }
 
     public boolean Initialize() {
@@ -110,17 +112,27 @@ public class VCenterDB {
                     s_logger.error("Failed to connect to vCenter Server : " + "("
                                     + vcenterUrl + "," + vcenterUsername + "," 
                                     + vcenterPassword + ")");
-                    return false;
+                    connectRetry();
                 }
             } catch (MalformedURLException e) {
                     return false;
             } catch (RemoteException e) {
-                    return false;
+               s_logger.error("Remote exception while connecting to vcenter" + e);
+                e.printStackTrace();
+                return connectRetry();
+            } catch (Exception e) {
+                s_logger.error("Error while connecting to vcenter" + e);
+                e.printStackTrace();
+                return false;
             }
         }
         s_logger.info("Connected to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + "," 
                                 + vcenterPassword + ")");
+        return true;
+    }
+
+    public boolean Initialize_data() {
 
         if (rootFolder == null) {
             rootFolder = serviceInstance.getRootFolder();
@@ -197,6 +209,57 @@ public class VCenterDB {
         return true;
     }
 
+    public boolean connectRetry() {
+        Cleanup();
+        while(retryServiceInstance() == false) {
+            try{
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                return false;
+            }
+
+        }
+        s_logger.info("Re-Connect successful!");
+        Initialize_data();
+        return true;
+    }
+
+    public boolean retryServiceInstance() {
+        try {
+                s_logger.info("Trying to reconnect to vcenter!!");
+                serviceInstance = new ServiceInstance(new URL(vcenterUrl),
+                                            vcenterUsername, vcenterPassword, true);
+                if (serviceInstance == null) {
+                    s_logger.error("Failed to connect to vCenter Server : " + "("
+                                    + vcenterUrl + "," + vcenterUsername + ","
+                                    + vcenterPassword + ")" + "Retrying after 5 secs");
+                    return false;
+                }
+                return true;
+        } catch (MalformedURLException e) {
+                s_logger.info("Re-Connect unsuccessful!");
+                return false;
+        } catch (RemoteException e) {
+                s_logger.info("Re-Connect unsuccessful!");
+                return false;
+        } catch (Exception e) {
+                s_logger.error("Error while connecting to vcenter" + e);
+                e.printStackTrace();
+                return false;
+        }
+    }
+
+    public void Cleanup() {
+        serviceInstance = null;
+        rootFolder = null;
+        inventoryNavigator = null;
+        ipPoolManager = null;
+        contrailDC = null;
+        contrailDVS = null;
+    }
+
+
     public boolean buildEsxiToVRouterIpMap() {
         try {
             File file = new File("/etc/contrail/ESXiToVRouterIp.map");
@@ -206,6 +269,7 @@ public class VCenterDB {
                 String[] part = nextLine.split(":");
                 s_logger.info(" ESXi IP Address:" + part[0] + " vRouter-IP-Address: " + part[1]);
                 esxiToVRouterIpMap.put(part[0], part[1]);
+                vRouterActiveMap.put(part[1], true);
             }
         } catch (FileNotFoundException e) {
             s_logger.error("file not found :" + esxiToVRouterIpMapFile);
