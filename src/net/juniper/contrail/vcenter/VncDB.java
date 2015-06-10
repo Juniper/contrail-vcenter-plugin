@@ -347,7 +347,7 @@ public class VncDB {
             if (vrouterApi == null) {
                 vrouterApi = new ContrailVRouterApi(
                         InetAddress.getByName(vrouterIpAddress), 
-                        vrouterApiPort, false);
+                        vrouterApiPort, false, 1000);
                 vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
             vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
@@ -488,7 +488,7 @@ public class VncDB {
             if (vrouterApi == null) {
                 vrouterApi = new ContrailVRouterApi(
                         InetAddress.getByName(vrouterIpAddress), 
-                        vrouterApiPort, false);
+                        vrouterApiPort, false, 1000);
                 vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
             vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
@@ -615,7 +615,7 @@ public class VncDB {
             if (vrouterApi == null) {
                    vrouterApi = new ContrailVRouterApi(
                          InetAddress.getByName(vrouterIpAddress), 
-                         vrouterApiPort, false);
+                         vrouterApiPort, false, 1000);
                    vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
             if (vmwareVmInfo.isPoweredOnState()) {
@@ -811,7 +811,7 @@ public class VncDB {
             if (vrouterApi == null) {
                    vrouterApi = new ContrailVRouterApi(
                          InetAddress.getByName(vrouterIpAddress),
-                         vrouterApiPort, false);
+                         vrouterApiPort, false, 1000);
                    vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
             boolean ret = vrouterApi.AddPort(UUID.fromString(vmInterface.getUuid()),
@@ -856,7 +856,7 @@ public class VncDB {
         if (vrouterApi == null) {
             vrouterApi = new ContrailVRouterApi(
                     InetAddress.getByName(vrouterIpAddress),
-                    vrouterApiPort, false);
+                    vrouterApiPort, false, 1000);
             vrouterApiMap.put(vrouterIpAddress, vrouterApi);
         }
         boolean ret = vrouterApi.DeletePort(UUID.fromString(vmInterfaceUuid));
@@ -937,6 +937,11 @@ public class VncDB {
             CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName,
                     vrouterIpAddr, hostName, isolatedVlanId, primaryVlanId,
                     externalIpam, vmInfo);
+            if ((vmInfo.isPoweredOnState() == true)
+                && (externalIpam == true)
+                && (vmInfo.getIpAddress() != null) ) {
+                CreateVMInterfaceInstanceIp(vnUuid, vmUuid, vmInfo);
+            }
         }
         s_logger.info("Create Virtual Network: Done");
     }
