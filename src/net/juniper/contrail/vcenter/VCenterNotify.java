@@ -58,6 +58,9 @@ import com.vmware.vim25.VmEmigratingEvent;
 import com.vmware.vim25.VmMigratedEvent; 
 import com.vmware.vim25.VmBeingMigratedEvent; 
 import com.vmware.vim25.VmBeingHotMigratedEvent; 
+import com.vmware.vim25.EnteredMaintenanceModeEvent;
+import com.vmware.vim25.ExitMaintenanceModeEvent;
+
 
 import com.google.common.base.Throwables;
 
@@ -114,7 +117,7 @@ public class VCenterNotify implements Runnable
         // Add as many events you want to track relating to vm.
         // Refer to API Data Object vmEvent and see the extends class list for
         // elaborate list of vmEvents
-        eventFilter.setType(new String[] { "VmPoweredOnEvent", "VmPoweredOffEvent", 
+        eventFilter.setType(new String[] {"EnteredMaintenanceModeEvent", "ExitMaintenanceModeEvent", "VmPoweredOnEvent", "VmPoweredOffEvent", 
                                            "VmRenamedEvent", 
                                            "DVPortgroupCreatedEvent", "DVPortgroupDestroyedEvent", 
                                            "DVPortgroupReconfiguredEvent", "DVPortgroupRenamedEvent", 
@@ -229,7 +232,24 @@ public class VCenterNotify implements Runnable
                         s_logger.error(stackTrace); 
                         e.printStackTrace();
                     }
-
+                } else if (value instanceof EnteredMaintenanceModeEvent) {
+                    Event anEvent = (Event) value;
+                    String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
+                    if (vRouterIpAddress != null) {
+                        monitorTask.getVCenterDB().vRouterActiveMap.put(vRouterIpAddress, false);
+                    s_logger.info("\nEntering maintenance mode. Marking the host " + vRouterIpAddress +" inactive");
+                    } else {
+                        s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
+                    }
+                } else if (value instanceof ExitMaintenanceModeEvent) {
+                    Event anEvent = (Event) value;
+                    String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
+                    if (vRouterIpAddress != null) {
+                        monitorTask.getVCenterDB().vRouterActiveMap.put(vRouterIpAddress, true);
+                    s_logger.info("\nExit maintenance mode. Marking the host " + vRouterIpAddress +" active");
+                    } else {
+                        s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
+                    }
                 } else if (value instanceof VmPoweredOffEvent) {
                     printVmEvent(value);
                     try {
@@ -353,6 +373,16 @@ public class VCenterNotify implements Runnable
                 {
                 	e.printStackTrace();
                 }
+                if (monitorTask.VCenterNotifyForceRefresh) {
+                        this.initialize();
+                        this.createEventHistoryCollector();
+                        PropertyFilterSpec eventFilterSpec =
+                                   this.createEventFilterSpec();
+                        propColl = monitorTask.getVCenterDB().getServiceInstance().getPropertyCollector();
+                        propFilter = propColl.createFilter(eventFilterSpec, true);
+                        monitorTask.VCenterNotifyForceRefresh = false;
+               }
+
             } while (shouldRun);
         } catch (Exception e)
         {
