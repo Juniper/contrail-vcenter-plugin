@@ -103,7 +103,7 @@ public class VCenterMonitorTaskTest extends TestCase {
 
         // Setup VCenter object
         //ApiConnectorFactory.setImplementation(ApiConnectorMock.class);
-        _vcenterMonitorTask = new VCenterMonitorTask("https://10.20.30.40/sdk", "admin", "admin123",
+        _vcenterMonitorTask = new VCenterOnlyMonitorTask("https://10.20.30.40/sdk", "admin", "admin123",
                                    "unittest_dc", "unittest_dvs", null, 0, "unittest_fabric_pg");
 
         // Create mock for VCenterDB.

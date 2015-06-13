@@ -373,14 +373,14 @@ public class VCenterNotify implements Runnable
                 {
                 	e.printStackTrace();
                 }
-                if (monitorTask.VCenterNotifyForceRefresh) {
+                if (monitorTask.getVCenterNotifyForceRefresh()) {
                         this.initialize();
                         this.createEventHistoryCollector();
                         PropertyFilterSpec eventFilterSpec =
                                    this.createEventFilterSpec();
                         propColl = monitorTask.getVCenterDB().getServiceInstance().getPropertyCollector();
                         propFilter = propColl.createFilter(eventFilterSpec, true);
-                        monitorTask.VCenterNotifyForceRefresh = false;
+                        monitorTask.setVCenterNotifyForceRefresh(false);
                }
 
             } while (shouldRun);
