@@ -151,7 +151,6 @@ class VCenterMonitorTask implements Runnable {
 
         while (vmwareItem != null) {
             // Create
-            s_logger.info("Entering mistery loop .... DEADBEEF ");
             String vmwareVmUuid = vmwareItem.getKey();
             VmwareVirtualMachineInfo vmwareVmInfo = vmwareItem.getValue();
             vncDB.CreateVirtualMachine(vnUuid, vmwareVmUuid,
