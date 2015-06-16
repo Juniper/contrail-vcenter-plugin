@@ -307,6 +307,18 @@ public class VCenterDB {
 
     public IpPool getIpPool(
             DistributedVirtualPortgroup portGroup, IpPool[] ipPools) {
+
+        // If PG to IpPool association exists, check
+        NetworkSummary summary = portGroup.getSummary();
+        Integer poolid = summary.getIpPoolId();
+        if (poolid != null) {
+            for (IpPool pool : ipPools) {
+                if (pool.id == poolid.intValue()) {
+                  return pool;
+                }
+            }
+        }
+
         // Validate that the IpPool name matches PG names 
         String IpPoolForPG = "ip-pool-for-" + portGroup.getName();
         for (IpPool pool : ipPools) {
@@ -326,6 +338,10 @@ public class VCenterDB {
             if (device instanceof VirtualEthernetCard) {
                 VirtualDeviceBackingInfo backingInfo = 
                         device.getBacking();
+
+                if (backingInfo == null)
+                    continue;
+
                 // Is it backed by the distributed virtual port group? 
                 if (backingInfo instanceof 
                     VirtualEthernetCardDistributedVirtualPortBackingInfo) {
@@ -333,6 +349,10 @@ public class VCenterDB {
                     dvpBackingInfo = 
                     (VirtualEthernetCardDistributedVirtualPortBackingInfo)
                     backingInfo;
+                    if ((dvpBackingInfo.getPort() == null) ||
+                        (dvpBackingInfo.getPort().getPortgroupKey() == null))
+                        continue;
+
                     if (dvpBackingInfo.getPort().getPortgroupKey().
                             equals(portGroup.getKey())) {
                         String vmMac = ((VirtualEthernetCard) device).
