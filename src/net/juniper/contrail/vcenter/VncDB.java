@@ -793,7 +793,7 @@ public class VncDB {
         //    return;
         //}
 
-        String vmIpAddress = null;
+        String vmIpAddress = "0.0.0.0";
         if (instanceIp != null) {
             vmIpAddress = instanceIp.getAddress();
         }
