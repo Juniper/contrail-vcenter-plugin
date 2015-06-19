@@ -386,6 +386,8 @@ public class VCenterDB {
                     throws Exception {
         // Find if vRouter Ip Fabric mapping exists..
         String vRouterIpAddress = esxiToVRouterIpMap.get(hostName);
+        if (host.getRuntime().isInMaintenanceMode())
+            vRouterActiveMap.put(vRouterIpAddress, false);
         if (vRouterIpAddress != null) {
             return vRouterIpAddress;
         }
