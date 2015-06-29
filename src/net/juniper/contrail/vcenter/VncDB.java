@@ -915,9 +915,17 @@ public class VncDB {
         VnSubnetsType subnet = new VnSubnetsType();
         subnet.addIpamSubnets(new VnSubnetsType.IpamSubnetType(
                                    new SubnetType(addr_pair[0],
-                                       Integer.parseInt(addr_pair[1])), gatewayAddr,
-                                       null, UUID.randomUUID().toString(), true, null,
-                                       allocation_pools, false, null, null, vn.getName() + "-subnet"));
+                                       Integer.parseInt(addr_pair[1])),
+                                       gatewayAddr,
+                                       null,                          // dns_server_address
+                                       UUID.randomUUID().toString(),  // subnet_uuid
+                                       true,                          // enable_dhcp
+                                       null,                          // dns_nameservers
+                                       allocation_pools,
+                                       true,                          // addr_from_start
+                                       null,                          // dhcp_options_list
+                                       null,                          // host_routes
+                                       vn.getName() + "-subnet"));
 
         vn.setNetworkIpam(vCenterIpam, subnet);
         apiConnector.create(vn); 
