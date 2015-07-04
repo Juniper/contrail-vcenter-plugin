@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
 
+import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim25.ArrayOfEvent;
 import com.vmware.vim25.Event;
 import com.vmware.vim25.EventFilterSpec;
@@ -78,6 +79,7 @@ public class VCenterNotify implements Runnable
     private static VCenterMonitorTask monitorTask = null;
 
     private Folder _rootFolder;
+    private Datacenter _datacenter;
 
     // EventManager and EventHistoryCollector References
     private EventManager _eventManager;
@@ -99,6 +101,7 @@ public class VCenterNotify implements Runnable
     {
         _eventManager = monitorTask.getVCenterDB().getServiceInstance().getEventManager();
         _rootFolder = monitorTask.getVCenterDB().getServiceInstance().getRootFolder();
+        _datacenter = monitorTask.getVCenterDB().getDatacenter();
     }
 
     private void createEventHistoryCollector() throws Exception
@@ -106,7 +109,7 @@ public class VCenterNotify implements Runnable
         // Create an Entity Event Filter Spec to
         // specify the MoRef of the VM to be get events filtered for
         EventFilterSpecByEntity entitySpec = new EventFilterSpecByEntity();
-        entitySpec.setEntity(_rootFolder.getMOR());
+        entitySpec.setEntity(_datacenter.getMOR());
         entitySpec.setRecursion(EventFilterSpecRecursionOption.children);
 
         // set the entity spec in the EventFilter
