@@ -57,6 +57,7 @@ import net.juniper.contrail.api.types.Project;
 import net.juniper.contrail.api.types.IdPermsType;
 
 import com.vmware.vim25.VirtualMachinePowerState;
+import com.vmware.vim25.ManagedObjectReference;
 
 @RunWith(JUnit4.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -162,9 +163,12 @@ public class VncDBTest extends TestCase {
         String vmName            = "VMC";
         String vrouterIpAddress  = null; //"10.84.24.45";
         String hostName          = "10.20.30.40";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         
         VmwareVirtualMachineInfo vmwareVmInfo = new 
-                                        VmwareVirtualMachineInfo(vmName, hostName,
+                                        VmwareVirtualMachineInfo(vmName, hostName, hmor,
                                                     vrouterIpAddress, macAddress,
                                                     VirtualMachinePowerState.poweredOff);
         vncDB.CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName, 
@@ -294,9 +298,12 @@ public class VncDBTest extends TestCase {
         String vmName            = "VM2";
         String vrouterIpAddress  = null; //"10.84.24.46";
         String hostName          = "hostName2";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
 
         VmwareVirtualMachineInfo vmwareVmInfo = new 
-                                        VmwareVirtualMachineInfo(vmName, hostName,
+                                        VmwareVirtualMachineInfo(vmName, hostName, hmor,
                                                     vrouterIpAddress, macAddress,
                                                     VirtualMachinePowerState.poweredOff);
         vncDB.CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName, 
@@ -432,9 +439,12 @@ public class VncDBTest extends TestCase {
         String vmName            = "VMC";
         String vrouterIpAddress  = null; //"10.84.24.45";
         String hostName          = "10.20.30.40";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         
         VmwareVirtualMachineInfo vmwareVmInfo = new 
-                                        VmwareVirtualMachineInfo(vmName, hostName,
+                                        VmwareVirtualMachineInfo(vmName, hostName, hmor,
                                                     vrouterIpAddress, macAddress,
                                                     VirtualMachinePowerState.poweredOff);
         vncDB.CreateVirtualMachine(vnUuid, vmUuid, macAddress, vmName, 
@@ -559,9 +569,12 @@ public class VncDBTest extends TestCase {
         String vmName            = "VM-C";
         String vrouterIpAddress  = null;
         String hostName          = "10.20.30.40";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         
         VmwareVirtualMachineInfo vmwareVmInfo = new VmwareVirtualMachineInfo(
-                                                    vmName, hostName,
+                                                    vmName, hostName, hmor,
                                                     vrouterIpAddress, macAddress,
                                                     VirtualMachinePowerState.poweredOff);
         vmMapInfos.put(vmUuid, vmwareVmInfo);
