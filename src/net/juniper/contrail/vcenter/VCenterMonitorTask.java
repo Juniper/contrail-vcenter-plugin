@@ -30,6 +30,7 @@ class VCenterMonitorTask implements Runnable {
     private boolean AddPortSyncAtPluginStart = true;
     private boolean VncDBInitCompelete = false;
     private boolean VcenterDBInitCompelete = false;
+    public boolean VCenterNotifyForceRefresh = false;
     private static short iteration = 0;
     
     public VCenterMonitorTask(String vcenterUrl, String vcenterUsername,
@@ -46,7 +47,7 @@ class VCenterMonitorTask implements Runnable {
         if (vncDB.Initialize() == true) {
             VncDBInitCompelete = true;
         }
-        if (vcenterDB.Initialize() == true) {
+        if (vcenterDB.Initialize() == true && vcenterDB.Initialize_data() == true) {
             VcenterDBInitCompelete = true;
         }
     }
@@ -502,6 +503,14 @@ class VCenterMonitorTask implements Runnable {
     @Override
     public void run() {
 
+        //check if you are the master from time to time
+        //sometimes things dont go as planned
+        if (VCenterMonitor.zk_ms.isLeader() == false) {
+            s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
+            System.exit(0);
+        }
+
+
         // Don't perform one time or periodic sync if
         // Vnc AND Vcenter DB init aren't complete or successful.
         if ( (VncDBInitCompelete == false) || (VcenterDBInitCompelete == false)) {
@@ -512,7 +521,7 @@ class VCenterMonitorTask implements Runnable {
             }
 
             if (VcenterDBInitCompelete == false) {
-                if (vcenterDB.Initialize() == true) {
+                if (vcenterDB.Initialize() == true && vcenterDB.Initialize_data() == true) {
                     VcenterDBInitCompelete = true;
                 }
             }
@@ -533,7 +542,16 @@ class VCenterMonitorTask implements Runnable {
                 s_logger.error("Error while syncVirtualNetworks: " + e); 
                 s_logger.error(stackTrace); 
                 e.printStackTrace();
-                return;
+                if (stackTrace.contains("java.net.ConnectException: Connection refused"))       {
+                        //Remote Exception. Some issue with connection to vcenter-server
+                        // Exception on accessing remote objects.
+                        // Try to reinitialize the VCenter connection.
+                        //For some reasom RemoteException not thrown
+                        s_logger.error("Problem with connection to vCenter-Server");
+                        s_logger.error("Restart connection and reSync");
+                        vcenterDB.connectRetry();
+                        this.VCenterNotifyForceRefresh = true;
+                }
             }
             setAddPortSyncAtPluginStart(false);
             return;
@@ -558,6 +576,15 @@ class VCenterMonitorTask implements Runnable {
                 s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
                 s_logger.error(stackTrace); 
                 e.printStackTrace();
+                if (stackTrace.contains("java.net.ConnectException: Connection refused"))       {
+                    //Remote Exception. Some issue with connection to vcenter-server
+                    // Exception on accessing remote objects.
+                    // Try to reinitialize the VCenter connection.
+                    //For some reasom RemoteException not thrown
+                    s_logger.error("Problem with connection to vCenter-Server");
+                    s_logger.error("Restart connection and reSync");
+                    vcenterDB.connectRetry();
+                }
             }
         } 
 

@@ -229,7 +229,24 @@ public class VCenterNotify implements Runnable
                         s_logger.error(stackTrace); 
                         e.printStackTrace();
                     }
-
+                } else if (value instanceof EnteredMaintenanceModeEvent) {
+                    Event anEvent = (Event) value;
+                    String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
+                    if (vRouterIpAddress != null) {
+                        monitorTask.getVCenterDB().vRouterActiveMap.put(vRouterIpAddress, false);
+                    s_logger.info("\nEntering maintenance mode. Marking the host " + vRouterIpAddress +" inactive");
+                    } else {
+                        s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
+                    }
+                } else if (value instanceof ExitMaintenanceModeEvent) {
+                    Event anEvent = (Event) value;
+                    String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
+                    if (vRouterIpAddress != null) {
+                        monitorTask.getVCenterDB().vRouterActiveMap.put(vRouterIpAddress, true);
+                    s_logger.info("\nExit maintenance mode. Marking the host " + vRouterIpAddress +" active");
+                    } else {
+                        s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
+                    }
                 } else if (value instanceof VmPoweredOffEvent) {
                     printVmEvent(value);
                     try {
