@@ -369,6 +369,23 @@ public class VCenterNotify implements Runnable
                 } catch (Exception e)
                 {
                 	e.printStackTrace();
+                        System.out.println("Exception in ServiceInstance. Refreshing the serviceinstance and starting new");
+                        do {
+                            System.out.println("Waiting for reconnect...");
+                            Thread.sleep(2000);
+                            if (monitorTask.VCenterNotifyForceRefresh) {
+                                this.initialize();
+                                this.createEventHistoryCollector();
+                                PropertyFilterSpec eventFilterSpec =
+                                   this.createEventFilterSpec();
+                                propColl = monitorTask.getVCenterDB().getServiceInstance().getPropertyCollector();
+                                propFilter = propColl.createFilter(eventFilterSpec, true);
+                                monitorTask.VCenterNotifyForceRefresh = false;
+                                version = "";
+                                break;
+                            }
+                        } while (true);
+                        continue;
                 }
             } while (shouldRun);
         } catch (Exception e)
