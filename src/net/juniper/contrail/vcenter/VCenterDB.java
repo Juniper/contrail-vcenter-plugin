@@ -544,13 +544,13 @@ public class VCenterDB {
         GuestInfo guestInfo = vm.getGuest();
         String vmName = vm.getName();
         if (guestInfo == null) {
-            s_logger.debug("dvPg: " + dvPgName + " vm:" + vm.getName()
+            s_logger.debug("dvPg: " + dvPgName + " vm:" + vmName
                     + " GuestInfo - VMware Tools " + " NOT installed");
             return null;
         }
         GuestNicInfo[] nicInfos = guestInfo.getNet();
         if (nicInfos == null) {
-            s_logger.debug("dvPg: " + dvPgName + " vm:" + vm.getName()
+            s_logger.debug("dvPg: " + dvPgName + " vm:" + vmName
                     + " GuestNicInfo - VMware Tools " + " NOT installed");
             return null;
         }
@@ -861,7 +861,8 @@ public class VCenterDB {
         SortedMap<String, VmwareVirtualNetworkInfo> vnInfos =
                 new TreeMap<String, VmwareVirtualNetworkInfo>();
         for (DistributedVirtualPortgroup dvPg : dvPgs) {
-            s_logger.debug("dvPg: " + dvPg.getName());
+            String vnName = dvPg.getName();
+            s_logger.debug("dvPg: " + vnName);
             // Extract dvPg configuration info and port setting
             DVPortgroupConfigInfo configInfo = dvPg.getConfig();
             DVPortSetting portSetting = configInfo.getDefaultPortConfig();
@@ -872,12 +873,11 @@ public class VCenterDB {
             // Find associated IP Pool
             IpPool ipPool = getIpPool(dvPg, ipPools);
             if (ipPool == null) {
-                s_logger.debug("no ip pool is associated to dvPg: " + dvPg.getName());
+                s_logger.debug("no ip pool is associated to dvPg: " + vnName);
                 continue;
             }
             byte[] vnKeyBytes = dvPg.getKey().getBytes();
             String vnUuid = UUID.nameUUIDFromBytes(vnKeyBytes).toString();
-            String vnName = dvPg.getName();
             s_logger.debug("VN name: " + vnName);
             IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
 
@@ -885,7 +885,7 @@ public class VCenterDB {
             HashMap<String, Short> vlan = getVlanInfo(dvPg, configInfo, portSetting,
                                                       pvlanMapArray);
             if (vlan == null) {
-                s_logger.debug("no pvlan/vlan is associated to dvPg: " + dvPg.getName());
+                s_logger.debug("no pvlan/vlan is associated to dvPg: " + vnName);
                 return null;
             }
             short primaryVlanId   = vlan.get("primary-vlan");
@@ -911,6 +911,30 @@ public class VCenterDB {
         return vnInfos;
     }
 
+    public IpPool getIpPool(DistributedVirtualPortgroup portGroup,
+                            String dvPgName,
+                            IpPool[] ipPools,
+                            Integer poolid) {
+
+        // If PG to IpPool association exists, check
+        if (poolid != null) {
+            for (IpPool pool : ipPools) {
+                if (pool.id == poolid.intValue()) {
+                  return pool;
+                }
+            }
+        }
+
+        // Validate that the IpPool name matches PG names 
+        String IpPoolForPG = "ip-pool-for-" + dvPgName;
+        for (IpPool pool : ipPools) {
+            if (IpPoolForPG.equals(pool.getName())) {
+                return pool;
+            }
+        }
+        return null;
+    }
+ 
     private String getVirtualMachineIpAddress(GuestNicInfo[] nicInfos, String dvPgName, String vmName)
                     throws Exception {
 
@@ -963,11 +987,10 @@ public class VCenterDB {
                                        VmwareVirtualMachineInfo prevVmwareVmInfo,
                                        Hashtable pTable,
                                        DistributedVirtualPortgroup portGroup,
-                                       boolean externalIpam)
-                                       throws Exception {
+                                       String dvPgName,
+                                       boolean externalIpam) throws Exception {
         // Name
         String vmName = (String) pTable.get("name");
-        String dvPgName = portGroup.getName();
 
         // Ignore virtual machine?
         if (doIgnoreVirtualMachine(vmName)) {
@@ -1042,9 +1065,9 @@ public class VCenterDB {
     private SortedMap<String, VmwareVirtualMachineInfo> 
         populateVirtualMachineInfoOptimized(
                 DistributedVirtualPortgroup portGroup,
+                String dvPgName,
                 SortedMap<String, VmwareVirtualMachineInfo> prevVmwareVmInfos,
                 boolean externalIpam) throws Exception {
-        String dvPgName = portGroup.getName();
 
         // Get list of virtual machines connected to the port group
         VirtualMachine[] vms = portGroup.getVms();
@@ -1088,7 +1111,9 @@ public class VCenterDB {
             VmwareVirtualMachineInfo vmInfo = fillVmwareVirtualMachineInfo(vms[i],
                                                                            prevVmwareVmInfo,
                                                                            pTables[i],
-                                                                           portGroup,externalIpam);
+                                                                           portGroup,
+                                                                           dvPgName,
+                                                                           externalIpam);
             if (vmInfo == null) {
                 continue;
             }
@@ -1153,10 +1178,20 @@ public class VCenterDB {
             return null;
         }
 
+        Hashtable[] pTables = PropertyCollectorUtil.retrieveProperties(dvPgs,
+                                "DistributedVirtualPortgroup",
+				new String[] {"name",
+				"config.key",
+				//"config.defaultPortConfig.vlan",
+				"config.vendorSpecificConfig",
+				"summary.ipPoolId",
+				"summary.ipPoolName",
+				});
+
         // Populate VMware Virtual Network Info
         SortedMap<String, VmwareVirtualNetworkInfo> vnInfos =
                 new TreeMap<String, VmwareVirtualNetworkInfo>();
-        for (DistributedVirtualPortgroup dvPg : dvPgs) {
+        for (int i=0; i < dvPgs.length; i++) {
             short primaryVlanId;
             short isolatedVlanId;
             String subnetAddress;
@@ -1168,24 +1203,15 @@ public class VCenterDB {
             VmwareVirtualNetworkInfo prevVmwareVNInfo =null;
             SortedMap<String, VmwareVirtualMachineInfo> prevVmwareVmInfos = null;
 
-            String vnName = dvPg.getName();
+            String vnName = (String) pTables[i].get("name");
             s_logger.debug("dvPg: " + vnName);
 
-            byte[] vnKeyBytes = dvPg.getKey().getBytes();
+            String key = (String) pTables[i].get("config.key");
+            byte[] vnKeyBytes = key.getBytes();
             String vnUuid = UUID.nameUUIDFromBytes(vnKeyBytes).toString();
 
-            // Check if the network was created in the previous run of periodic
-            if (prevVmwareVNInfos != null) {
-                prevVmwareVNInfo = prevVmwareVNInfos.get(vnUuid);
-                s_logger.debug("VN name: " + vnName);
-            }
-
-            if (prevVmwareVNInfo != null) {
-                prevVmwareVmInfos = prevVmwareVNInfo.getVmInfo();
-            }
-
             // Extract dvPg configuration info and port setting
-            DVPortgroupConfigInfo configInfo = dvPg.getConfig();
+            DVPortgroupConfigInfo configInfo = dvPgs[i].getConfig();
             DVPortSetting portSetting = configInfo.getDefaultPortConfig();
 
             // Ignore network?
@@ -1193,20 +1219,30 @@ public class VCenterDB {
                 continue;
             }
 
+            // Check if the network was created in the previous run of periodic
+            if (prevVmwareVNInfos != null) {
+                prevVmwareVNInfo = prevVmwareVNInfos.get(vnUuid);
+            }
+
+            if (prevVmwareVNInfo != null) {
+                prevVmwareVmInfos = prevVmwareVNInfo.getVmInfo();
+            }
+
             // Find associated IP Pool
-            IpPool ipPool = getIpPool(dvPg, ipPools);
+            Integer poolId     = (Integer) pTables[i].get("summary.ipPoolId");
+            IpPool ipPool = getIpPool(dvPgs[i], vnName, ipPools, poolId);
             if (ipPool == null) {
-                s_logger.debug("no ip pool is associated to dvPg: " + dvPg.getName());
+                s_logger.debug("no ip pool is associated to dvPg: " + vnName);
                 continue;
             }
 
             IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
 
             // get pvlan/vlan info for the portgroup.
-            HashMap<String, Short> vlan = getVlanInfo(dvPg, configInfo, portSetting,
+            HashMap<String, Short> vlan = getVlanInfo(dvPgs[i], configInfo, portSetting,
                                                       pvlanMapArray);
             if (vlan == null) {
-                s_logger.debug("no pvlan/vlan is associated to dvPg: " + dvPg.getName());
+                s_logger.debug("no pvlan/vlan is associated to dvPg: " + vnName);
                 return null;
             }
             s_logger.debug("VN name: " + vnName);
@@ -1226,7 +1262,7 @@ public class VCenterDB {
 
             // Populate associated VMs
             SortedMap<String, VmwareVirtualMachineInfo> vmInfo =
-                    populateVirtualMachineInfoOptimized(dvPg, prevVmwareVmInfos, externalIpam);
+                    populateVirtualMachineInfoOptimized(dvPgs[i], vnName, prevVmwareVmInfos, externalIpam);
 
             VmwareVirtualNetworkInfo vnInfo = new
                     VmwareVirtualNetworkInfo(vnName, isolatedVlanId, 
