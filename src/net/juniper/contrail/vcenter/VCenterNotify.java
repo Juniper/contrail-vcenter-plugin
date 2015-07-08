@@ -58,9 +58,6 @@ import com.vmware.vim25.VmEmigratingEvent;
 import com.vmware.vim25.VmMigratedEvent; 
 import com.vmware.vim25.VmBeingMigratedEvent; 
 import com.vmware.vim25.VmBeingHotMigratedEvent; 
-import com.vmware.vim25.HostConnectedEvent;
-import com.vmware.vim25.HostConnectionLostEvent;
-
 
 import com.google.common.base.Throwables;
 
@@ -117,7 +114,7 @@ public class VCenterNotify implements Runnable
         // Add as many events you want to track relating to vm.
         // Refer to API Data Object vmEvent and see the extends class list for
         // elaborate list of vmEvents
-        eventFilter.setType(new String[] { "HostConnectionLostEvent", "HostConnectedEvent", "EnteredMaintenanceModeEvent", "ExitMaintenanceModeEvent","VmPoweredOnEvent", "VmPoweredOffEvent", 
+        eventFilter.setType(new String[] { "VmPoweredOnEvent", "VmPoweredOffEvent", 
                                            "VmRenamedEvent", 
                                            "DVPortgroupCreatedEvent", "DVPortgroupDestroyedEvent", 
                                            "DVPortgroupReconfiguredEvent", "DVPortgroupRenamedEvent", 
@@ -232,7 +229,7 @@ public class VCenterNotify implements Runnable
                         s_logger.error(stackTrace); 
                         e.printStackTrace();
                     }
-                } else if ((value instanceof EnteredMaintenanceModeEvent) || (value instanceof HostConnectionLostEvent)) {
+                } else if (value instanceof EnteredMaintenanceModeEvent) {
                     Event anEvent = (Event) value;
                     String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
@@ -241,7 +238,7 @@ public class VCenterNotify implements Runnable
                     } else {
                         s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
                     }
-                } else if ((value instanceof ExitMaintenanceModeEvent) || (value instanceof HostConnectedEvent)) {
+                } else if (value instanceof ExitMaintenanceModeEvent) {
                     Event anEvent = (Event) value;
                     String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
