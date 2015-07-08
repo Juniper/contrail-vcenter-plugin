@@ -1091,9 +1091,6 @@ public class VncDB {
     // KeepAlive with all active vRouter Agent Connections.
     public void vrouterAgentPeriodicConnectionCheck() {
         for (String vrouterIpAddress : vrouterApiMap.keySet()) {
-            if (vRouterActiveMap.get(vrouterIpAddress) == Boolean.FALSE) {
-                continue;
-            }
             ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
             // run Keep Alive with vRouter Agent.
             if (vrouterApi != null) {

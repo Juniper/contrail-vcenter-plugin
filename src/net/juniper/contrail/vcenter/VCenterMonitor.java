@@ -74,7 +74,6 @@ public class VCenterMonitor {
     private static VCenterDB     _vcenterDB;
     private static VncDB         _vncDB;
     private static VCenterNotify _eventMonitor;
-    static MasterSelection zk_ms;
 
     private static boolean readVcenterPluginConfigFile() {
 
@@ -125,6 +124,7 @@ public class VCenterMonitor {
                        + _vcenterUsername + ", api server: " + _apiServerAddress);
 
         // Zookeeper mastership logic
+        MasterSelection zk_ms = null;
 	zk_ms = new MasterSelection(_zookeeperAddrPort, _zookeeperLatchPath, _zookeeperId);
         s_logger.info("Waiting for zookeeper Mastership .. ");
 	zk_ms.waitForLeadership();
@@ -136,7 +136,7 @@ public class VCenterMonitor {
                               _vcenterDcName, _vcenterDvsName,
                               _apiServerAddress, _apiServerPort, _vcenterIpFabricPg);
        
-        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 4,
+        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 2,
                 TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));

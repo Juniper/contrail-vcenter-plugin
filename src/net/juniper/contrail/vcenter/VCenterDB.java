@@ -73,7 +73,6 @@ public class VCenterDB {
     private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
     private HashMap<String, String> esxiToVRouterIpMap;
-    public  static HashMap<String, Boolean> vRouterActiveMap;
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
@@ -103,27 +102,17 @@ public class VCenterDB {
                     s_logger.error("Failed to connect to vCenter Server : " + "("
                                     + vcenterUrl + "," + vcenterUsername + "," 
                                     + vcenterPassword + ")");
-                    connectRetry();
+                    return false;
                 }
             } catch (MalformedURLException e) {
                     return false;
             } catch (RemoteException e) {
-               s_logger.error("Remote exception while connecting to vcenter" + e);
-                e.printStackTrace();
-                return connectRetry();
-            } catch (Exception e) {
-                s_logger.error("Error while connecting to vcenter" + e);
-                e.printStackTrace();
-                return false;
+                    return false;
             }
         }
         s_logger.info("Connected to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + "," 
                                 + vcenterPassword + ")");
-        return true;
-    }
-
-    public boolean Initialize_data() {
 
         if (rootFolder == null) {
             rootFolder = serviceInstance.getRootFolder();
@@ -198,56 +187,6 @@ public class VCenterDB {
 
         // All well on vCenter front.
         return true;
-    }
-
-    public boolean connectRetry() {
-        Cleanup();
-        while(retryServiceInstance() == false) {
-            try{
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                return false;
-            }
-
-        }
-        s_logger.info("Re-Connect successful!");
-        Initialize_data();
-        return true;
-    }
-
-    public boolean retryServiceInstance() {
-        try {
-                s_logger.info("Trying to reconnect to vcenter!!");
-                serviceInstance = new ServiceInstance(new URL(vcenterUrl),
-                                            vcenterUsername, vcenterPassword, true);
-                if (serviceInstance == null) {
-                    s_logger.error("Failed to connect to vCenter Server : " + "("
-                                    + vcenterUrl + "," + vcenterUsername + ","
-                                    + vcenterPassword + ")" + "Retrying after 5 secs");
-                    return false;
-                }
-                return true;
-        } catch (MalformedURLException e) {
-                s_logger.info("Re-Connect unsuccessful!");
-                return false;
-        } catch (RemoteException e) {
-                s_logger.info("Re-Connect unsuccessful!");
-                return false;
-        } catch (Exception e) {
-                s_logger.error("Error while connecting to vcenter" + e);
-                e.printStackTrace();
-                return false;
-        }
-    }
-
-    public void Cleanup() {
-        serviceInstance = null;
-        rootFolder = null;
-        inventoryNavigator = null;
-        ipPoolManager = null;
-        contrailDC = null;
-        contrailDVS = null;
     }
 
     public void setPrevVmwareVNInfos(
@@ -346,8 +285,6 @@ public class VCenterDB {
                     throws Exception {
         // Find if vRouter Ip Fabric mapping exists..
         String vRouterIpAddress = esxiToVRouterIpMap.get(hostName);
-        if (host.getRuntime().isInMaintenanceMode())
-            vRouterActiveMap.put(vRouterIpAddress, false);
         if (vRouterIpAddress != null) {
             return vRouterIpAddress;
         }
