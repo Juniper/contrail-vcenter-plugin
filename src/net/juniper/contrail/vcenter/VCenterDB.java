@@ -726,7 +726,7 @@ public class VCenterDB {
     }
 
     public HashMap<String, Short> getVlanInfo(DistributedVirtualPortgroup dvPg,
-        DVPortgroupConfigInfo configInfo, DVPortSetting portSetting,
+        DVPortSetting portSetting,
         VMwareDVSPvlanMapEntry[] pvlanMapArray) throws Exception {
 
         // Create HashMap which will store private vlan info
@@ -798,7 +798,26 @@ public class VCenterDB {
         return false;
     }
 
+    public boolean getExternalIpamInfo(DistributedVirtualSwitchKeyedOpaqueBlob[] opaqueBlobs, String vnName) throws Exception {
 
+        if ((opaqueBlobs == null) || (opaqueBlobs.length == 0)) {
+            return false;
+        }
+
+        for (DistributedVirtualSwitchKeyedOpaqueBlob opaqueBlob : opaqueBlobs) {
+          s_logger.debug("pg (" + vnName + ") " + "opaqueBlob: key ("
+                       + opaqueBlob.getKey() + " )  opaqueData ("
+                       + opaqueBlob.getOpaqueData() + ")");
+          if (opaqueBlob.getKey().equals("external_ipam")) {
+              if (opaqueBlob.getOpaqueData().equals("true")) {
+                return true;
+              } else {
+                return false;
+              }
+          }
+        }
+        return false;
+    }
     public SortedMap<String, VmwareVirtualNetworkInfo> 
         populateVirtualNetworkInfo() throws Exception {
 
@@ -866,6 +885,7 @@ public class VCenterDB {
             // Extract dvPg configuration info and port setting
             DVPortgroupConfigInfo configInfo = dvPg.getConfig();
             DVPortSetting portSetting = configInfo.getDefaultPortConfig();
+
             // Ignore network?
             if (doIgnoreVirtualNetwork(portSetting)) {
                 continue;
@@ -882,8 +902,7 @@ public class VCenterDB {
             IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
 
             // get pvlan/vlan info for the portgroup.
-            HashMap<String, Short> vlan = getVlanInfo(dvPg, configInfo, portSetting,
-                                                      pvlanMapArray);
+            HashMap<String, Short> vlan = getVlanInfo(dvPg, portSetting, pvlanMapArray);
             if (vlan == null) {
                 s_logger.debug("no pvlan/vlan is associated to dvPg: " + vnName);
                 return null;
@@ -1182,7 +1201,7 @@ public class VCenterDB {
                                 "DistributedVirtualPortgroup",
 				new String[] {"name",
 				"config.key",
-				//"config.defaultPortConfig.vlan",
+				"config.defaultPortConfig",
 				"config.vendorSpecificConfig",
 				"summary.ipPoolId",
 				"summary.ipPoolName",
@@ -1211,8 +1230,7 @@ public class VCenterDB {
             String vnUuid = UUID.nameUUIDFromBytes(vnKeyBytes).toString();
 
             // Extract dvPg configuration info and port setting
-            DVPortgroupConfigInfo configInfo = dvPgs[i].getConfig();
-            DVPortSetting portSetting = configInfo.getDefaultPortConfig();
+            DVPortSetting portSetting = (DVPortSetting) pTables[i].get("config.defaultPortConfig");
 
             // Ignore network?
             if (doIgnoreVirtualNetwork(portSetting)) {
@@ -1239,8 +1257,7 @@ public class VCenterDB {
             IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
 
             // get pvlan/vlan info for the portgroup.
-            HashMap<String, Short> vlan = getVlanInfo(dvPgs[i], configInfo, portSetting,
-                                                      pvlanMapArray);
+            HashMap<String, Short> vlan = getVlanInfo(dvPgs[i], portSetting, pvlanMapArray);
             if (vlan == null) {
                 s_logger.debug("no pvlan/vlan is associated to dvPg: " + vnName);
                 return null;
@@ -1258,7 +1275,12 @@ public class VCenterDB {
             range          = ipConfigInfo.getRange();
 
             // Read externalIpam flag from custom field
-            externalIpam = getExternalIpamInfo(configInfo, vnName);
+            DistributedVirtualSwitchKeyedOpaqueBlob[] opaqueBlobs = null;
+            Object obj = pTables[i].get("config.vendorSpecificConfig");
+            if (obj instanceof DistributedVirtualSwitchKeyedOpaqueBlob[]) {
+                opaqueBlobs = (DistributedVirtualSwitchKeyedOpaqueBlob[]) obj;
+            }
+            externalIpam = getExternalIpamInfo(opaqueBlobs, vnName);
 
             // Populate associated VMs
             SortedMap<String, VmwareVirtualMachineInfo> vmInfo =
