@@ -585,6 +585,7 @@ class VCenterMonitorTask implements Runnable {
                 s_logger.error("Problem with connection to vCenter-Server");
                 s_logger.error("Restart connection and reSync");
                 vcenterDB.connectRetry();
+                this.VCenterNotifyForceRefresh = true;
             }
         } 
 
