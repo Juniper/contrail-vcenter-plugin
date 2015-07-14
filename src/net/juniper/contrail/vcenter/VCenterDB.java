@@ -1290,7 +1290,7 @@ public class VCenterDB {
                     VmwareVirtualNetworkInfo(vnName, isolatedVlanId, 
                             primaryVlanId, vmInfo,
                             subnetAddress,
-                            subnetAddress,
+                            subnetMask,
                             gatewayAddress,
                             ipPoolEnabled,
                             range,
