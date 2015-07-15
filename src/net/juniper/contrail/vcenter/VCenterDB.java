@@ -1052,6 +1052,17 @@ public class VCenterDB {
             String toolsRunningStatus  = (String)  pTable.get("guest.toolsRunningStatus");
 	    GuestNicInfo[] nicInfos    = (GuestNicInfo[])pTable.get("guest.net");
             String ipAddress = getVirtualMachineIpAddress(nicInfos, dvPgName, vmName);
+            if (ipAddress == null) {
+                if (VirtualMachineToolsRunningStatus.guestToolsRunning.toString().equals(toolsRunningStatus)) {
+                    //We have a problem here. Maybe the MOB is messed up
+                    //VM had an IP before,but not now. Report and dont do any more checks
+                    if ((prevVmwareVmInfo != null) &&
+                        (prevVmwareVmInfo.getIpAddress()!=null)) {
+                        s_logger.error("For VM:"+vmName+" IP address could not be ascertained. Previous IP was: "+prevVmwareVmInfo.getIpAddress()+" Please restart vmware tools to ensure IP is reported to vcenter");
+                    }
+                }
+
+            }
             if (ipAddress != null) {
               // Ensure that ip-address is within subnet range
             }
