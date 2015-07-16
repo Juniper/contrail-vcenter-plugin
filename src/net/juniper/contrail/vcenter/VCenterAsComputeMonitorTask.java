@@ -152,7 +152,7 @@ class VCenterAsComputeMonitorTask implements VCenterMonitorTask {
     public void syncVirtualNetworks() throws Exception {
         s_logger.info("Syncing Vnc and VCenter DBs");
         SortedMap<String, VmwareVirtualNetworkInfo> vmwareVirtualNetworkInfos =
-                vcenterDB.populateVirtualNetworkInfo();
+                vcenterDB.populateVirtualNetworkInfoOptimized();
         SortedMap<String, VncVirtualNetworkInfo> vncVirtualNetworkInfos =
                 vncDB.populateVirtualNetworkInfo();
         s_logger.debug("VNs vmware size: "
@@ -333,7 +333,7 @@ class VCenterAsComputeMonitorTask implements VCenterMonitorTask {
     public void syncVmwareVirtualNetworks() throws Exception {
         s_logger.debug("Syncing VCenter Currrent and Previous DBs");
         SortedMap<String, VmwareVirtualNetworkInfo> curVmwareVNInfos =
-                vcenterDB.populateVirtualNetworkInfo();
+                vcenterDB.populateVirtualNetworkInfoOptimized();
         SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos =
                 vcenterDB.getPrevVmwareVNInfos();
         s_logger.debug("VNs cur-vmware size: "
