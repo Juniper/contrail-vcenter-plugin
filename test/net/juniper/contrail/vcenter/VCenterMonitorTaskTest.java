@@ -70,6 +70,7 @@ import net.juniper.contrail.api.types.IdPermsType;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
 import com.vmware.vim25.VirtualMachinePowerState;
+import com.vmware.vim25.ManagedObjectReference;
 
 @RunWith(JUnit4.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -129,7 +130,7 @@ public class VCenterMonitorTaskTest extends TestCase {
     //  VCENTER : 1 VN 
     //  Afert Virtual-machine sync, Vnc shouldn't have any VMs.
     @Test
-    public void TestSyncVirtualMachineTC1() throws IOException {
+    public void TestSyncVirtualMachineTC1() throws Exception {
         String vnUuid         = UUID.randomUUID().toString();
         String vnName         = "TestVN-A";
         String subnetAddr     = "192.168.2.0";
@@ -152,9 +153,12 @@ public class VCenterMonitorTaskTest extends TestCase {
         String vmName            = "VM-C";
         String vrouterIpAddress  = "10.84.24.45";
         String hostName          = "10.20.30.40";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         
         VmwareVirtualMachineInfo vmwareVmInfo = new VmwareVirtualMachineInfo(
-                                                    vmName, hostName,
+                                                    vmName, hostName, hmor,
                                                     vrouterIpAddress, macAddress,
                                                     VirtualMachinePowerState.poweredOff);
         vmMapInfos.put(vmUuid, vmwareVmInfo);
@@ -213,7 +217,7 @@ public class VCenterMonitorTaskTest extends TestCase {
     //  VCENTER : 1 VN  & 1 VM
     //  After Virtual-machine sync, Vnc should have 1 VM.
     @Test
-    public void TestSyncVirtualMachineTC2() throws IOException {
+    public void TestSyncVirtualMachineTC2() throws Exception {
         String vnUuid         = UUID.randomUUID().toString();
         String vnName         = "TestVN-A";
         String subnetAddr     = "192.168.2.0";
@@ -268,8 +272,11 @@ public class VCenterMonitorTaskTest extends TestCase {
         String hostName          = "10.20.30.40";
         String vrouterIpAddress  = "10.84.24.45";
         String macAddress        = "00:11:22:33:44:55";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         VmwareVirtualMachineInfo vmInfo = new
-                VmwareVirtualMachineInfo(vmName, hostName,
+                VmwareVirtualMachineInfo(vmName, hostName, hmor,
                                          vrouterIpAddress, macAddress, 
                                          VirtualMachinePowerState.poweredOff);
         vmInfos.put(vmUuid, vmInfo);
@@ -294,7 +301,7 @@ public class VCenterMonitorTaskTest extends TestCase {
     //  VCENTER : 1 VN (TestVN-A) & 1 VM (VM-B)
     //  After Virtual-machine sync, Vnc should have 1 VM (VM-B).
     @Test
-    public void TestSyncVirtualMachineTC3() throws IOException {
+    public void TestSyncVirtualMachineTC3() throws Exception {
         String vnUuid         = UUID.randomUUID().toString();
         String vnName         = "TestVN-A";
         String subnetAddr     = "192.168.2.0";
@@ -311,6 +318,9 @@ public class VCenterMonitorTaskTest extends TestCase {
         String vmNameA            = "VM-A";
         String vrouterIpAddressA  = "10.84.24.45";
         String hostNameA          = "10.20.30.40";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         
         // Fill vmMapInfos such that 2 VMs will be created
         // as part of CreateVirtualNetwork() call
@@ -318,7 +328,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                new TreeMap<String, VmwareVirtualMachineInfo>();
 
         VmwareVirtualMachineInfo vmwareVmInfo = new VmwareVirtualMachineInfo(
-                                                    vmNameA, hostNameA,
+                                                    vmNameA, hostNameA, hmor,
                                                     vrouterIpAddressA, macAddressA,
                                                     VirtualMachinePowerState.poweredOff);
         vmMapInfos.put(vmUuidA, vmwareVmInfo);
@@ -362,8 +372,10 @@ public class VCenterMonitorTaskTest extends TestCase {
         String hostNameB          = "10.20.30.40";
         String vrouterIpAddressB  = "10.84.24.45";
         String macAddressB        = "00:11:22:33:44:56";
+        hmor.setVal("host-19208");
+        hmor.setType("HostSystem");
         VmwareVirtualMachineInfo vmInfo = new
-                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
                                          vrouterIpAddressB, macAddressB, 
                                          VirtualMachinePowerState.poweredOff);
         vmInfos.put(vmUuidB, vmInfo);
@@ -422,6 +434,7 @@ public class VCenterMonitorTaskTest extends TestCase {
         assertNotNull(vn1);
 
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(null);
+        when(_vcenterDB.populateVirtualNetworkInfoOptimized()).thenReturn(null);
 
         //Sync virtual-networks between Vnc & VCenter
         _vcenterMonitorTask.syncVirtualNetworks();
@@ -456,6 +469,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                     ipPoolEnabled, range, externalIpam);
         vnInfos.put(vnUuid, vnInfo);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnInfos);
+        when(_vcenterDB.populateVirtualNetworkInfoOptimized()).thenReturn(vnInfos);
 
         //Sync virtual-networks between Vnc & VCenter
         _vcenterMonitorTask.syncVirtualNetworks();
@@ -513,6 +527,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                     ipPoolEnabledB, rangeB, externalIpam);
         vnInfos.put(vnUuidB, vnInfo);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnInfos);
+        when(_vcenterDB.populateVirtualNetworkInfoOptimized()).thenReturn(vnInfos);
 
         //Sync virtual-networks between Vnc & VCenter
         _vcenterMonitorTask.syncVirtualNetworks();
@@ -548,8 +563,11 @@ public class VCenterMonitorTaskTest extends TestCase {
         String ipAddressB          = "192.168.2.100";
         String vrouterIpAddressB  = "10.84.24.45";
         String macAddressB        = "00:11:22:33:44:56";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         VmwareVirtualMachineInfo vmInfo = new
-                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
                                          vrouterIpAddressB, macAddressB, 
                                          VirtualMachinePowerState.poweredOff);
         vmInfo.setIpAddress(ipAddressB);
@@ -566,6 +584,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                     ipPoolEnabled, range, externalIpam);
         vnInfos.put(vnUuid, vnInfo);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnInfos);
+        when(_vcenterDB.populateVirtualNetworkInfoOptimized()).thenReturn(vnInfos);
 
         //Sync virtual-networks between Vnc & VCenter
         _vcenterMonitorTask.syncVirtualNetworks();
@@ -618,8 +637,11 @@ public class VCenterMonitorTaskTest extends TestCase {
         String ipAddressB          = "192.168.2.100";
         String vrouterIpAddressB  = "10.84.24.45";
         String macAddressB        = "00:11:22:33:44:56";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         VmwareVirtualMachineInfo vmInfo = new
-                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
                                          vrouterIpAddressB, macAddressB, 
                                          VirtualMachinePowerState.poweredOn);
         vmInfo.setIpAddress(ipAddressB);
@@ -636,6 +658,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                     ipPoolEnabled, range, externalIpam);
         vnInfos.put(vnUuid, vnInfo);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnInfos);
+        when(_vcenterDB.populateVirtualNetworkInfoOptimized()).thenReturn(vnInfos);
 
         //Sync virtual-networks between Vnc & VCenter
         _vcenterMonitorTask.syncVirtualNetworks();
@@ -686,13 +709,16 @@ public class VCenterMonitorTaskTest extends TestCase {
         String hostNameA          = "10.20.30.40";
         String vrouterIpAddressA  = "10.84.24.45";
         String macAddressA        = "00:11:22:33:44:55";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
 
         // Populate prevVmwareVirtualMachineInfo 
         SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos = 
                                new TreeMap<String, VmwareVirtualMachineInfo>();
 
         VmwareVirtualMachineInfo vmwareVmInfo = new VmwareVirtualMachineInfo(
-                                                    vmNameA, hostNameA,
+                                                    vmNameA, hostNameA, hmor,
                                                     vrouterIpAddressA, macAddressA,
                                                     VirtualMachinePowerState.poweredOff);
         vmMapInfos.put(vmUuidA, vmwareVmInfo);
@@ -770,8 +796,11 @@ public class VCenterMonitorTaskTest extends TestCase {
         String hostNameB          = "10.20.30.40";
         String vrouterIpAddressB  = "10.84.24.45";
         String macAddressB        = "00:11:22:33:44:55";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         VmwareVirtualMachineInfo vmInfo = new
-                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
                                          vrouterIpAddressB, macAddressB,
                                          VirtualMachinePowerState.poweredOff);
         vmInfos.put(vmUuidB, vmInfo);
@@ -813,13 +842,16 @@ public class VCenterMonitorTaskTest extends TestCase {
         String hostNameA          = "10.20.30.40";
         String vrouterIpAddressA  = "10.84.24.45";
         String macAddressA        = "00:11:22:33:44:55";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
 
         // Populate prevVmwareVirtualMachineInfo 
         SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos = 
                                new TreeMap<String, VmwareVirtualMachineInfo>();
 
         VmwareVirtualMachineInfo vmwareVmInfo = new VmwareVirtualMachineInfo(
-                                                    vmNameA, hostNameA,
+                                                    vmNameA, hostNameA, hmor,
                                                     vrouterIpAddressA, macAddressA,
                                                     VirtualMachinePowerState.poweredOff);
         vmMapInfos.put(vmUuidA, vmwareVmInfo);
@@ -846,11 +878,13 @@ public class VCenterMonitorTaskTest extends TestCase {
         String hostNameB          = "10.20.30.40";
         String vrouterIpAddressB  = "10.84.24.45";
         String macAddressB        = "00:11:22:33:44:55";
+        hmor.setVal("host-19205");
+        hmor.setType("HostSystem");
 
         SortedMap<String, VmwareVirtualMachineInfo> vmMapInfosB = 
                                new TreeMap<String, VmwareVirtualMachineInfo>();
         VmwareVirtualMachineInfo vmInfoB = new
-                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
                                          vrouterIpAddressB, macAddressB, 
                                          VirtualMachinePowerState.poweredOff);
         vmMapInfosB.put(vmUuidB, vmInfoB);
@@ -917,8 +951,11 @@ public class VCenterMonitorTaskTest extends TestCase {
         String hostNameB          = "10.20.30.40";
         String vrouterIpAddressB  = "10.84.24.45";
         String macAddressB        = "00:11:22:33:44:55";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
         VmwareVirtualMachineInfo vmInfo = new
-                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
                                          vrouterIpAddressB, macAddressB, 
                                          VirtualMachinePowerState.poweredOn);
         vmInfos.put(vmUuidB, vmInfo);
@@ -958,7 +995,7 @@ public class VCenterMonitorTaskTest extends TestCase {
         SortedMap<String, VmwareVirtualMachineInfo> vmInfosCurrPlus = 
                                     new TreeMap<String, VmwareVirtualMachineInfo>();
         VmwareVirtualMachineInfo vmInfoCurrPlus = new
-                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
                                          vrouterIpAddressB, macAddressB, 
                                          VirtualMachinePowerState.poweredOn);
         vmInfoCurrPlus.setIpAddress("192.168.2.10");
@@ -1023,6 +1060,7 @@ public class VCenterMonitorTaskTest extends TestCase {
         vnMapInfos.put(vnUuid, prevVmwareVNInfo);
         when(_vcenterDB.getPrevVmwareVNInfos()).thenReturn(vnMapInfos);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(null);
+        when(_vcenterDB.populateVirtualNetworkInfoOptimized()).thenReturn(null);
 
         _vcenterMonitorTask.syncVmwareVirtualNetworks();
 
@@ -1063,6 +1101,7 @@ public class VCenterMonitorTaskTest extends TestCase {
         vnMapInfos.put(vnUuid, currVmwareVNInfo);
         when(_vcenterDB.getPrevVmwareVNInfos()).thenReturn(null);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnMapInfos);
+        when(_vcenterDB.populateVirtualNetworkInfoOptimized()).thenReturn(vnMapInfos);
 
         _vcenterMonitorTask.syncVmwareVirtualNetworks();
 
@@ -1126,6 +1165,7 @@ public class VCenterMonitorTaskTest extends TestCase {
                                                   gatewayAddrB, ipPoolEnabledB, rangeB, externalIpam);
         vnMapInfosB.put(vnUuidB, currVmwareVNInfo);
         when(_vcenterDB.populateVirtualNetworkInfo()).thenReturn(vnMapInfosB);
+        when(_vcenterDB.populateVirtualNetworkInfoOptimized()).thenReturn(vnMapInfosB);
 
         _vcenterMonitorTask.syncVmwareVirtualNetworks();
 

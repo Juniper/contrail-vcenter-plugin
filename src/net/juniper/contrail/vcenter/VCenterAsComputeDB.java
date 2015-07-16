@@ -114,7 +114,7 @@ public class VCenterAsComputeDB extends VCenterDB {
 
         // found valid vm instance.
         VmwareVirtualMachineInfo vmInfo = new
-                VmwareVirtualMachineInfo(vmName, hostName,
+                VmwareVirtualMachineInfo(vmName, hostName, hmor,
                         vrouterIpAddress, vmMac, powerState);
 
         return vmInfo;
@@ -217,7 +217,7 @@ public class VCenterAsComputeDB extends VCenterDB {
             s_logger.debug("VN name: " + vnName);
 
             // get pvlan/vlan info for the portgroup.
-            HashMap<String, Short> vlan = getVlanInfo(dvPg, configInfo, portSetting,
+            HashMap<String, Short> vlan = getVlanInfo(dvPg, portSetting,
                                                       pvlanMapArray);
             if (vlan == null) {
                 s_logger.debug("no pvlan/vlan is associated to dvPg: " + dvPg.getName());

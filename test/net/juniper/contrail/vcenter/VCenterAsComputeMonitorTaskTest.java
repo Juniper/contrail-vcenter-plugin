@@ -70,6 +70,7 @@ import net.juniper.contrail.api.types.IdPermsType;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
 import com.vmware.vim25.VirtualMachinePowerState;
+import com.vmware.vim25.ManagedObjectReference;
 
 @RunWith(JUnit4.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -180,13 +181,16 @@ public class VCenterAsComputeMonitorTaskTest extends TestCase {
         String hostNameB          = "10.20.30.40";
         String vrouterIpAddressB  = "10.84.24.45";
         String macAddressB        = "00:11:22:33:44:55";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
 
         // Create virtual-network & Virtual-machine on api-server
         SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos = 
                                new TreeMap<String, VmwareVirtualMachineInfo>();
 
         VmwareVirtualMachineInfo vmwareVmInfo = new VmwareVirtualMachineInfo(
-                                                    vmNameB, hostNameB,
+                                                    vmNameB, hostNameB, hmor,
                                                     vrouterIpAddressB, macAddressB,
                                                     VirtualMachinePowerState.poweredOn);
         vmMapInfos.put(vmUuidB, vmwareVmInfo);
@@ -211,7 +215,7 @@ public class VCenterAsComputeMonitorTaskTest extends TestCase {
                                     new TreeMap<String, VmwareVirtualMachineInfo>();
 
         VmwareVirtualMachineInfo vmInfo = new
-                VmwareVirtualMachineInfo(vmNameB, hostNameB,
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
                                          vrouterIpAddressB, macAddressB,
                                          VirtualMachinePowerState.poweredOff);
         vmInfos.put(vmUuidB, vmInfo);
@@ -263,12 +267,15 @@ public class VCenterAsComputeMonitorTaskTest extends TestCase {
         String hostNameB          = "10.20.30.40";
         String vrouterIpAddressB  = "10.84.24.45";
         String macAddressB        = "00:11:22:33:44:55";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19208");
+        hmor.setType("HostSystem");
 
         SortedMap<String, VmwareVirtualMachineInfo> vmMapInfos = 
                                new TreeMap<String, VmwareVirtualMachineInfo>();
 
         VmwareVirtualMachineInfo vmwareVmInfo = new VmwareVirtualMachineInfo(
-                                                    vmNameB, hostNameB,
+                                                    vmNameB, hostNameB, hmor,
                                                     vrouterIpAddressB, macAddressB,
                                                     VirtualMachinePowerState.poweredOn);
 

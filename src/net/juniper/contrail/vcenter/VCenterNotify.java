@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
 
+import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim25.ArrayOfEvent;
 import com.vmware.vim25.Event;
 import com.vmware.vim25.EventFilterSpec;
@@ -60,7 +61,8 @@ import com.vmware.vim25.VmBeingMigratedEvent;
 import com.vmware.vim25.VmBeingHotMigratedEvent; 
 import com.vmware.vim25.EnteredMaintenanceModeEvent;
 import com.vmware.vim25.ExitMaintenanceModeEvent;
-
+import com.vmware.vim25.HostConnectedEvent;
+import com.vmware.vim25.HostConnectionLostEvent;
 
 import com.google.common.base.Throwables;
 
@@ -78,6 +80,7 @@ public class VCenterNotify implements Runnable
     private static VCenterMonitorTask monitorTask = null;
 
     private Folder _rootFolder;
+    private Datacenter _datacenter;
 
     // EventManager and EventHistoryCollector References
     private EventManager _eventManager;
@@ -99,6 +102,7 @@ public class VCenterNotify implements Runnable
     {
         _eventManager = monitorTask.getVCenterDB().getServiceInstance().getEventManager();
         _rootFolder = monitorTask.getVCenterDB().getServiceInstance().getRootFolder();
+        _datacenter = monitorTask.getVCenterDB().getDatacenter();
     }
 
     private void createEventHistoryCollector() throws Exception
@@ -106,7 +110,7 @@ public class VCenterNotify implements Runnable
         // Create an Entity Event Filter Spec to
         // specify the MoRef of the VM to be get events filtered for
         EventFilterSpecByEntity entitySpec = new EventFilterSpecByEntity();
-        entitySpec.setEntity(_rootFolder.getMOR());
+        entitySpec.setEntity(_datacenter.getMOR());
         entitySpec.setRecursion(EventFilterSpecRecursionOption.children);
 
         // set the entity spec in the EventFilter
@@ -117,7 +121,7 @@ public class VCenterNotify implements Runnable
         // Add as many events you want to track relating to vm.
         // Refer to API Data Object vmEvent and see the extends class list for
         // elaborate list of vmEvents
-        eventFilter.setType(new String[] {"EnteredMaintenanceModeEvent", "ExitMaintenanceModeEvent", "VmPoweredOnEvent", "VmPoweredOffEvent", 
+        eventFilter.setType(new String[] {"HostConnectionLostEvent", "HostConnectedEvent", "EnteredMaintenanceModeEvent", "ExitMaintenanceModeEvent", "VmPoweredOnEvent", "VmPoweredOffEvent", 
                                            "VmRenamedEvent", 
                                            "DVPortgroupCreatedEvent", "DVPortgroupDestroyedEvent", 
                                            "DVPortgroupReconfiguredEvent", "DVPortgroupRenamedEvent", 
@@ -232,7 +236,7 @@ public class VCenterNotify implements Runnable
                         s_logger.error(stackTrace); 
                         e.printStackTrace();
                     }
-                } else if (value instanceof EnteredMaintenanceModeEvent) {
+                } else if ((value instanceof EnteredMaintenanceModeEvent) || (value instanceof HostConnectionLostEvent)) {
                     Event anEvent = (Event) value;
                     String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
@@ -241,7 +245,7 @@ public class VCenterNotify implements Runnable
                     } else {
                         s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
                     }
-                } else if (value instanceof ExitMaintenanceModeEvent) {
+                } else if ((value instanceof ExitMaintenanceModeEvent) || (value instanceof HostConnectedEvent)) {
                     Event anEvent = (Event) value;
                     String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
@@ -372,17 +376,24 @@ public class VCenterNotify implements Runnable
                 } catch (Exception e)
                 {
                 	e.printStackTrace();
-                }
-                if (monitorTask.getVCenterNotifyForceRefresh()) {
-                        this.initialize();
-                        this.createEventHistoryCollector();
-                        PropertyFilterSpec eventFilterSpec =
+                        System.out.println("Exception in ServiceInstance. Refreshing the serviceinstance and starting new");
+                        do {
+                            System.out.println("Waiting for reconnect...");
+                            Thread.sleep(2000);
+                            if (monitorTask.getVCenterNotifyForceRefresh()) {
+                                this.initialize();
+                                this.createEventHistoryCollector();
+                                PropertyFilterSpec eventFilterSpec =
                                    this.createEventFilterSpec();
-                        propColl = monitorTask.getVCenterDB().getServiceInstance().getPropertyCollector();
-                        propFilter = propColl.createFilter(eventFilterSpec, true);
-                        monitorTask.setVCenterNotifyForceRefresh(false);
-               }
-
+                                propColl = monitorTask.getVCenterDB().getServiceInstance().getPropertyCollector();
+                                propFilter = propColl.createFilter(eventFilterSpec, true);
+                                monitorTask.setVCenterNotifyForceRefresh(false);
+                                version = "";
+                                break;
+                            }
+                        } while (true);
+                        continue;
+                }
             } while (shouldRun);
         } catch (Exception e)
         {

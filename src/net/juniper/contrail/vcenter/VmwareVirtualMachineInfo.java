@@ -19,8 +19,10 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
 
 import com.vmware.vim25.VirtualMachinePowerState;
+import com.vmware.vim25.ManagedObjectReference;
 
 class VmwareVirtualMachineInfo {
+    ManagedObjectReference hmor;
     private String hostName;
     private String vrouterIpAddress;
     private String macAddress;
@@ -30,6 +32,7 @@ class VmwareVirtualMachineInfo {
     private VirtualMachinePowerState powerState;
     
     public VmwareVirtualMachineInfo(String name, String hostName, 
+            ManagedObjectReference hmor,
             String vrouterIpAddress, String macAddress,
             VirtualMachinePowerState powerState) {
         this.name             = name;
@@ -37,6 +40,7 @@ class VmwareVirtualMachineInfo {
         this.vrouterIpAddress = vrouterIpAddress;
         this.macAddress       = macAddress;
         this.powerState       = powerState;
+        this.hmor             = hmor;
     }
 
     public String getHostName() {
@@ -45,6 +49,14 @@ class VmwareVirtualMachineInfo {
 
     public void setHostName(String hostName) {
         this.hostName = hostName;
+    }
+
+    public ManagedObjectReference getHmor() {
+        return hmor;
+    }
+
+    public void setHmor(ManagedObjectReference hmor) {
+        this.hmor = hmor;
     }
 
     public String getVrouterIpAddress() {
