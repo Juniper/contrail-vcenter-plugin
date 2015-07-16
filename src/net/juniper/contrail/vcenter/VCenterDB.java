@@ -19,6 +19,7 @@ import java.rmi.RemoteException;
 import java.io.FileNotFoundException;
 import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.RuntimeFault;
+import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 
 import org.apache.log4j.Logger;
 
