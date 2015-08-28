@@ -936,8 +936,10 @@ public class VCenterDB {
         return null;
     }
  
-    private String getVirtualMachineIpAddress(GuestNicInfo[] nicInfos, String dvPgName, String vmName)
-                    throws Exception {
+    private String getVirtualMachineIpAddress(GuestNicInfo[] nicInfos, 
+                                              String dvPgName, 
+                                              String vmName)
+                                             throws Exception {
 
         // Assumption here is that VMware Tools are installed
         // and IP address is available
@@ -951,6 +953,7 @@ public class VCenterDB {
             // group. Assumption here is that Contrail VRouter VM will
             // have only one standard port group
             String networkName = nicInfo.getNetwork();
+
             if (networkName == null) {
                 continue;
             }
@@ -1051,22 +1054,35 @@ public class VCenterDB {
         // Save static-ip read via tools if staic-ip addressing enabled on network.
         if ((externalIpam == true) && (vmInfo.isPoweredOnState())) {
             String toolsRunningStatus  = (String)  pTable.get("guest.toolsRunningStatus");
-	    GuestNicInfo[] nicInfos    = (GuestNicInfo[])pTable.get("guest.net");
+            GuestNicInfo[] nicInfos    = (GuestNicInfo[])pTable.get("guest.net");
             String ipAddress = getVirtualMachineIpAddress(nicInfos, dvPgName, vmName);
+
             if (ipAddress == null) {
-                if (VirtualMachineToolsRunningStatus.guestToolsRunning.toString().equals(toolsRunningStatus)) {
-                    //We have a problem here. Maybe the MOB is messed up
-                    //VM had an IP before,but not now. Report and dont do any more checks
-                    if ((prevVmwareVmInfo != null) &&
-                        (prevVmwareVmInfo.getIpAddress()!=null)) {
-                        s_logger.error("For VM:"+vmName+" IP address could not be ascertained. Previous IP was: "+prevVmwareVmInfo.getIpAddress()+" Please restart vmware tools to ensure IP is reported to vcenter");
-                    }
+                String prevIpAddress = null;
+
+                s_logger.error("For VM: " + vmName + " IP address could not be ascertained.");
+
+                if (prevVmwareVmInfo != null) {
+                    prevIpAddress = prevVmwareVmInfo.getIpAddress();
                 }
 
+                if (VirtualMachineToolsRunningStatus.guestToolsRunning.toString().equals(toolsRunningStatus)
+                    && prevIpAddress != null) {
+                    // We have a problem here. Maybe the MOB is messed up
+                    // VM had an IP before,but not now.
+                    s_logger.error("Please restart vmware tools to ensure IP is reported to vcenter");
+                }
+                if (prevIpAddress != null) {
+                    ipAddress = prevIpAddress;
+                    s_logger.debug("Using previous IP " + prevIpAddress + " for VM " + vmName + 
+                                   " since vCenter did not give an IP address");
+                }
             }
+
             if (ipAddress != null) {
               // Ensure that ip-address is within subnet range
             }
+
             vmInfo.setIpAddress(ipAddress);
         }
 
@@ -1094,20 +1110,20 @@ public class VCenterDB {
         Hashtable[] pTables = null;
         if (externalIpam == true) {
             pTables = PropertyCollectorUtil.retrieveProperties(vms, "VirtualMachine",
-				    new String[] {"name",
-				    "config.instanceUuid",
-				    "runtime.powerState",
-				    "runtime.host",
-				    "guest.toolsRunningStatus",
-				    "guest.net"
-				    });
+                    new String[] {"name",
+                    "config.instanceUuid",
+                    "runtime.powerState",
+                    "runtime.host",
+                    "guest.toolsRunningStatus",
+                    "guest.net"
+                    });
         } else {
             pTables = PropertyCollectorUtil.retrieveProperties(vms, "VirtualMachine",
-				    new String[] {"name",
-				    "config.instanceUuid",
-				    "runtime.powerState",
-				    "runtime.host",
-				    });
+                    new String[] {"name",
+                    "config.instanceUuid",
+                    "runtime.powerState",
+                    "runtime.host",
+                    });
         }
 
         SortedMap<String, VmwareVirtualMachineInfo> vmInfos =
