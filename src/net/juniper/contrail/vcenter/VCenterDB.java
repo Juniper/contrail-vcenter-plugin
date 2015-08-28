@@ -260,6 +260,7 @@ public class VCenterDB {
         ipPoolManager = null;
         contrailDC = null;
         contrailDVS = null;
+        VCenterNotify.stopUpdates();
     }
 
 

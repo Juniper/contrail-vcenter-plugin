@@ -365,18 +365,17 @@ public class VCenterNotify implements Runnable
                     {
 
                         version = update.getVersion();
-                        System.out.println(" Current Version: " + version);
                         
                         this.handleUpdate(update);
 
                     } else
                     {
-                        System.out.println("No update is present!");
+                        s_logger.error("No update is present!");
                     }
                 } catch (Exception e)
                 {
                 	e.printStackTrace();
-                        System.out.println("Exception in ServiceInstance. Refreshing the serviceinstance and starting new");
+                        s_logger.error("Exception in ServiceInstance. Refreshing the serviceinstance and starting new");
                         do {
                             System.out.println("Waiting for reconnect...");
                             Thread.sleep(2000);
@@ -402,7 +401,7 @@ public class VCenterNotify implements Runnable
                 System.out.println("OK");
             } else
             {
-                System.out.println("Caught Exception : " + " Name : "
+                s_logger.error("Caught Exception : " + " Name : "
                         + e.getClass().getName() + " Message : "
                         + e.getMessage() + " Trace : ");
             }
@@ -436,4 +435,9 @@ public class VCenterNotify implements Runnable
                 + anEvent.getDvs().getDvs().get_value()
                 + "\n----------\n");
     }
+
+    public static void stopUpdates() {
+        propColl.stopUpdates();
+    }
 }
+
