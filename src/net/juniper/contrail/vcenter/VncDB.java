@@ -598,7 +598,7 @@ public class VncDB {
             apiConnector.create(instanceIp);
 
             // Read back to get assigned IP address
-            //apiConnector.read(instanceIp);
+            apiConnector.read(instanceIp);
             vmIpAddress = instanceIp.getAddress();
             s_logger.debug("Created instance IP:" + instanceIp.getName() + ": " +
                             vmIpAddress);
