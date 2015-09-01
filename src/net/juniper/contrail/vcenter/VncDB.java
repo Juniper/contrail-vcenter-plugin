@@ -599,7 +599,7 @@ public class VncDB {
                 ", vmiUuid :" + vmiUuid);
 
         // Instance Ip
-        String vmIpAddress = null;
+        String vmIpAddress = "0.0.0.0";
         if (external_ipam != true) {
             String instanceIpName = "ip-" + network.getName() + "-" + vmName;
             String instIpUuid = UUID.randomUUID().toString();

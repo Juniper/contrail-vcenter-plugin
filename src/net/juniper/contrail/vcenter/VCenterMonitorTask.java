@@ -577,7 +577,8 @@ class VCenterMonitorTask implements Runnable {
             s_logger.error("Error while syncVmwareVirtualNetworks: " + e);
             s_logger.error(stackTrace);
             e.printStackTrace();
-            if (stackTrace.contains("java.net.ConnectException: Connection refused"))   {
+            if (stackTrace.contains("java.net.ConnectException: Connection refused") ||
+                stackTrace.contains("java.rmi.RemoteException: VI SDK invoke"))   {
                 //Remote Exception. Some issue with connection to vcenter-server
                 // Exception on accessing remote objects.
                 // Try to reinitialize the VCenter connection.
@@ -585,6 +586,8 @@ class VCenterMonitorTask implements Runnable {
                 s_logger.error("Problem with connection to vCenter-Server");
                 s_logger.error("Restart connection and reSync");
                 vcenterDB.connectRetry();
+                s_logger.info("Restart connection and reSync Complete..");
+                s_logger.info("Inform Notify thread about it....");
                 this.VCenterNotifyForceRefresh = true;
             }
         } 
