@@ -1054,19 +1054,14 @@ public class VCenterDB {
 
         // Save static-ip read via tools if staic-ip addressing enabled on network.
         if ((externalIpam == true) && (vmInfo.isPoweredOnState())) {
-            String ipAddress = null;
             String toolsRunningStatus  = (String)  pTable.get("guest.toolsRunningStatus");
-            if (VirtualMachineToolsRunningStatus.guestToolsRunning.toString().equals(toolsRunningStatus)) {
-                if (pTable.get("guest.net") instanceof GuestNicInfo[]) {
-                    GuestNicInfo[] nicInfos    = (GuestNicInfo[])pTable.get("guest.net");
-                    ipAddress = getVirtualMachineIpAddress(nicInfos, dvPgName, vmName);
-                }
-            }
+            GuestNicInfo[] nicInfos    = (GuestNicInfo[])pTable.get("guest.net");
+            String ipAddress = getVirtualMachineIpAddress(nicInfos, dvPgName, vmName);
 
             if (ipAddress == null) {
                 String prevIpAddress = null;
 
-                s_logger.info("For VM: " + vmName + " IP address could not be ascertained.");
+                s_logger.error("For VM: " + vmName + " IP address could not be ascertained.");
 
                 if (prevVmwareVmInfo != null) {
                     prevIpAddress = prevVmwareVmInfo.getIpAddress();
