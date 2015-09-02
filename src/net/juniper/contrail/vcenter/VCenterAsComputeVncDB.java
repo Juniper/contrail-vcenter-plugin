@@ -40,9 +40,54 @@ import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 public class VCenterAsComputeVncDB extends VncDB {
     private static final Logger s_logger = 
             Logger.getLogger(VCenterAsComputeVncDB.class);
+    protected final String username;
+    protected final String password;
+    protected final String tenant;
+    protected final String authtype;
+    protected final String authurl;
 
-    public VCenterAsComputeVncDB(String apiServerAddress, int apiServerPort) {
+    public VCenterAsComputeVncDB(String apiServerAddress, int apiServerPort,
+                                 String username, String password,
+                                 String tenant,
+                                 String authtype, String authurl) {
         super(apiServerAddress, apiServerPort);
+        this.username = username;
+        this.password = password;
+        this.tenant   = tenant;
+        this.authtype = authtype;
+        this.authurl  = authurl;
+    }
+
+    @Override
+    public boolean isVncApiServerAlive() {
+        s_logger.info(" Creating api-server connection..");
+        if (apiConnector == null) {
+            apiConnector = ApiConnectorFactory.build(apiServerAddress, apiServerPort)
+	                                      .credentials(username, password)
+					      .tenantName(tenant)
+	                                      .authServer(authtype, authurl);
+            if (apiConnector == null) {
+                s_logger.error(" failed to create ApiConnector.. retry later");
+                return false;
+            }
+        }
+
+
+        // Read project list as a life check
+        s_logger.info(" Checking if api-server is alive and kicking..");
+
+        try {
+            List<Project> projects = (List<Project>) apiConnector.list(Project.class, null);
+            if (projects == null) {
+                s_logger.error(" ApiServer not fully awake yet.. retry again..");
+                return false;
+            }
+        } catch (IOException e) {
+            return false;
+        }
+        s_logger.info(" Api-server alive. Got the pulse..");
+        return true;
+
     }
 
     @Override

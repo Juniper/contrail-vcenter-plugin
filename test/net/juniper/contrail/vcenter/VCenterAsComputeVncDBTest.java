@@ -88,7 +88,8 @@ public class VCenterAsComputeVncDBTest extends TestCase {
         }
 
         // Setup vnc object
-        vncDB = new VCenterAsComputeVncDB(null,0);
+        vncDB = new VCenterAsComputeVncDB(null,0, "admin", "admin", "admin",
+                                          "keystone", "http://127.0.0.1:35357/v2.0");
         vncDB.setApiConnector(_api);
         assertNotNull(vncDB.getApiConnector());
         assertTrue(vncDB.isVncApiServerAlive());

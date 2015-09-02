@@ -35,11 +35,14 @@ class VCenterAsComputeMonitorTask implements VCenterMonitorTask {
     
     public VCenterAsComputeMonitorTask(String vcenterUrl, String vcenterUsername,
                               String vcenterPassword, String vcenterDcName,
-                              String vcenterDvsName, String apiServerAddress,
-                              int apiServerPort, String vcenterIpFabricPg) throws Exception {
+                              String vcenterDvsName, String vcenterIpFabricPg,
+                              String apiServerAddress, int apiServerPort,
+                              String username, String password, String tenant,
+                              String authtype, String authurl) throws Exception {
         vcenterDB = new VCenterAsComputeDB(vcenterUrl, vcenterUsername, vcenterPassword,
                                   vcenterDcName, vcenterDvsName, vcenterIpFabricPg);
-        vncDB     = new VCenterAsComputeVncDB(apiServerAddress, apiServerPort);
+        vncDB     = new VCenterAsComputeVncDB(apiServerAddress, apiServerPort, username,
+                                              password, tenant, authtype, authurl);
     }
 
     public void Initialize() {

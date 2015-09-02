@@ -105,7 +105,8 @@ public class VCenterAsComputeMonitorTaskTest extends TestCase {
         // Setup VCenter object
         //ApiConnectorFactory.setImplementation(ApiConnectorMock.class);
         _vcenterMonitorTask = new VCenterAsComputeMonitorTask("https://10.20.30.40/sdk", "admin", "admin123",
-                                   "unittest_dc", "unittest_dvs", null, 0, "unittest_fabric_pg");
+                                   "unittest_dc", "unittest_dvs", "unittest_fabric_pg", null, 0,
+                                   "admin", "admin", "admin", "keystone", "http://127.0.0.1:35357/v2.0");
 
         // Ensure vncDB and vCenterDb are instances of appropriate class
         assertTrue(_vcenterMonitorTask.getVncDB() instanceof VCenterAsComputeVncDB);

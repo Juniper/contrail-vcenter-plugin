@@ -513,10 +513,10 @@ class VCenterOnlyMonitorTask implements VCenterMonitorTask {
 
         //check if you are the master from time to time
         //sometimes things dont go as planned
-        if (VCenterMonitor.zk_ms.isLeader() == false) {
-            s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
-            System.exit(0);
-        }
+        //if (VCenterMonitor.zk_ms.isLeader() == false) {
+        //    s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
+        //    System.exit(0);
+        //}
 
         // Don't perform one time or periodic sync if
         // Vnc AND Vcenter DB init aren't complete or successful.
