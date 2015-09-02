@@ -37,6 +37,8 @@ import net.juniper.contrail.api.types.Project;
 import net.juniper.contrail.api.types.IdPermsType;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
+import com.google.common.base.Throwables;
+
 public class VncDB {
     private static final Logger s_logger = 
             Logger.getLogger(VncDB.class);
@@ -128,9 +130,13 @@ public class VncDB {
         try {
             vCenterProject = (Project) apiConnector.findByFQN(Project.class, 
                                         VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT);
-        } catch (IOException e) {
+        } catch (Exception e) {
+            s_logger.error("Exception : " + e);
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
             return false;
         }
+        s_logger.info(" fqn-to-uuid complete..");
         if (vCenterProject == null) {
             s_logger.info(" vCenter project not present, creating ");
             vCenterProject = new Project();
@@ -141,9 +147,10 @@ public class VncDB {
                     s_logger.error("Unable to create project: " + vCenterProject.getName());
                     return false;
                 }
-            } catch (IOException e) { 
+            } catch (Exception e) {
                 s_logger.error("Exception : " + e);
-                e.printStackTrace();
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
             }
         } else {
@@ -154,7 +161,10 @@ public class VncDB {
         try {
             vCenterIpam = (NetworkIpam) apiConnector.findByFQN(NetworkIpam.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_IPAM);
-        } catch (IOException e) {
+        } catch (Exception e) {
+            s_logger.error("Exception : " + e);
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
             return false;
         }
 
@@ -168,9 +178,10 @@ public class VncDB {
                 if (!apiConnector.create(vCenterIpam)) {
                     s_logger.error("Unable to create Ipam: " + vCenterIpam.getName());
                 }
-            } catch (IOException e) { 
+            } catch (Exception e) {
                 s_logger.error("Exception : " + e);
-                e.printStackTrace();
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
             }
         } else {
@@ -181,7 +192,10 @@ public class VncDB {
         try {
             vCenterDefSecGrp = (SecurityGroup) apiConnector.findByFQN(SecurityGroup.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_DEFAULT_SG);
-        } catch (IOException e) {
+        } catch (Exception e) {
+            s_logger.error("Exception : " + e);
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
             return false;
         }
 
@@ -230,9 +244,10 @@ public class VncDB {
                 if (!apiConnector.create(vCenterDefSecGrp)) {
                     s_logger.error("Unable to create Ipam: " + vCenterIpam.getName());
                 }
-            } catch (IOException e) { 
+            } catch (Exception e) {
                 s_logger.error("Exception : " + e);
-                e.printStackTrace();
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
             }
         } else {
