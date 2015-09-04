@@ -506,7 +506,7 @@ class VCenterMonitorTask implements Runnable {
         //check if you are the master from time to time
         //sometimes things dont go as planned
         if (VCenterMonitor.zk_ms.isLeader() == false) {
-            s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
+            s_logger.warn("Lost zookeeper leadership. Restarting myself\n");
             System.exit(0);
         }
 
