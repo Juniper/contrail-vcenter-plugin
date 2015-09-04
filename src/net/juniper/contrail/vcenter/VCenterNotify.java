@@ -404,7 +404,7 @@ public class VCenterNotify implements Runnable
     }
 
     void printVmEvent(Object value)
-    {     
+    {
         VmEvent anEvent = (VmEvent) value;
         s_logger.info("\n----------" + "\n Event ID: "
                 + anEvent.getKey() + "\n Event: "
