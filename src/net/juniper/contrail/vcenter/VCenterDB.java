@@ -80,7 +80,7 @@ public class VCenterDB {
     private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
     public HashMap<String, String> esxiToVRouterIpMap;
-    public  static HashMap<String, Boolean> vRouterActiveMap;
+    public HashMap<String, Boolean> vRouterActiveMap;
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,

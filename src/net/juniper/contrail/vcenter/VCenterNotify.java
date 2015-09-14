@@ -3,22 +3,12 @@
  */
 package net.juniper.contrail.vcenter;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.util.UUID;
-import java.util.Map;
-import java.util.HashMap;
-
 import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim25.ArrayOfEvent;
 import com.vmware.vim25.Event;
 import com.vmware.vim25.EventFilterSpec;
 import com.vmware.vim25.EventFilterSpecByEntity;
 import com.vmware.vim25.EventFilterSpecRecursionOption;
-import com.vmware.vim25.IpPool;
-import com.vmware.vim25.IpPoolIpPoolConfigInfo;
 import com.vmware.vim25.ObjectSpec;
 import com.vmware.vim25.ObjectUpdate;
 import com.vmware.vim25.ObjectUpdateKind;
@@ -29,9 +19,7 @@ import com.vmware.vim25.PropertyFilterUpdate;
 import com.vmware.vim25.PropertySpec;
 import com.vmware.vim25.RequestCanceled;
 import com.vmware.vim25.SelectionSpec;
-import com.vmware.vim25.TraversalSpec;
 import com.vmware.vim25.UpdateSet;
-import com.vmware.vim25.VirtualMachineConfigInfo;
 import com.vmware.vim25.VmEvent;
 import com.vmware.vim25.VmPoweredOnEvent;
 import com.vmware.vim25.VmPoweredOffEvent;
@@ -42,23 +30,9 @@ import com.vmware.vim25.DVPortgroupDestroyedEvent;
 import com.vmware.vim25.DVPortgroupReconfiguredEvent;
 import com.vmware.vim25.mo.EventHistoryCollector;
 import com.vmware.vim25.mo.EventManager;
-import com.vmware.vim25.mo.Folder;
-import com.vmware.vim25.mo.InventoryNavigator;
-import com.vmware.vim25.mo.ManagedObject;
-import com.vmware.vim25.mo.ManagedEntity;
-import com.vmware.vim25.mo.Network;
 import com.vmware.vim25.mo.PropertyCollector;
 import com.vmware.vim25.mo.PropertyFilter;
-import com.vmware.vim25.mo.ServiceInstance;
-import com.vmware.vim25.mo.VirtualMachine;
-import com.vmware.vim25.mo.DistributedVirtualPortgroup;
-import com.vmware.vim25.RuntimeFault;
-import com.vmware.vim25.InvalidProperty;
-import com.vmware.vim25.MigrationEvent;
-import com.vmware.vim25.VmEmigratingEvent; 
 import com.vmware.vim25.VmMigratedEvent; 
-import com.vmware.vim25.VmBeingMigratedEvent; 
-import com.vmware.vim25.VmBeingHotMigratedEvent; 
 import com.vmware.vim25.EnteredMaintenanceModeEvent;
 import com.vmware.vim25.ExitMaintenanceModeEvent;
 import com.vmware.vim25.HostConnectedEvent;
@@ -79,7 +53,6 @@ public class VCenterNotify implements Runnable
             Logger.getLogger(VCenterNotify.class);
     private static VCenterMonitorTask monitorTask = null;
 
-    private Folder _rootFolder;
     private Datacenter _datacenter;
 
     // EventManager and EventHistoryCollector References
@@ -101,7 +74,6 @@ public class VCenterNotify implements Runnable
     private void initialize()
     {
         _eventManager = monitorTask.getVCenterDB().getServiceInstance().getEventManager();
-        _rootFolder = monitorTask.getVCenterDB().getServiceInstance().getRootFolder();
         _datacenter = monitorTask.getVCenterDB().getDatacenter();
     }
 
@@ -205,20 +177,40 @@ public class VCenterNotify implements Runnable
 
     void handleChanges(PropertyChange[] changes)
     {
+        if (changes == null) {
+            s_logger.error("handleChanges received null change array from vCenter");
+            return;
+        }
+        
         for (int pci = 0; pci < changes.length; ++pci)
         {
-            String name = changes[pci].getName();
+            if (changes[pci] == null) {
+                s_logger.error("handleChanges received null change value from vCenter");
+                continue;
+            }
             Object value = changes[pci].getVal();
+            if (value == null) {
+                s_logger.error("handleChanges received null change value from vCenter");
+                continue;
+            }
             PropertyChangeOp op = changes[pci].getOp();
-            if (value != null && op!= PropertyChangeOp.remove) {
+            if (op!= PropertyChangeOp.remove) {
                 s_logger.info("===============");
                 s_logger.info("\nEvent Details follows:");
                 if (value instanceof ArrayOfEvent) {
                     ArrayOfEvent aoe = (ArrayOfEvent) value;
                     Event[] evts = aoe.getEvent();
+                    if (evts == null) {
+                        s_logger.error("handleChanges received null event array from vCenter");
+                        continue;
+                    }
                     for (int evtID = 0; evtID < evts.length; ++evtID)
                     {
                         Event anEvent = evts[evtID];
+                        if (anEvent == null) {
+                            s_logger.error("handleChanges received null event from vCenter");
+                            continue;
+                        }
                         s_logger.info("\n----------" + "\n Event ID: "
                                 + anEvent.getKey() + "\n Event: "
                                 + anEvent.getClass().getName()
@@ -309,7 +301,7 @@ public class VCenterNotify implements Runnable
                             + "\n----------\n");
                 }
                 s_logger.info("===============");
-            } else if (value != null && op == PropertyChangeOp.remove) {
+            } else if (op == PropertyChangeOp.remove) {
 
             }
         }
