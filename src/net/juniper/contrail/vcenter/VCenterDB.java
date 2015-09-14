@@ -659,7 +659,7 @@ public class VCenterDB {
         if (vrouterIpAddress == null) {
             s_logger.error("ContrailVM not found on ESXi host: " 
                     + hostName + ", skipping VM (" + vmName + ") creation"
-                    + " on dvPg: " + dvPgName);
+                    + " on network: " + dvPgName);
             return null;
         }
 
@@ -1085,7 +1085,7 @@ public class VCenterDB {
             if (ipAddress == null) {
                 String prevIpAddress = null;
 
-                s_logger.info("For VM: " + vmName + " IP address could not be ascertained.");
+                s_logger.info("VM (" + vmName + ") IP address couldn't be determined..");
 
                 if (prevVmwareVmInfo != null) {
                     prevIpAddress = prevVmwareVmInfo.getIpAddress();
@@ -1095,12 +1095,12 @@ public class VCenterDB {
                     && prevIpAddress != null) {
                     // We have a problem here. Maybe the MOB is messed up
                     // VM had an IP before,but not now.
-                    s_logger.error("Please restart vmware tools to ensure IP is reported to vcenter");
+                    s_logger.error("Please restart vmware tools to ensure IP address is reported to vcenter");
                 }
                 if (prevIpAddress != null) {
                     ipAddress = prevIpAddress;
-                    s_logger.debug("Using previous IP " + prevIpAddress + " for VM " + vmName + 
-                                   " since vCenter did not give an IP address");
+                    s_logger.debug("Using IP address:" + prevIpAddress + " read previously for VM ("
+                                   + vmName + ") since vCenter didn't provide an current IP address");
                 }
             }
 
