@@ -6,6 +6,7 @@ package net.juniper.contrail.vcenter;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -81,6 +82,14 @@ public class VncDB {
         return apiConnector;
     }
 
+    public String getApiServerAddress() {
+        return apiServerAddress;
+    }
+    
+    public int getApiServerPort() {
+        return apiServerPort;
+    }
+    
     public HashMap<String, ContrailVRouterApi>  getVRouterApiMap() {
         return vrouterApiMap;
     }
@@ -1117,16 +1126,29 @@ public class VncDB {
     }
 
     // KeepAlive with all active vRouter Agent Connections.
-    public void vrouterAgentPeriodicConnectionCheck(HashMap vRouterActiveMap) {
-        for (String vrouterIpAddress : vrouterApiMap.keySet()) {
-            if (vRouterActiveMap.get(vrouterIpAddress) == Boolean.FALSE) {
+    public void vrouterAgentPeriodicConnectionCheck(Map<String, Boolean> vRouterActiveMap) {
+        for (Map.Entry<String, Boolean> entry: vRouterActiveMap.entrySet()) {
+            if (entry.getValue() == Boolean.FALSE) {
+                // host is in maintenance mode
                 continue;
             }
+        
+            String vrouterIpAddress = entry.getKey();
             ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
-            // run Keep Alive with vRouter Agent.
-            if (vrouterApi != null) {
-              vrouterApi.PeriodicConnectionCheck();
+            if (vrouterApi == null) {
+                try {
+                    vrouterApi = new ContrailVRouterApi(
+                          InetAddress.getByName(vrouterIpAddress), 
+                          vrouterApiPort, false, 1000);
+                } catch (UnknownHostException e) { 
+                }
+                if (vrouterApi == null) {
+                    continue;
+                }
+                vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
+            // run Keep Alive with vRouter Agent.
+            vrouterApi.PeriodicConnectionCheck();
         }
     }
 }

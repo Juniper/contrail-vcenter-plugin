@@ -7,21 +7,16 @@ package net.juniper.contrail.vcenter;
 import java.io.IOException;
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.SortedMap;
-import java.util.Iterator;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.UUID;
-import com.google.common.base.Throwables;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
-import org.apache.log4j.Level;
 
+import net.juniper.contrail.sandesh.VCenterHttpProvider;
+import net.juniper.contrail.sandesh.VCenterHttpServices;
 import net.juniper.contrail.zklibrary.MasterSelection;
 
 class ExecutorServiceShutdownThread extends Thread {
@@ -65,29 +60,40 @@ public class VCenterMonitor {
     private static String _vcenterDcName     = "Datacenter";
     private static String _vcenterDvsName    = "dvSwitch";
     private static String _vcenterIpFabricPg = "contrail-fab-pg";
+    
+    private static VCenterDB _vcenterDB;
+    public static VCenterDB getVcenterDB() {
+        return _vcenterDB;
+    }
+    
+    private static VncDB _vncDB;
+    
+    public static VncDB getVncDB() {
+        return _vncDB;
+    }
+    
+    static VCenterNotify _eventMonitor;    
     private static String _apiServerAddress  = "10.84.13.23";
     private static int _apiServerPort        = 8082;
     private static String _zookeeperAddrPort  = "127.0.0.1:2181";
     private static String _zookeeperLatchPath  = "/vcenter-plugin";
     private static String _zookeeperId  = "node-vcenter-plugin";
     
-    private static VCenterDB     _vcenterDB;
-    private static VncDB         _vncDB;
-    private static VCenterNotify _eventMonitor;
-    static MasterSelection zk_ms;
-
+    private static MasterSelection zk_ms;
+    public static boolean isZookeeperLeader() {
+        return zk_ms.isLeader();
+    }
+        
     private static boolean readVcenterPluginConfigFile() {
 
         File configFile = new File(_configurationFile);
-        FileInputStream fileStream = null;
-        try {
-            String hostname = null;
-            int port = 0;
-            if (configFile == null) {
-                return false;
-            } else {
-                final Properties configProps = new Properties();
-                fileStream = new FileInputStream(configFile);
+        if (!configFile.isFile()) {
+            return false;
+        }
+        try {       
+            final Properties configProps = new Properties();
+            FileInputStream fileStream = new FileInputStream(configFile);
+            try {
                 configProps.load(fileStream);
 
                 _vcenterURL = configProps.getProperty("vcenter.url");
@@ -98,22 +104,25 @@ public class VCenterMonitor {
                 _apiServerAddress = configProps.getProperty("api.hostname");
                 _zookeeperAddrPort = configProps.getProperty("zookeeper.serverlist");
                 _vcenterIpFabricPg = configProps.getProperty("vcenter.ipfabricpg");
-		String portStr = configProps.getProperty("api.port");
+                String portStr = configProps.getProperty("api.port");
                 if (portStr != null && portStr.length() > 0) {
                     _apiServerPort = Integer.parseInt(portStr);
                 }
+            } finally {
+                fileStream.close();
             }
         } catch (IOException ex) {
             s_logger.warn("Unable to read " + _configurationFile, ex);
         } catch (Exception ex) {
             s_logger.error("Exception in readVcenterPluginConfigFile: " + ex);
             ex.printStackTrace();
-        } finally {
-            //IOUtils.closeQuietly(fileStream);
         }
+
         return true;
     }
 
+
+    
     public static void main(String[] args) throws Exception {
 
        // log4j logger
@@ -124,20 +133,24 @@ public class VCenterMonitor {
         s_logger.info("Config params vcenter url: " + _vcenterURL + ", _vcenterUsername: " 
                        + _vcenterUsername + ", api server: " + _apiServerAddress);
 
+        VCenterHttpServices.init();
+                
         // Zookeeper mastership logic
 	zk_ms = new MasterSelection(_zookeeperAddrPort, _zookeeperLatchPath, _zookeeperId);
         s_logger.info("Waiting for zookeeper Mastership .. ");
 	zk_ms.waitForLeadership();
         s_logger.info("Acquired zookeeper Mastership .. ");
-
+      
         // Launch the periodic VCenterMonitorTask
         VCenterMonitorTask _monitorTask = new VCenterMonitorTask(_vcenterURL, 
                               _vcenterUsername, _vcenterPassword, 
                               _vcenterDcName, _vcenterDvsName,
                               _apiServerAddress, _apiServerPort, _vcenterIpFabricPg);
-       
+        _vncDB = _monitorTask.getVncDB();
+        _vcenterDB = _monitorTask.getVCenterDB();
         scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 4, //4 second periodic
                 TimeUnit.SECONDS);
+
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));
 

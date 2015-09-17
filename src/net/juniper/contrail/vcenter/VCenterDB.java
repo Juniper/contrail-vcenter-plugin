@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.SortedMap;
 import java.util.Scanner;
@@ -79,8 +80,8 @@ public class VCenterDB {
     private VmwareDistributedVirtualSwitch contrailDVS;
     private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
-    public HashMap<String, String> esxiToVRouterIpMap;
-    public HashMap<String, Boolean> vRouterActiveMap;
+    public Map<String, String> esxiToVRouterIpMap;
+    public Map<String, Boolean> vRouterActiveMap;
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
@@ -93,7 +94,7 @@ public class VCenterDB {
         this.contrailIpFabricPgName = ipFabricPgName;
 
         s_logger.info("VCenterDB(" + contrailDvsName + ", " + ipFabricPgName + ")");
-        // Create ESXi host to vRouerVM Ip address map
+        // Create ESXi host to vRouterVM Ip address map
         esxiToVRouterIpMap = new HashMap<String, String>();
         vRouterActiveMap = new HashMap<String, Boolean>();
     }
@@ -1332,5 +1333,9 @@ public class VCenterDB {
             vnInfos.put(vnUuid, vnInfo);
         }
         return vnInfos;
+    }
+    
+    public String getVcenterUrl() { 
+        return vcenterUrl; 
     }
 }

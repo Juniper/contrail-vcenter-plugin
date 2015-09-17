@@ -15,7 +15,7 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
 
 
-class VmwareVirtualNetworkInfo {
+public class VmwareVirtualNetworkInfo {
     private String name;
     private short isolatedVlanId;
     private short primaryVlanId;

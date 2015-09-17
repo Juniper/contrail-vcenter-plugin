@@ -1,0 +1,82 @@
+/* Every struct <name> will generate a class called <name>.java.
+   
+   Every request <name> will generate a skeleton file <name>.java, 
+   and a skeleton HTTP presentation layer <name>HttpHandler.java. 
+   
+   Every response will generate a skeleton file called <name>.java. 
+   User is responsible for populating with the actual values of the response.
+*/
+
+struct VRouterStats {
+    1: int total (link="vRoutersTotal");
+    2: int up (link="vRoutersUp");
+    3: int down (link="vRoutersDown");
+}
+
+struct ApiServerInfo {
+	1: string ipAddr;
+	2: int port;
+	3: bool state;
+}
+
+struct VCenterInfo {
+	1: string vCenterUrl;
+	2: bool connected;
+}
+
+struct VCenterPlugin {
+	1: bool master;
+	2: bool pluginState;
+	3: VRouterStats vRouterStats;
+	4: ApiServerInfo apiServerInfo;
+	5: VCenterServerInfo vCenterServerInfo;
+}
+
+/* all requests to "/" are handled here */
+request sandesh VCenterPluginReq {
+}
+
+response sandesh VCenterPluginResp {
+	1: struct VCenterPlugin info;
+}
+
+
+request sandesh VRouterListReq {
+	1: optional bool total;
+	2: optional bool up;
+	3: optional bool down;
+	4: optional string ipAddr;
+}
+
+response sandesh VRouterListResp {
+	1: list<VRouterInfo> vRouters;
+}
+
+struct VirtualMachineInfo {
+	1: string name;
+	2: string ipAddr;
+	3: string macAddr;
+	4: bool state;
+	5: string esxiHost;
+	6: string network;
+}
+
+struct VirtualNetworkInfo {
+	1: string name;
+	2: list<VirtualMachineInfo> vMachines;
+}
+
+struct VRouterInfo {
+	1: string ipAddr;
+    2: bool state;
+    3: string EsxiHost;
+    4: list<VirtualNetworkInfo> vNetworks;
+}
+
+request sandesh VRouterDetailReq {
+	1: string ipAddr;
+}
+
+response sandesh VRouterDetailResp {
+	1: VRouterDetail vRouter;
+}
