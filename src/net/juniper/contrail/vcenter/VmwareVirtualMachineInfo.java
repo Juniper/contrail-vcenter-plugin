@@ -21,7 +21,7 @@ import org.apache.log4j.Level;
 import com.vmware.vim25.VirtualMachinePowerState;
 import com.vmware.vim25.ManagedObjectReference;
 
-class VmwareVirtualMachineInfo {
+public class VmwareVirtualMachineInfo {
     ManagedObjectReference hmor;
     private String hostName;
     private String vrouterIpAddress;

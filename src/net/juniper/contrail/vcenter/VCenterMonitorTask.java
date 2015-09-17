@@ -505,8 +505,8 @@ class VCenterMonitorTask implements Runnable {
 
         //check if you are the master from time to time
         //sometimes things dont go as planned
-        if (VCenterMonitor.zk_ms.isLeader() == false) {
-            s_logger.warn("Lost zookeeper leadership. Restarting myself\n");
+        if (VCenterMonitor.isZookeeperLeader() == false) {
+            s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
             System.exit(0);
         }
 
@@ -558,7 +558,7 @@ class VCenterMonitorTask implements Runnable {
             return;
         }
 
-        // 8 second timeout. run KeepAlive with vRouer Agent.
+        // 8 second timeout. run KeepAlive with vRouter Agent.
         if (iteration == 0) {
             try {
                 vncDB.vrouterAgentPeriodicConnectionCheck(vcenterDB.vRouterActiveMap);
