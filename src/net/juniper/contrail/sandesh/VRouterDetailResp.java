@@ -44,12 +44,12 @@ public class VRouterDetailResp {
         
         for (Map.Entry<String, VmwareVirtualNetworkInfo> entry: entries.entrySet()) {
             VmwareVirtualNetworkInfo vmwareVN = entry.getValue(); 
-            VirtualNetworkInfo nw = new VirtualNetworkInfo();
-            nw.setName(vmwareVN.getName());
-            
-            populateVMs(nw, vmwareVN);
-            
-            vNetworks.add(nw);
+            VirtualNetworkInfo vn = new VirtualNetworkInfo();
+            populateVMs(vn, vmwareVN);
+            if (vn.getVMachines().size() > 0) {
+                vn.setName(vmwareVN.getName());
+                vNetworks.add(vn);
+            }
         }
     }
     
@@ -67,6 +67,9 @@ public class VRouterDetailResp {
         for (Map.Entry<String, VmwareVirtualMachineInfo> entry : map.entrySet()) {
             VmwareVirtualMachineInfo vmwareVM = entry.getValue();
             
+            if (!vrouter.getEsxiHost().equals(vmwareVM.getHostName())) {
+                return;
+            }
             VirtualMachineInfo vm = new VirtualMachineInfo();
             vm.setName(vmwareVM.getName());
             vm.setIpAddr(vmwareVM.getIpAddress());

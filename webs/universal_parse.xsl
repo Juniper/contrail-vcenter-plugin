@@ -337,20 +337,27 @@
                                                 </td>
                                             </xsl:when>
                                             <xsl:otherwise>
+                                                <xsl:variable name="accordionID" select="generate-id(.)"/>
                                                 <xsl:variable name="tbname" select="name()"/>
                                                 <xsl:variable name="count" select="position()"/>
                                                 <xsl:variable name="num">
                                                     <xsl:number/>
                                                 </xsl:variable>
                                                 <td>
-                                                    <div data-collapse="accordion persist">
-                                                        <h5>
-                                                            <xsl:value-of select="name()"/>
-                                                        </h5>
-                                                        <table id="{generate-id()}-{$tbname}-{$count}" class="table table-bordered table-condensed" border="1">
-                                                            <xsl:apply-templates select="@type"/>
-                                                        </table>
-                                                    </div>
+                                                <div class="accordion" id="accordion-parent">
+                                                  <div class="accordion-heading">
+                                                  <a class="accordion-toggle" data-toggle="collapse" href="#{$accordionID}-{$tbname}-{$count}">
+                                                  <xsl:value-of select="name()"/>
+                                                  </a>
+                                                  </div>
+                                                <div id="{$accordionID}-{$tbname}-{$count}" class="accordion-body collapse in">
+                                                  <div class="accordion-inner">
+                                                    <table class="table table-bordered table-condensed" border="1">
+                                                      <xsl:apply-templates select="@type"/>
+                                                    </table>
+                                                 </div>
+                                                </div>
+                                                </div>
                                                 </td>
                                             </xsl:otherwise>
                                         </xsl:choose>
