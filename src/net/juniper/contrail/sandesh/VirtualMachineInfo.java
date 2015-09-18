@@ -116,7 +116,9 @@ public class VirtualMachineInfo implements SandeshObject
          .append("\">");
         int inner_id = 1;
         writeFieldName(s, inner_id++);
-        writeFieldIpAddr(s, inner_id++);
+        // TODO VCenterDB does not have the correct value
+        // comment out until fixed to avoid misleading info
+        // writeFieldIpAddr(s, inner_id++);
         writeFieldMacAddr(s, inner_id++);
         writeFieldPowerState(s, inner_id++);
         if (detail != DetailLevel.PARENT) {

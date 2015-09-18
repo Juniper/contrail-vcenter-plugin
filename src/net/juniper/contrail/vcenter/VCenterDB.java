@@ -1053,7 +1053,7 @@ public class VCenterDB {
                 VmwareVirtualMachineInfo(vmName, hostName, hmor,
                         vrouterIpAddress, vmMac, powerState);
 
-        // Save static-ip read via tools if staic-ip addressing enabled on network.
+        // Save static-ip read via tools if static-ip addressing enabled on network.
         if ((externalIpam == true) && (vmInfo.isPoweredOnState())) {
             String ipAddress = null;
             String toolsRunningStatus  = (String)  pTable.get("guest.toolsRunningStatus");
