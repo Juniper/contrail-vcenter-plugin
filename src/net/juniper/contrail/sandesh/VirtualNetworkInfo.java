@@ -4,6 +4,8 @@
 
 package net.juniper.contrail.sandesh;
 
+import java.util.Comparator;
+
 public class VirtualNetworkInfo implements SandeshObject 
 {    
     private String name;
@@ -34,7 +36,8 @@ public class VirtualNetworkInfo implements SandeshObject
     
     public VirtualNetworkInfo() {
         vMachines = 
-                new SandeshObjectList<VirtualMachineInfo>(VirtualMachineInfo.class);
+                new SandeshObjectList<VirtualMachineInfo>(VirtualMachineInfo.class,
+                        new ComparatorVirtualMachineInfo());
     }
     
     public void writeObject(StringBuilder s,  DetailLevel detail, int identifier)

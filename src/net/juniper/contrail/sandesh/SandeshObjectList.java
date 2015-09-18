@@ -1,15 +1,21 @@
 package net.juniper.contrail.sandesh;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.Comparator;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 public class SandeshObjectList<T extends SandeshObject> {
 
-    List<T> list;
+    private SortedSet<T> list;
     final Class<T> typeParameterClass;
     
-    SandeshObjectList(Class<T> typeParameterClass) {
-        list = new LinkedList<T>();
+    public SandeshObjectList(Class<T> typeParameterClass) {
+        list = new TreeSet<T>();
+        this.typeParameterClass = typeParameterClass;
+    }
+    
+    public SandeshObjectList(Class<T> typeParameterClass, Comparator<? super T> comparator) {
+        list = new TreeSet<T>(comparator);
         this.typeParameterClass = typeParameterClass;
     }
     
