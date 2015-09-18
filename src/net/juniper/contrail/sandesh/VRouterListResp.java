@@ -8,7 +8,9 @@ public class VRouterListResp {
     private SandeshObjectList<VRouterInfo> vrouterInfoList;
     
     public VRouterListResp(VRouterListReq req) {
-        vrouterInfoList = new SandeshObjectList<VRouterInfo>(VRouterInfo.class);
+        vrouterInfoList = 
+                new SandeshObjectList<VRouterInfo>(VRouterInfo.class, 
+                                                    new ComparatorVRouterInfo());
                 
         Map<String, String> host2VrouterMap = VCenterMonitor.getVcenterDB().esxiToVRouterIpMap;
         Map<String, ContrailVRouterApi> vRouters = VCenterMonitor.getVncDB().getVRouterApiMap();
