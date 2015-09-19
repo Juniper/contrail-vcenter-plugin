@@ -165,7 +165,9 @@ public class VCenterMonitor {
             }
         }
         s_logger.info("Starting event monitor Task.. ");
-        _eventMonitor = new VCenterNotify(_monitorTask);
+        _eventMonitor = new VCenterNotify(_monitorTask, _vcenterURL,
+                                          _vcenterUsername, _vcenterPassword,
+                                          _vcenterDcName);
         _eventMonitor.start();
     }
 }

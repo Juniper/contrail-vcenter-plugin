@@ -65,6 +65,7 @@ public class VCenterDB {
             Logger.getLogger(VCenterDB.class);
     private static final String contrailVRouterVmNamePrefix = "contrailVM";
     private static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
+    private static final int SERVICE_INSTANCE_READ_TIMEOUT = 30000; //30 sec
     private final String contrailDvSwitchName;
     private final String contrailDataCenterName;
     private final String vcenterUrl;
@@ -72,7 +73,7 @@ public class VCenterDB {
     private final String vcenterPassword;
     private final String contrailIpFabricPgName;
     
-    private ServiceInstance serviceInstance;
+    static ServiceInstance serviceInstance;
     private Folder rootFolder;
     private InventoryNavigator inventoryNavigator;
     private IpPoolManager ipPoolManager;
@@ -133,6 +134,12 @@ public class VCenterDB {
         s_logger.info("Connected to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + "," 
                                 + vcenterPassword + ")");
+        //Set read timeout on connection to vcenter server 
+        serviceInstance.getServerConnection()
+                       .getVimService()
+                       .getWsc().setReadTimeout(SERVICE_INSTANCE_READ_TIMEOUT);
+        s_logger.info("ServiceInstance read timeout set to " + 
+            serviceInstance.getServerConnection().getVimService().getWsc().getReadTimeout());
         return true;
     }
 
@@ -240,6 +247,12 @@ public class VCenterDB {
                                     + vcenterPassword + ")" + "Retrying after 5 secs");
                     return false;
                 }
+                //Set read timeout on connection to vcenter server
+                serviceInstance.getServerConnection()
+                       .getVimService()
+                       .getWsc().setReadTimeout(SERVICE_INSTANCE_READ_TIMEOUT);
+                s_logger.error("ServiceInstance read timeout: " + 
+                    serviceInstance.getServerConnection().getVimService().getWsc().getReadTimeout());
                 return true;
         } catch (MalformedURLException e) {
                 s_logger.info("Re-Connect unsuccessful!");
