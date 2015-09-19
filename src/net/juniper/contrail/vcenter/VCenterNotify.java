@@ -3,6 +3,9 @@
  */
 package net.juniper.contrail.vcenter;
 
+import java.net.URL;
+import java.net.MalformedURLException;
+import java.rmi.RemoteException;
 import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim25.ArrayOfEvent;
 import com.vmware.vim25.Event;
@@ -28,15 +31,21 @@ import com.vmware.vim25.DVPortgroupEvent;
 import com.vmware.vim25.DVPortgroupCreatedEvent;
 import com.vmware.vim25.DVPortgroupDestroyedEvent;
 import com.vmware.vim25.DVPortgroupReconfiguredEvent;
+import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim25.mo.EventHistoryCollector;
 import com.vmware.vim25.mo.EventManager;
+import com.vmware.vim25.mo.Folder;
+import com.vmware.vim25.mo.InventoryNavigator;
 import com.vmware.vim25.mo.PropertyCollector;
 import com.vmware.vim25.mo.PropertyFilter;
+import com.vmware.vim25.mo.ServiceInstance;
 import com.vmware.vim25.VmMigratedEvent; 
 import com.vmware.vim25.EnteredMaintenanceModeEvent;
 import com.vmware.vim25.ExitMaintenanceModeEvent;
 import com.vmware.vim25.HostConnectedEvent;
 import com.vmware.vim25.HostConnectionLostEvent;
+import com.vmware.vim25.InvalidProperty;
+import com.vmware.vim25.RuntimeFault;
 
 import com.google.common.base.Throwables;
 
@@ -53,7 +62,14 @@ public class VCenterNotify implements Runnable
             Logger.getLogger(VCenterNotify.class);
     private static VCenterMonitorTask monitorTask = null;
 
-    private Datacenter _datacenter;
+    private final String contrailDataCenterName;
+    private final String vcenterUrl;
+    private final String vcenterUsername;
+    private final String vcenterPassword;
+    static ServiceInstance serviceInstance;
+    private Folder rootFolder;
+    private InventoryNavigator inventoryNavigator;
+    private Datacenter _contrailDC;
 
     // EventManager and EventHistoryCollector References
     private EventManager _eventManager;
@@ -63,26 +79,105 @@ public class VCenterNotify implements Runnable
     private static Boolean shouldRun;
     private static Thread watchUpdates = null;
 
-    public VCenterNotify(VCenterMonitorTask _monitorTask)
+    public VCenterNotify(VCenterMonitorTask _monitorTask, 
+                         String vcenterUrl, String vcenterUsername,
+                         String vcenterPassword, String contrailDcName)
     {
-        monitorTask = _monitorTask;
-     }
+        this.monitorTask            = _monitorTask;
+        this.vcenterUrl             = vcenterUrl;
+        this.vcenterUsername        = vcenterUsername;
+        this.vcenterPassword        = vcenterPassword;
+        this.contrailDataCenterName = contrailDcName;
+    }
 
     /**
      * Initialize the necessary Managed Object References needed here
      */
-    private void initialize()
-    {
-        _eventManager = monitorTask.getVCenterDB().getServiceInstance().getEventManager();
-        _datacenter = monitorTask.getVCenterDB().getDatacenter();
+    private boolean initialize() {
+        // Connect to VCenter
+        s_logger.info("Connecting to vCenter Server : " + "("
+                                + vcenterUrl + "," + vcenterUsername + ")");
+        if (serviceInstance == null) {
+            try {
+                serviceInstance = new ServiceInstance(new URL(vcenterUrl),
+                                            vcenterUsername, vcenterPassword, true);
+                if (serviceInstance == null) {
+                    s_logger.error("Failed to connect to vCenter Server : " + "("
+                                    + vcenterUrl + "," + vcenterUsername + "," 
+                                    + vcenterPassword + ")");
+                }
+            } catch (MalformedURLException e) {
+                    return false;
+            } catch (RemoteException e) {
+               s_logger.error("Remote exception while connecting to vcenter" + e);
+                e.printStackTrace();
+                return false;
+            } catch (Exception e) {
+                s_logger.error("Error while connecting to vcenter" + e);
+                e.printStackTrace();
+                return false;
+            }
+        }
+        s_logger.info("Connected to vCenter Server : " + "("
+                                + vcenterUrl + "," + vcenterUsername + "," 
+                                + vcenterPassword + ")");
+
+        if (rootFolder == null) {
+            rootFolder = serviceInstance.getRootFolder();
+            if (rootFolder == null) {
+                s_logger.error("Failed to get rootfolder for vCenter ");
+                return false;
+            }
+        }
+        s_logger.error("Got rootfolder for vCenter ");
+
+        if (inventoryNavigator == null) {
+            inventoryNavigator = new InventoryNavigator(rootFolder);
+            if (inventoryNavigator == null) {
+                s_logger.error("Failed to get InventoryNavigator for vCenter ");
+                return false;
+            }
+        }
+        s_logger.error("Got InventoryNavigator for vCenter ");
+
+        // Search contrailDc
+        if (_contrailDC == null) {
+            try {
+                _contrailDC = (Datacenter) inventoryNavigator.searchManagedEntity(
+                                          "Datacenter", contrailDataCenterName);
+            } catch (InvalidProperty e) {
+                    return false;
+            } catch (RuntimeFault e) {
+                    return false;
+            } catch (RemoteException e) {
+                    return false;
+            }
+            if (_contrailDC == null) {
+                s_logger.error("Failed to find " + contrailDataCenterName 
+                               + " DC on vCenter ");
+                return false;
+            }
+        }
+        s_logger.info("Found " + contrailDataCenterName + " DC on vCenter ");
+        if (_eventManager == null) {
+            _eventManager = serviceInstance.getEventManager();
+        }
+        return true;
     }
 
+    public void Cleanup() {
+        serviceInstance    = null;
+        rootFolder         = null;
+        inventoryNavigator = null;
+        _contrailDC        = null;
+        _eventManager      = null;
+    }
     private void createEventHistoryCollector() throws Exception
     {
         // Create an Entity Event Filter Spec to
         // specify the MoRef of the VM to be get events filtered for
         EventFilterSpecByEntity entitySpec = new EventFilterSpecByEntity();
-        entitySpec.setEntity(_datacenter.getMOR());
+        entitySpec.setEntity(_contrailDC.getMOR());
         entitySpec.setRecursion(EventFilterSpecRecursionOption.children);
 
         // set the entity spec in the EventFilter
@@ -312,14 +407,14 @@ public class VCenterNotify implements Runnable
      public void start() {
         try
         {
-            System.out.println("info---" + 
-                monitorTask.getVCenterDB().getServiceInstance().getAboutInfo().getFullName());
             this.initialize();
+            System.out.println("info---" + 
+                serviceInstance.getAboutInfo().getFullName());
             this.createEventHistoryCollector();
 
             PropertyFilterSpec eventFilterSpec = this
                     .createEventFilterSpec();
-            propColl = monitorTask.getVCenterDB().getServiceInstance().getPropertyCollector();
+            propColl = serviceInstance.getPropertyCollector();
 
             propFilter = propColl.createFilter(eventFilterSpec, true);
 
@@ -339,7 +434,7 @@ public class VCenterNotify implements Runnable
         shouldRun = false;
         propColl.cancelWaitForUpdates();
         propFilter.destroyPropertyFilter();
-        monitorTask.getVCenterDB().getServiceInstance().getServerConnection().logout();
+        serviceInstance.getServerConnection().logout();
         watchUpdates.stop();
     }
 
@@ -370,15 +465,15 @@ public class VCenterNotify implements Runnable
                     s_logger.error(stackTrace);
                     s_logger.error("Exception in ServiceInstance. Refreshing the serviceinstance and starting new");
                     do {
-                        System.out.println("Waiting for reconnect...");
+                        System.out.println("Waiting for periodic thread to reconnect...");
                         Thread.sleep(2000);
                         if (monitorTask.VCenterNotifyForceRefresh) {
-                            s_logger.info("reconnect successful.. reInit Notify..");
-                            this.initialize();
-                            this.createEventHistoryCollector();
-                            PropertyFilterSpec eventFilterSpec =
-                               this.createEventFilterSpec();
-                            propColl = monitorTask.getVCenterDB().getServiceInstance().getPropertyCollector();
+                            s_logger.info("periodic thread reconnect successful.. initialize Notify..");
+                            Cleanup();
+                            initialize();
+                            createEventHistoryCollector();
+                            PropertyFilterSpec eventFilterSpec = createEventFilterSpec();
+                            propColl = serviceInstance.getPropertyCollector();
                             propFilter = propColl.createFilter(eventFilterSpec, true);
                             monitorTask.VCenterNotifyForceRefresh = false;
                             version = "";
@@ -399,6 +494,8 @@ public class VCenterNotify implements Runnable
                 s_logger.error("Caught Exception : " + " Name : "
                         + e.getClass().getName() + " Message : "
                         + e.getMessage() + " Trace : ");
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace); 
             }
         }
     }
