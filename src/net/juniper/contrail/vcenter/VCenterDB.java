@@ -1080,7 +1080,7 @@ public class VCenterDB {
             if (ipAddress == null) {
                 String prevIpAddress = null;
 
-                s_logger.info("VM (" + vmName + ") IP address couldn't be determined..");
+                s_logger.info("VM (" + vmName + ")'s network(" + dvPgName + ") couldn't be found..");
 
                 if (prevVmwareVmInfo != null) {
                     prevIpAddress = prevVmwareVmInfo.getIpAddress();
