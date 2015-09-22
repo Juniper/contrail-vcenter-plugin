@@ -29,7 +29,7 @@ public class VirtualMachineInfo implements SandeshObject
     public void setIpAddr(String ipAddr) {
         this.ipAddr = ipAddr;
     }
-    
+
     @SuppressWarnings("unused")
     private void writeFieldIpAddr(StringBuilder s, int identifier)
     {

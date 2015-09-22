@@ -1,7 +1,5 @@
 package net.juniper.contrail.sandesh;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Comparator;
 
 public class ComparatorVRouterInfo 
