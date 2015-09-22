@@ -53,7 +53,7 @@ public class VCenterPluginResp {
         if (vncDB != null) {
             apiServerInfo.setIpAddr(vncDB.getApiServerAddress());
             apiServerInfo.setPort(vncDB.getApiServerPort());
-            apiServerInfo.setConnected(vncDB.isVncApiServerAlive());
+            apiServerInfo.setConnected(vncDB.isServerAlive());
         }
     }
     

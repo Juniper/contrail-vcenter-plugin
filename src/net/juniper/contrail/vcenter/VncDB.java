@@ -49,6 +49,7 @@ public class VncDB {
     private HashMap<String, ContrailVRouterApi> vrouterApiMap;
     
     private ApiConnector apiConnector;
+    private boolean alive;
     private Project vCenterProject;
     private NetworkIpam vCenterIpam;
     private SecurityGroup vCenterDefSecGrp;
@@ -102,12 +103,17 @@ public class VncDB {
         return vCenterProject;
     }
 
+    public boolean isServerAlive() {
+        return alive;
+    }
+    
     public boolean isVncApiServerAlive() {
         if (apiConnector == null) {
             apiConnector = ApiConnectorFactory.build(apiServerAddress,
                                                      apiServerPort);
             if (apiConnector == null) {
                 s_logger.error(" failed to create ApiConnector.. retry later");
+                alive = false;
                 return false;
             }
         }
@@ -119,11 +125,15 @@ public class VncDB {
             List<Project> projects = (List<Project>) apiConnector.list(Project.class, null);
             if (projects == null) {
                 s_logger.error(" ApiServer not fully awake yet.. retry again..");
+                alive = false;
                 return false;
             }
         } catch (IOException e) {
+            alive = false;
             return false;
         }
+
+        alive = true;
         s_logger.info(" Api-server alive. Got the pulse..");
         return true;
 
