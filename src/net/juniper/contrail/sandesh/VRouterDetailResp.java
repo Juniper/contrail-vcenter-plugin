@@ -68,7 +68,7 @@ public class VRouterDetailResp {
             VmwareVirtualMachineInfo vmwareVM = entry.getValue();
             
             if (!vrouter.getEsxiHost().trim().equals(vmwareVM.getHostName().trim())) {
-                return;
+                continue;
             }
 
             VirtualMachineInfo vm = new VirtualMachineInfo();
