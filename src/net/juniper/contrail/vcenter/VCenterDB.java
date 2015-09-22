@@ -953,7 +953,7 @@ public class VCenterDB {
  
     private String getVirtualMachineIpAddress(GuestNicInfo[] nicInfos, 
                                               String dvPgName, 
-                                              String vmName)
+                                              String vmName, String vmMac)
                                              throws Exception {
 
         // Assumption here is that VMware Tools are installed
@@ -964,16 +964,14 @@ public class VCenterDB {
             return null;
         }
         for (GuestNicInfo nicInfo : nicInfos) {
-            // Extract the IP address associated with simple port
-            // group. Assumption here is that Contrail VRouter VM will
-            // have only one standard port group
-            String networkName = nicInfo.getNetwork();
+            // Extract the IP address associated with interface based on macAddress.
+            String guestMac = nicInfo.getMacAddress();
 
-            if (networkName == null) {
+            if (guestMac == null) {
                 continue;
             }
 
-            if (!networkName.equals(dvPgName)) {
+            if (!guestMac.equals(vmMac)) {
                 continue;
             }
 
@@ -1073,14 +1071,12 @@ public class VCenterDB {
             if (VirtualMachineToolsRunningStatus.guestToolsRunning.toString().equals(toolsRunningStatus)) {
                 if (pTable.get("guest.net") instanceof GuestNicInfo[]) {
                     GuestNicInfo[] nicInfos    = (GuestNicInfo[])pTable.get("guest.net");
-                    ipAddress = getVirtualMachineIpAddress(nicInfos, dvPgName, vmName);
+                    ipAddress = getVirtualMachineIpAddress(nicInfos, dvPgName, vmName, vmMac);
                 }
             }
 
             if (ipAddress == null) {
                 String prevIpAddress = null;
-
-                s_logger.info("VM (" + vmName + ")'s network(" + dvPgName + ") couldn't be found..");
 
                 if (prevVmwareVmInfo != null) {
                     prevIpAddress = prevVmwareVmInfo.getIpAddress();
