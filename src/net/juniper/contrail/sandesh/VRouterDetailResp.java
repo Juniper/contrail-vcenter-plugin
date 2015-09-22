@@ -67,9 +67,10 @@ public class VRouterDetailResp {
         for (Map.Entry<String, VmwareVirtualMachineInfo> entry : map.entrySet()) {
             VmwareVirtualMachineInfo vmwareVM = entry.getValue();
             
-            if (!vrouter.getEsxiHost().equals(vmwareVM.getHostName())) {
+            if (!vrouter.getEsxiHost().trim().equals(vmwareVM.getHostName().trim())) {
                 return;
             }
+            
             VirtualMachineInfo vm = new VirtualMachineInfo();
             vm.setName(vmwareVM.getName());
             vm.setIpAddr(vmwareVM.getIpAddress());

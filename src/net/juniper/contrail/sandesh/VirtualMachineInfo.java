@@ -4,8 +4,6 @@
 
 package net.juniper.contrail.sandesh;
 
-import com.vmware.vim25.VirtualMachinePowerState;
-
 public class VirtualMachineInfo implements SandeshObject 
 {    
     private String name;   
@@ -31,6 +29,8 @@ public class VirtualMachineInfo implements SandeshObject
     public void setIpAddr(String ipAddr) {
         this.ipAddr = ipAddr;
     }
+    
+    @SuppressWarnings("unused")
     private void writeFieldIpAddr(StringBuilder s, int identifier)
     {
         s.append("<ipAddr type=\"string\" identifier=\"")
