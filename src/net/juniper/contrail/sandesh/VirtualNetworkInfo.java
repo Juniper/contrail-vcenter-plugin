@@ -37,7 +37,7 @@ public class VirtualNetworkInfo implements SandeshObject
     public VirtualNetworkInfo() {
         vMachines = 
                 new SandeshObjectList<VirtualMachineInfo>(VirtualMachineInfo.class,
-                        new ComparatorVirtualMachineInfo());
+                        ComparatorVirtualMachineInfo.BY_NAME);
     }
     
     public void writeObject(StringBuilder s,  DetailLevel detail, int identifier)
