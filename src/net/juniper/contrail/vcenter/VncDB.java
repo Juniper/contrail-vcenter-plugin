@@ -449,10 +449,10 @@ public class VncDB {
             // Found vmInterface matching vnUuuid
             s_logger.info("Found VMInterface matching" + " vnUuid = " + vnUuid);
 
-            // If this is the only interface on this VM,
-            // delete Virtual Machine as well after deleting last VMI
-            if (vmInterfaceRefs.size() == 1) {
-              deleteVm = true;
+            // If there are more than 1 interface on this VM,
+            // don't delete Virtual Machine after deleting VMI
+            if (vmInterfaceRefs.size() > 1) {
+              deleteVm = false;
             }
 
             // Clear security-group associations if it exists on VMInterface
