@@ -55,7 +55,7 @@ public class VCenterPlugin {
     }
     
     
-    private ApiServerInfo apiServerInfo;
+    private volatile ApiServerInfo apiServerInfo;
     
     public ApiServerInfo getApiServerInfo() {
         return apiServerInfo;
@@ -69,7 +69,7 @@ public class VCenterPlugin {
         apiServerInfo.writeObject(s, identifier);
     }
     
-    private VCenterServerInfo vCenterServerInfo;
+    private volatile VCenterServerInfo vCenterServerInfo;
     
     public VCenterServerInfo getVCenterServerInfo() {
         return vCenterServerInfo;

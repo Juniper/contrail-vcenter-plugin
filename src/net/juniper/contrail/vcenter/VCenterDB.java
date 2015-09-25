@@ -73,16 +73,16 @@ public class VCenterDB {
     private final String vcenterPassword;
     private final String contrailIpFabricPgName;
     
-    static ServiceInstance serviceInstance;
+    static volatile ServiceInstance serviceInstance;
     private Folder rootFolder;
     private InventoryNavigator inventoryNavigator;
     private IpPoolManager ipPoolManager;
     private Datacenter contrailDC;
     private VmwareDistributedVirtualSwitch contrailDVS;
-    private SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
+    private volatile SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
-    public Map<String, String> esxiToVRouterIpMap;
-    public Map<String, Boolean> vRouterActiveMap;
+    public volatile Map<String, String> esxiToVRouterIpMap;
+    public volatile Map<String, Boolean> vRouterActiveMap;
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,

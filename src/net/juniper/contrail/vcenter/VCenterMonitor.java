@@ -61,12 +61,12 @@ public class VCenterMonitor {
     private static String _vcenterDvsName    = "dvSwitch";
     private static String _vcenterIpFabricPg = "contrail-fab-pg";
     
-    private static VCenterDB _vcenterDB;
+    private static volatile VCenterDB _vcenterDB;
     public static VCenterDB getVcenterDB() {
         return _vcenterDB;
     }
     
-    private static VncDB _vncDB;
+    private static volatile VncDB _vncDB;
     
     public static VncDB getVncDB() {
         return _vncDB;
@@ -79,7 +79,7 @@ public class VCenterMonitor {
     private static String _zookeeperLatchPath  = "/vcenter-plugin";
     private static String _zookeeperId  = "node-vcenter-plugin";
     
-    private static MasterSelection zk_ms;
+    private static volatile MasterSelection zk_ms;
     public static boolean isZookeeperLeader() {
         return zk_ms.isLeader();
     }
