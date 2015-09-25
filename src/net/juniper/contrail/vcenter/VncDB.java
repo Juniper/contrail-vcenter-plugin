@@ -46,7 +46,7 @@ public class VncDB {
     private static final int vrouterApiPort = 9090;
     private final String apiServerAddress;
     private final int apiServerPort;
-    private HashMap<String, ContrailVRouterApi> vrouterApiMap;
+    private volatile HashMap<String, ContrailVRouterApi> vrouterApiMap;
     
     private ApiConnector apiConnector;
     private boolean alive;

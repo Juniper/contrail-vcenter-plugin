@@ -66,7 +66,7 @@ public class VCenterNotify implements Runnable
     private final String vcenterUrl;
     private final String vcenterUsername;
     private final String vcenterPassword;
-    static ServiceInstance serviceInstance;
+    private volatile static ServiceInstance serviceInstance;
     private Folder rootFolder;
     private InventoryNavigator inventoryNavigator;
     private Datacenter _contrailDC;
