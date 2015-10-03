@@ -22,8 +22,10 @@ import org.apache.log4j.Level;
 
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
+import net.juniper.contrail.watchdog.MonitoredTask;
+import net.juniper.contrail.watchdog.TaskWatchDog;
 
-class VCenterMonitorTask implements Runnable {
+class VCenterMonitorTask implements Runnable, MonitoredTask {
     private static Logger s_logger = Logger.getLogger(VCenterMonitorTask.class);
     private VCenterDB vcenterDB;
     private VncDB vncDB;
@@ -32,6 +34,7 @@ class VCenterMonitorTask implements Runnable {
     private boolean VcenterDBInitCompelete = false;
     public boolean VCenterNotifyForceRefresh = false;
     private static short iteration = 0;
+    private volatile long timestamp;
     
     public VCenterMonitorTask(String vcenterUrl, String vcenterUsername,
                               String vcenterPassword, String vcenterDcName,
@@ -40,6 +43,7 @@ class VCenterMonitorTask implements Runnable {
         vcenterDB = new VCenterDB(vcenterUrl, vcenterUsername, vcenterPassword,
                                   vcenterDcName, vcenterDvsName, vcenterIpFabricPg);
         vncDB     = new VncDB(apiServerAddress, apiServerPort);
+        timestamp = System.currentTimeMillis();
     }
 
     public void Initialize() {
@@ -502,7 +506,7 @@ class VCenterMonitorTask implements Runnable {
     
     @Override
     public void run() {
-
+        
         //check if you are the master from time to time
         //sometimes things dont go as planned
         if (VCenterMonitor.isZookeeperLeader() == false) {
@@ -510,10 +514,12 @@ class VCenterMonitorTask implements Runnable {
             System.exit(0);
         }
 
+        timestamp = System.currentTimeMillis();
         // Don't perform one time or periodic sync if
         // Vnc AND Vcenter DB init aren't complete or successful.
 
         if ( (VncDBInitCompelete == false) || (VcenterDBInitCompelete == false)) {
+            TaskWatchDog.startMonitoring(this, 300000, TimeUnit.MILLISECONDS);
             if (VncDBInitCompelete == false) {
                 if (vncDB.Initialize() == true) {
                     VncDBInitCompelete = true;
@@ -525,14 +531,15 @@ class VCenterMonitorTask implements Runnable {
                     VcenterDBInitCompelete = true;
                 }
             }
-
+            TaskWatchDog.stopMonitoring(this);
             return;
         }
 
         // Perform one time sync between VNC and VCenter DBs.
         if (getAddPortSyncAtPluginStart() == true) {
+            TaskWatchDog.startMonitoring(this, 300000, TimeUnit.MILLISECONDS);
 
-            // When syncVirtualNetwrorks is run the first time, it also does
+            // When syncVirtualNetworks is run the first time, it also does
             // addPort to vrouter agent for existing VMIs.
             // Clear the flag  on first run of syncVirtualNetworks.
             try {
@@ -555,9 +562,11 @@ class VCenterMonitorTask implements Runnable {
                 }
             }
             setAddPortSyncAtPluginStart(false);
+            TaskWatchDog.stopMonitoring(this);
             return;
         }
 
+        TaskWatchDog.startMonitoring(this, 60000, TimeUnit.MILLISECONDS);
         // 8 second timeout. run KeepAlive with vRouter Agent.
         if (iteration == 0) {
             try {
@@ -574,6 +583,7 @@ class VCenterMonitorTask implements Runnable {
         try {
             syncVmwareVirtualNetworks();
         } catch (Exception e) {
+            TaskWatchDog.stopMonitoring(this);
             String stackTrace = Throwables.getStackTraceAsString(e);
             s_logger.error("Error while syncVmwareVirtualNetworks: " + e);
             s_logger.error(stackTrace);
@@ -583,7 +593,7 @@ class VCenterMonitorTask implements Runnable {
                 //Remote Exception. Some issue with connection to vcenter-server
                 // Exception on accessing remote objects.
                 // Try to reinitialize the VCenter connection.
-                //For some reasom RemoteException not thrown
+                //For some reason RemoteException not thrown
                 s_logger.error("Problem with connection to vCenter-Server");
                 s_logger.error("Restart connection and reSync");
                 vcenterDB.connectRetry();
@@ -595,9 +605,14 @@ class VCenterMonitorTask implements Runnable {
 
         // Increment
         iteration++;
-        if (iteration == 2) // 4 sec for poll
+        if (iteration == 2) { // 4 sec for poll
             iteration = 0;
+        }
+        TaskWatchDog.stopMonitoring(this);
+    }
+
+    @Override
+    public long getLastTimeStamp() {
+        return timestamp;
     }
 }
-
-
