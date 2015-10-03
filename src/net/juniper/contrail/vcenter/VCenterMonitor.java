@@ -11,12 +11,14 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 
 import net.juniper.contrail.sandesh.VCenterHttpProvider;
 import net.juniper.contrail.sandesh.VCenterHttpServices;
+import net.juniper.contrail.watchdog.TaskWatchDog;
 import net.juniper.contrail.zklibrary.MasterSelection;
 
 class ExecutorServiceShutdownThread extends Thread {
@@ -133,14 +135,16 @@ public class VCenterMonitor {
         s_logger.info("Config params vcenter url: " + _vcenterURL + ", _vcenterUsername: " 
                        + _vcenterUsername + ", api server: " + _apiServerAddress);
 
+        launchWatchDogs();
+
         VCenterHttpServices.init();
                 
         // Zookeeper mastership logic
-	zk_ms = new MasterSelection(_zookeeperAddrPort, _zookeeperLatchPath, _zookeeperId);
+        zk_ms = new MasterSelection(_zookeeperAddrPort, _zookeeperLatchPath, _zookeeperId);
         s_logger.info("Waiting for zookeeper Mastership .. ");
-	zk_ms.waitForLeadership();
+        zk_ms.waitForLeadership();
         s_logger.info("Acquired zookeeper Mastership .. ");
-      
+
         // Launch the periodic VCenterMonitorTask
         VCenterMonitorTask _monitorTask = new VCenterMonitorTask(_vcenterURL, 
                               _vcenterUsername, _vcenterPassword, 
@@ -148,8 +152,8 @@ public class VCenterMonitor {
                               _apiServerAddress, _apiServerPort, _vcenterIpFabricPg);
         _vncDB = _monitorTask.getVncDB();
         _vcenterDB = _monitorTask.getVCenterDB();
-        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 4, //4 second periodic
-                TimeUnit.SECONDS);
+        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask,
+                    0, 4, TimeUnit.SECONDS); //4 second periodic
 
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));
@@ -169,5 +173,16 @@ public class VCenterMonitor {
                                           _vcenterUsername, _vcenterPassword,
                                           _vcenterDcName);
         _eventMonitor.start();
+    }
+
+    private static void launchWatchDogs() {
+        ScheduledExecutorService watchDogExecutor =
+                Executors.newScheduledThreadPool(2);
+
+        // launch watch dogs
+        for (Runnable aker : TaskWatchDog.values()) {
+            watchDogExecutor.scheduleWithFixedDelay(aker, 0, 60,
+                    TimeUnit.SECONDS);
+        }
     }
 }
