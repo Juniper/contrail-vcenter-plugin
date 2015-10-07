@@ -9,7 +9,8 @@ public class ComparatorVRouterInfo
         int cmp = IpAddressUtil.compare(vr1.getIpAddr(), vr2.getIpAddr());
         if (cmp != 0) {
             return cmp;
-        }     
-        return vr1.getEsxiHost().compareTo(vr2.getEsxiHost());
+        }
+        return SandeshUtils.nullSafeComparator(vr1.getEsxiHost(),
+                                               vr2.getEsxiHost());
     }
 }

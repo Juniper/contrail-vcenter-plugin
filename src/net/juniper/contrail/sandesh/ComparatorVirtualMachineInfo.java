@@ -2,17 +2,20 @@ package net.juniper.contrail.sandesh;
 
 import java.util.Comparator;
 
-public class ComparatorVirtualMachineInfo 
+public class ComparatorVirtualMachineInfo
 {
-     public static final Comparator<VirtualMachineInfo> BY_NAME = 
-         new Comparator<VirtualMachineInfo>() {
-    
+    public static final Comparator<VirtualMachineInfo> BY_NAME =
+            new Comparator<VirtualMachineInfo>() {
+
+        @Override
         public int compare(VirtualMachineInfo vm1, VirtualMachineInfo vm2) {
-            int cmp1 = vm1.getName().compareTo(vm2.getName());
-            if (cmp1 != 0) {
-                return cmp1;
+            int cmp = SandeshUtils.nullSafeComparator(vm1.getName(),
+                    vm2.getName());
+            if (cmp != 0) {
+                return cmp;
             }
-            return vm1.getMacAddr().compareTo(vm2.getMacAddr());
+            return SandeshUtils.nullSafeComparator(vm1.getMacAddr(),
+                    vm2.getMacAddr());
         }
-     };
+    };
 }

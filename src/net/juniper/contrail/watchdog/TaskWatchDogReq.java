@@ -1,14 +1,14 @@
-package net.juniper.contrail.sandesh;
+package net.juniper.contrail.watchdog;
 
 import java.net.URI;
 
-public class VCenterPluginReq {
+public class TaskWatchDogReq {
     URI uri;
     // required params parsed from URI
 
     // optional params
 
-    public VCenterPluginReq(URI uri) {
+    public TaskWatchDogReq(URI uri) {
         this.uri = uri;
     }
 }

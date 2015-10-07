@@ -3,7 +3,9 @@ package net.juniper.contrail.watchdog;
 import static org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -26,7 +28,7 @@ public class TaskWatchDogTest {
     public void test1() {
         latch = new CountDownLatch(TASK_COUNT);
         ScheduledExecutorService ex = Executors.newScheduledThreadPool(TASK_COUNT);
-       
+
         MonitoredTaskTest tasks[] = new MonitoredTaskTest[TASK_COUNT];
         List<Future<?>> futures = new ArrayList<Future<?>>();
         for (int i = 0; i < TASK_COUNT; i++) {
@@ -47,7 +49,7 @@ public class TaskWatchDogTest {
         }
 
         // launch watch dogs
-        ScheduledExecutorService watchDogExecutor = 
+        ScheduledExecutorService watchDogExecutor =
                 Executors.newScheduledThreadPool(2);
         List<Future<?>> futuresAker = new ArrayList<Future<?>>();
         for (Runnable aker : TaskWatchDog.values()) {
@@ -60,12 +62,12 @@ public class TaskWatchDogTest {
             try {
                 future.get();
             } catch (InterruptedException e1) {
-                assertTrue("Watchdogs interrupted " + e1.getMessage(), 
-                           false);
+                assertTrue("Watchdogs interrupted " + e1.getMessage(),
+                        false);
                 e1.printStackTrace();
             } catch (ExecutionException e2) {
-                assertTrue("Watchdogs execution exception " + e2.getMessage(), 
-                           false);
+                assertTrue("Watchdogs execution exception " + e2.getMessage(),
+                        false);
                 e2.printStackTrace();
             }
         }
@@ -73,18 +75,21 @@ public class TaskWatchDogTest {
         for (Future<?> future : futuresAker) {
             assertTrue(future.isDone());
         }
-        
+
         for (TaskWatchDog aker : TaskWatchDog.values()) {
             assertNotEquals(aker.monitored, null);
-            assertNotEquals(aker.stuck, null);
         }
 
-        assertFalse(TaskWatchDog.AKER1.monitored.isEmpty());
-        assertFalse(TaskWatchDog.AKER1.stuck.isEmpty());
-        assertTrue(TaskWatchDog.AKER2.stuck.isEmpty());
+        assertFalse(TaskWatchDog.getMonitoredTasks().isEmpty());
+
+        for (ConcurrentHashMap.Entry<MonitoredTask, MonitoredTaskRecord> entry:
+            TaskWatchDog.getMonitoredTasks().entrySet()) {
+            MonitoredTaskRecord tRec = entry.getValue();
+            assertTrue(tRec.blocked);
+        }
 
         for (MonitoredTaskTest task: tasks) {
-            assertTrue(TaskWatchDog.AKER1.stuck.containsKey(task));
+            assertTrue(TaskWatchDog.getMonitoredTasks().containsKey(task));
         }
     }
 
@@ -93,6 +98,7 @@ public class TaskWatchDogTest {
         private long timeout;
         Random r;
 
+        @Override
         public long getLastTimeStamp() {
             return timestamp;
         }

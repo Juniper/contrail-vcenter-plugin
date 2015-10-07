@@ -8,17 +8,21 @@ public enum TaskWatchDog implements Runnable, MonitoredTask {
     AKER1, AKER2;
 
     private volatile long timestamp;
+
     ConcurrentMap<MonitoredTask, MonitoredTaskRecord> monitored;
-    ConcurrentMap<MonitoredTask, MonitoredTaskRecord> stuck;
 
     private TaskWatchDog() {
         monitored = new ConcurrentHashMap<MonitoredTask, MonitoredTaskRecord>();
-        stuck = new ConcurrentHashMap<MonitoredTask, MonitoredTaskRecord>();
         timestamp = System.currentTimeMillis();
     }
 
+    public static
+    ConcurrentMap<MonitoredTask, MonitoredTaskRecord> getMonitoredTasks() {
+        return AKER1.monitored;
+    }
+
     public static void startMonitoring(MonitoredTask task,
-                    long timeout, TimeUnit unit) {
+            long timeout, TimeUnit unit) {
         if (task == null) {
             throw new IllegalArgumentException("Null argument");
         }
@@ -26,6 +30,7 @@ public enum TaskWatchDog implements Runnable, MonitoredTask {
         MonitoredTaskRecord tRec =
                 new MonitoredTaskRecord(Thread.currentThread(), timeout, unit);
         tRec.timestamp = task.getLastTimeStamp();
+        tRec.stackTrace = tRec.thread.getStackTrace();
         AKER1.monitored.put(task, tRec);
     }
 
@@ -33,11 +38,9 @@ public enum TaskWatchDog implements Runnable, MonitoredTask {
         if (AKER1.monitored.containsKey(task)) {
             AKER1.monitored.remove(task);
         }
-        if (AKER1.stuck.containsKey(task)) {
-            AKER1.stuck.remove(task);
-        }
     }
 
+    @Override
     public long getLastTimeStamp() {
         return timestamp;
     }
@@ -58,22 +61,23 @@ public enum TaskWatchDog implements Runnable, MonitoredTask {
         }
 
         for (ConcurrentHashMap.Entry<MonitoredTask, MonitoredTaskRecord> entry:
-                monitored.entrySet()) {
+            monitored.entrySet()) {
             MonitoredTask task = entry.getKey();
             long checkpointValue = task.getLastTimeStamp();
             MonitoredTaskRecord tRec = entry.getValue();
+            if (tRec.blocked) {
+                continue;
+            }
             if (checkpointValue == tRec.timestamp) {
                 long time_now = System.currentTimeMillis();
                 if (tRec.timestamp + tRec.timeout < time_now ) {
-                    // task is stuck or taking too long
-                    tRec.stuck = true;
+                    // task is blocked or taking too long
+                    tRec.blocked = true;
                     tRec.stackTrace = tRec.thread.getStackTrace();
-                    stuck.putIfAbsent(task, tRec);
                     continue;
                 }
             }
             tRec.stackTrace = tRec.thread.getStackTrace();
-            tRec.timestamp = checkpointValue;
         }
 
         for (TaskWatchDog aker: TaskWatchDog.values()) {

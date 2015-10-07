@@ -4,8 +4,6 @@
 
 package net.juniper.contrail.sandesh;
 
-import java.util.Comparator;
-
 public class VirtualNetworkInfo implements SandeshObject 
 {    
     private String name;

@@ -80,3 +80,18 @@ request sandesh VRouterDetailReq {
 response sandesh VRouterDetailResp {
 	1: VRouterDetail vRouter;
 }
+
+request sandesh TaskWatchDogReq {
+}
+
+response sandesh TaskWatchDogResp {
+	1: list<TaskInfo> tasks;
+}
+
+struct TaskInfo {
+	1: String name;
+	2: bool blocked;
+	3: String timestamp;
+	4: String timeout;
+    5: list<String> stackTrace;
+}
