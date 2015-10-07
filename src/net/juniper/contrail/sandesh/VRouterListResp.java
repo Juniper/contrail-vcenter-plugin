@@ -34,7 +34,7 @@ public class VRouterListResp {
     
     public void writeObject(StringBuilder s) {
         s.append("<vRouterListResp type=\"sandesh\">");
-        vrouterInfoList.writeObject(s, "VirtualRouters", DetailLevel.REGULAR, 1);  
+        vrouterInfoList.writeObject(s, "VirtualRouters", DetailLevel.REGULAR, 1);
         s.append("</vRouterListResp>");
     }
 }

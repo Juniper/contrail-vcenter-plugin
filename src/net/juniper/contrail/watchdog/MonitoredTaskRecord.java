@@ -8,7 +8,7 @@ public class MonitoredTaskRecord {
     long timestamp;
     long timeout;
     TimeUnit unit;
-    boolean stuck;
+    boolean blocked;
     Date date;
     StackTraceElement[] stackTrace;
 

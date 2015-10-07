@@ -3,6 +3,8 @@ package net.juniper.contrail.sandesh;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.juniper.contrail.watchdog.TaskWatchDogHttpHandler;
+
 public class VCenterHttpServices {
     
     private VCenterHttpServices() { }
@@ -38,6 +40,7 @@ public class VCenterHttpServices {
         new VCenterPluginReqHttpHandler();
         new VRouterListReqHttpHandler();
         new VRouterDetailReqHttpHandler();
+        new TaskWatchDogHttpHandler();
     }
     
     public static void init() {
