@@ -18,7 +18,7 @@ implements Comparator<TaskInfo> {
             return cmp;
         }
 
-        return SandeshUtils.nullSafeComparator(t1.getTimeStamp(),
-                t2.getTimeStamp());
+        return SandeshUtils.nullSafeComparator(t1.getStartTime(),
+                t2.getStartTime());
     }
 }

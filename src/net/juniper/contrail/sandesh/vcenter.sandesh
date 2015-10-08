@@ -91,7 +91,7 @@ response sandesh TaskWatchDogResp {
 struct TaskInfo {
 	1: String name;
 	2: bool blocked;
-	3: String timestamp;
+	3: String startTime;
 	4: String timeout;
     5: list<String> stackTrace;
 }

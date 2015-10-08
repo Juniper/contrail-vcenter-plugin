@@ -13,14 +13,14 @@ public class TaskWatchDogResp {
         tasks = new SandeshObjectList<TaskInfo>(TaskInfo.class,
                 new ComparatorTaskInfo());
 
-        for (Map.Entry<MonitoredTask, MonitoredTaskRecord> entry:
+        for (Map.Entry<Runnable, MonitoredTaskRecord> entry:
             TaskWatchDog.getMonitoredTasks().entrySet()) {
 
             MonitoredTaskRecord rec = entry.getValue();
             TaskInfo taskInfo = new TaskInfo();
-            taskInfo.setName(rec.thread.getName());
+            taskInfo.setName(rec.name);
             taskInfo.setBlocked(rec.blocked);
-            taskInfo.setTimeStamp(new Date(rec.timestamp).toString());
+            taskInfo.setStartTime(new Date(rec.startTime).toString());
             taskInfo.setTimeout(Long.toString(rec.timeout) + " " + rec.unit);
 
             if (rec.stackTrace != null) {
