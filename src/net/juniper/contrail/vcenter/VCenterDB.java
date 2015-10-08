@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.SortedMap;
 import java.util.Scanner;
@@ -19,6 +20,7 @@ import java.rmi.RemoteException;
 import java.io.FileNotFoundException;
 import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.RuntimeFault;
+import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 
 import org.apache.log4j.Logger;
 
@@ -62,24 +64,25 @@ public class VCenterDB {
     private static final Logger s_logger =
             Logger.getLogger(VCenterDB.class);
     protected static final String contrailVRouterVmNamePrefix = "contrailVM";
-    protected static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
+    private static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
+    private static final int SERVICE_INSTANCE_READ_TIMEOUT = 30000; //30 sec
     protected final String contrailDvSwitchName;
-    protected final String contrailDataCenterName;
-    protected final String vcenterUrl;
-    protected final String vcenterUsername;
-    protected final String vcenterPassword;
-    protected final String contrailIpFabricPgName;
+    private final String contrailDataCenterName;
+    private final String vcenterUrl;
+    private final String vcenterUsername;
+    private final String vcenterPassword;
+    private final String contrailIpFabricPgName;
     
-    protected ServiceInstance serviceInstance;
-    protected Folder rootFolder;
-    protected InventoryNavigator inventoryNavigator;
-    protected IpPoolManager ipPoolManager;
+    static volatile ServiceInstance serviceInstance;
+    private Folder rootFolder;
+    private InventoryNavigator inventoryNavigator;
+    private IpPoolManager ipPoolManager;
     protected Datacenter contrailDC;
     protected VmwareDistributedVirtualSwitch contrailDVS;
-    protected SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
+    private volatile SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
-    public HashMap<String, String> esxiToVRouterIpMap;
-    public  static HashMap<String, Boolean> vRouterActiveMap;
+    public volatile Map<String, String> esxiToVRouterIpMap;
+    public volatile Map<String, Boolean> vRouterActiveMap;
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
@@ -92,7 +95,7 @@ public class VCenterDB {
         this.contrailIpFabricPgName = ipFabricPgName;
 
         s_logger.info("VCenterDB(" + contrailDvsName + ", " + ipFabricPgName + ")");
-        // Create ESXi host to vRouerVM Ip address map
+        // Create ESXi host to vRouterVM Ip address map
         esxiToVRouterIpMap = new HashMap<String, String>();
         vRouterActiveMap = new HashMap<String, Boolean>();
     }
@@ -131,6 +134,12 @@ public class VCenterDB {
         s_logger.info("Connected to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + "," 
                                 + vcenterPassword + ")");
+        //Set read timeout on connection to vcenter server 
+        serviceInstance.getServerConnection()
+                       .getVimService()
+                       .getWsc().setReadTimeout(SERVICE_INSTANCE_READ_TIMEOUT);
+        s_logger.info("ServiceInstance read timeout set to " + 
+            serviceInstance.getServerConnection().getVimService().getWsc().getReadTimeout());
         return true;
     }
 
@@ -238,6 +247,12 @@ public class VCenterDB {
                                     + vcenterPassword + ")" + "Retrying after 5 secs");
                     return false;
                 }
+                //Set read timeout on connection to vcenter server
+                serviceInstance.getServerConnection()
+                       .getVimService()
+                       .getWsc().setReadTimeout(SERVICE_INSTANCE_READ_TIMEOUT);
+                s_logger.error("ServiceInstance read timeout: " + 
+                    serviceInstance.getServerConnection().getVimService().getWsc().getReadTimeout());
                 return true;
         } catch (MalformedURLException e) {
                 s_logger.info("Re-Connect unsuccessful!");
@@ -259,6 +274,7 @@ public class VCenterDB {
         ipPoolManager = null;
         contrailDC = null;
         contrailDVS = null;
+        VCenterNotify.stopUpdates();
     }
 
 
@@ -657,7 +673,7 @@ public class VCenterDB {
         if (vrouterIpAddress == null) {
             s_logger.error("ContrailVM not found on ESXi host: " 
                     + hostName + ", skipping VM (" + vmName + ") creation"
-                    + " on dvPg: " + dvPgName);
+                    + " on network: " + dvPgName);
             return null;
         }
 
@@ -954,8 +970,10 @@ public class VCenterDB {
         return null;
     }
  
-    private String getVirtualMachineIpAddress(GuestNicInfo[] nicInfos, String dvPgName, String vmName)
-                    throws Exception {
+    private String getVirtualMachineIpAddress(GuestNicInfo[] nicInfos, 
+                                              String dvPgName, 
+                                              String vmName, String vmMac)
+                                             throws Exception {
 
         // Assumption here is that VMware Tools are installed
         // and IP address is available
@@ -965,15 +983,14 @@ public class VCenterDB {
             return null;
         }
         for (GuestNicInfo nicInfo : nicInfos) {
-            // Extract the IP address associated with simple port
-            // group. Assumption here is that Contrail VRouter VM will
-            // have only one standard port group
-            String networkName = nicInfo.getNetwork();
-            if (networkName == null) {
+            // Extract the IP address associated with interface based on macAddress.
+            String guestMac = nicInfo.getMacAddress();
+
+            if (guestMac == null) {
                 continue;
             }
 
-            if (!networkName.equals(dvPgName)) {
+            if (!guestMac.equals(vmMac)) {
                 continue;
             }
 
@@ -1066,14 +1083,41 @@ public class VCenterDB {
                 VmwareVirtualMachineInfo(vmName, hostName, hmor,
                         vrouterIpAddress, vmMac, powerState);
 
-        // Save static-ip read via tools if staic-ip addressing enabled on network.
+        // Save static-ip read via tools if static-ip addressing enabled on network.
         if ((externalIpam == true) && (vmInfo.isPoweredOnState())) {
+            String ipAddress = null;
             String toolsRunningStatus  = (String)  pTable.get("guest.toolsRunningStatus");
-	    GuestNicInfo[] nicInfos    = (GuestNicInfo[])pTable.get("guest.net");
-            String ipAddress = getVirtualMachineIpAddress(nicInfos, dvPgName, vmName);
+            if (VirtualMachineToolsRunningStatus.guestToolsRunning.toString().equals(toolsRunningStatus)) {
+                if (pTable.get("guest.net") instanceof GuestNicInfo[]) {
+                    GuestNicInfo[] nicInfos    = (GuestNicInfo[])pTable.get("guest.net");
+                    ipAddress = getVirtualMachineIpAddress(nicInfos, dvPgName, vmName, vmMac);
+                }
+            }
+
+            if (ipAddress == null) {
+                String prevIpAddress = null;
+
+                if (prevVmwareVmInfo != null) {
+                    prevIpAddress = prevVmwareVmInfo.getIpAddress();
+                }
+
+                if (VirtualMachineToolsRunningStatus.guestToolsRunning.toString().equals(toolsRunningStatus)
+                    && prevIpAddress != null) {
+                    // We have a problem here. Maybe the MOB is messed up
+                    // VM had an IP before,but not now.
+                    s_logger.error("Please restart vmware tools to ensure IP address is reported to vcenter");
+                }
+                if (prevIpAddress != null) {
+                    ipAddress = prevIpAddress;
+                    s_logger.debug("Using IP address:" + prevIpAddress + " read previously for VM ("
+                                   + vmName + ") since vCenter didn't provide an current IP address");
+                }
+            }
+
             if (ipAddress != null) {
               // Ensure that ip-address is within subnet range
             }
+
             vmInfo.setIpAddress(ipAddress);
         }
 
@@ -1101,20 +1145,20 @@ public class VCenterDB {
         Hashtable[] pTables = null;
         if (externalIpam == true) {
             pTables = PropertyCollectorUtil.retrieveProperties(vms, "VirtualMachine",
-				    new String[] {"name",
-				    "config.instanceUuid",
-				    "runtime.powerState",
-				    "runtime.host",
-				    "guest.toolsRunningStatus",
-				    "guest.net"
-				    });
+                    new String[] {"name",
+                    "config.instanceUuid",
+                    "runtime.powerState",
+                    "runtime.host",
+                    "guest.toolsRunningStatus",
+                    "guest.net"
+                    });
         } else {
             pTables = PropertyCollectorUtil.retrieveProperties(vms, "VirtualMachine",
-				    new String[] {"name",
-				    "config.instanceUuid",
-				    "runtime.powerState",
-				    "runtime.host",
-				    });
+                    new String[] {"name",
+                    "config.instanceUuid",
+                    "runtime.powerState",
+                    "runtime.host",
+                    });
         }
 
         SortedMap<String, VmwareVirtualMachineInfo> vmInfos =
@@ -1199,13 +1243,13 @@ public class VCenterDB {
 
         Hashtable[] pTables = PropertyCollectorUtil.retrieveProperties(dvPgs,
                                 "DistributedVirtualPortgroup",
-				new String[] {"name",
-				"config.key",
-				"config.defaultPortConfig",
-				"config.vendorSpecificConfig",
-				"summary.ipPoolId",
-				"summary.ipPoolName",
-				});
+                new String[] {"name",
+                "config.key",
+                "config.defaultPortConfig",
+                "config.vendorSpecificConfig",
+                "summary.ipPoolId",
+                "summary.ipPoolName",
+                });
 
         // Populate VMware Virtual Network Info
         SortedMap<String, VmwareVirtualNetworkInfo> vnInfos =
@@ -1298,5 +1342,9 @@ public class VCenterDB {
             vnInfos.put(vnUuid, vnInfo);
         }
         return vnInfos;
+    }
+    
+    public String getVcenterUrl() { 
+        return vcenterUrl; 
     }
 }

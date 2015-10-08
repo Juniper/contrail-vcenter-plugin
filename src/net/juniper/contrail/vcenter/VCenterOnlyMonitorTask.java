@@ -22,9 +22,11 @@ import org.apache.log4j.Level;
 
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
+import net.juniper.contrail.watchdog.MonitoredTask;
+import net.juniper.contrail.watchdog.TaskWatchDog;
 
-class VCenterOnlyMonitorTask implements VCenterMonitorTask {
-    private static Logger s_logger = Logger.getLogger(VCenterOnlyMonitorTask.class);
+class VCenterOnlyMonitorTask implements Runnable, VCenterMonitorTask, MonitoredTask {
+    private static Logger s_logger = Logger.getLogger(VCenterMonitorTask.class);
     private VCenterDB vcenterDB;
     private VncDB vncDB;
     private boolean AddPortSyncAtPluginStart = true;
@@ -32,6 +34,7 @@ class VCenterOnlyMonitorTask implements VCenterMonitorTask {
     private boolean VcenterDBInitCompelete = false;
     public boolean VCenterNotifyForceRefresh = false;
     private static short iteration = 0;
+    private volatile long timestamp;
     
     public VCenterOnlyMonitorTask(String vcenterUrl, String vcenterUsername,
                               String vcenterPassword, String vcenterDcName,
@@ -40,6 +43,7 @@ class VCenterOnlyMonitorTask implements VCenterMonitorTask {
         vcenterDB = new VCenterDB(vcenterUrl, vcenterUsername, vcenterPassword,
                                   vcenterDcName, vcenterDvsName, vcenterIpFabricPg);
         vncDB     = new VncDB(apiServerAddress, apiServerPort);
+        timestamp = System.currentTimeMillis();
     }
 
     public void Initialize() {
@@ -65,7 +69,7 @@ class VCenterOnlyMonitorTask implements VCenterMonitorTask {
     }
 
     public boolean getVCenterNotifyForceRefresh() {
-        return VCenterNotifyForceRefresh;
+         return VCenterNotifyForceRefresh;
     }
 
     public void setVCenterNotifyForceRefresh(boolean _VCenterNotifyForceRefresh) {
@@ -510,18 +514,20 @@ class VCenterOnlyMonitorTask implements VCenterMonitorTask {
     
     @Override
     public void run() {
-
+        
         //check if you are the master from time to time
         //sometimes things dont go as planned
-        //if (VCenterMonitor.zk_ms.isLeader() == false) {
-        //    s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
-        //    System.exit(0);
-        //}
+        if (VCenterMonitor.isZookeeperLeader() == false) {
+            s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
+            System.exit(0);
+        }
 
+        timestamp = System.currentTimeMillis();
         // Don't perform one time or periodic sync if
         // Vnc AND Vcenter DB init aren't complete or successful.
 
         if ( (VncDBInitCompelete == false) || (VcenterDBInitCompelete == false)) {
+            TaskWatchDog.startMonitoring(this, 300000, TimeUnit.MILLISECONDS);
             if (VncDBInitCompelete == false) {
                 if (vncDB.Initialize() == true) {
                     VncDBInitCompelete = true;
@@ -533,14 +539,15 @@ class VCenterOnlyMonitorTask implements VCenterMonitorTask {
                     VcenterDBInitCompelete = true;
                 }
             }
-
+            TaskWatchDog.stopMonitoring(this);
             return;
         }
 
         // Perform one time sync between VNC and VCenter DBs.
         if (getAddPortSyncAtPluginStart() == true) {
+            TaskWatchDog.startMonitoring(this, 300000, TimeUnit.MILLISECONDS);
 
-            // When syncVirtualNetwrorks is run the first time, it also does
+            // When syncVirtualNetworks is run the first time, it also does
             // addPort to vrouter agent for existing VMIs.
             // Clear the flag  on first run of syncVirtualNetworks.
             try {
@@ -550,7 +557,8 @@ class VCenterOnlyMonitorTask implements VCenterMonitorTask {
                 s_logger.error("Error while syncVirtualNetworks: " + e); 
                 s_logger.error(stackTrace); 
                 e.printStackTrace();
-                if (stackTrace.contains("java.net.ConnectException: Connection refused"))       {
+                if (stackTrace.contains("java.net.ConnectException: Connection refused") ||
+                    stackTrace.contains("java.rmi.RemoteException: VI SDK invoke"))   {
                         //Remote Exception. Some issue with connection to vcenter-server
                         // Exception on accessing remote objects.
                         // Try to reinitialize the VCenter connection.
@@ -562,10 +570,12 @@ class VCenterOnlyMonitorTask implements VCenterMonitorTask {
                 }
             }
             setAddPortSyncAtPluginStart(false);
+            TaskWatchDog.stopMonitoring(this);
             return;
         }
 
-        // 8 second timeout. run KeepAlive with vRouer Agent.
+        TaskWatchDog.startMonitoring(this, 60000, TimeUnit.MILLISECONDS);
+        // 8 second timeout. run KeepAlive with vRouter Agent.
         if (iteration == 0) {
             try {
                 vncDB.vrouterAgentPeriodicConnectionCheck(vcenterDB.vRouterActiveMap);
@@ -581,27 +591,36 @@ class VCenterOnlyMonitorTask implements VCenterMonitorTask {
         try {
             syncVmwareVirtualNetworks();
         } catch (Exception e) {
+            TaskWatchDog.stopMonitoring(this);
             String stackTrace = Throwables.getStackTraceAsString(e);
             s_logger.error("Error while syncVmwareVirtualNetworks: " + e);
             s_logger.error(stackTrace);
             e.printStackTrace();
-            if (stackTrace.contains("java.net.ConnectException: Connection refused"))   {
+            if (stackTrace.contains("java.net.ConnectException: Connection refused") ||
+                stackTrace.contains("java.rmi.RemoteException: VI SDK invoke"))   {
                 //Remote Exception. Some issue with connection to vcenter-server
                 // Exception on accessing remote objects.
                 // Try to reinitialize the VCenter connection.
-                //For some reasom RemoteException not thrown
+                //For some reason RemoteException not thrown
                 s_logger.error("Problem with connection to vCenter-Server");
                 s_logger.error("Restart connection and reSync");
                 vcenterDB.connectRetry();
+                s_logger.info("Restart connection and reSync Complete..");
+                s_logger.info("Inform Notify thread about it....");
                 this.VCenterNotifyForceRefresh = true;
             }
         } 
 
         // Increment
         iteration++;
-        if (iteration == 2) // 4 sec for poll
+        if (iteration == 2) { // 4 sec for poll
             iteration = 0;
+        }
+        TaskWatchDog.stopMonitoring(this);
+    }
+
+    @Override
+    public long getLastTimeStamp() {
+        return timestamp;
     }
 }
-
-

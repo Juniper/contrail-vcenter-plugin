@@ -22,6 +22,8 @@ import org.apache.log4j.Level;
 
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
+import net.juniper.contrail.watchdog.MonitoredTask;
+import net.juniper.contrail.watchdog.TaskWatchDog;
 
 
 public interface VCenterMonitorTask extends Runnable {

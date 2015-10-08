@@ -4,41 +4,15 @@
 
 package net.juniper.contrail.vcenter;
 
-
-
-import java.util.UUID;
-
 import java.io.IOException;
-import java.net.InetAddress;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.TreeMap;
-import java.util.List;
-import java.util.SortedMap;
-import java.util.UUID;
-
 import org.apache.log4j.Logger;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.anyLong;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyString;
-
 import junit.framework.TestCase;
 import org.junit.Test;
 import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.FixMethodOrder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.junit.runners.MethodSorters;
-
-import org.apache.log4j.Logger;
-import org.apache.commons.net.util.SubnetUtils;
-
-import com.vmware.vim25.VirtualMachinePowerState;
 
 @RunWith(JUnit4.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
