@@ -22,10 +22,9 @@ import org.apache.log4j.Level;
 
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
-import net.juniper.contrail.watchdog.MonitoredTask;
 import net.juniper.contrail.watchdog.TaskWatchDog;
 
-class VCenterMonitorTask implements Runnable, MonitoredTask {
+class VCenterMonitorTask implements Runnable {
     private static Logger s_logger = Logger.getLogger(VCenterMonitorTask.class);
     private VCenterDB vcenterDB;
     private VncDB vncDB;
@@ -34,7 +33,6 @@ class VCenterMonitorTask implements Runnable, MonitoredTask {
     private boolean VcenterDBInitCompelete = false;
     public boolean VCenterNotifyForceRefresh = false;
     private static short iteration = 0;
-    private volatile long timestamp;
     
     public VCenterMonitorTask(String vcenterUrl, String vcenterUsername,
                               String vcenterPassword, String vcenterDcName,
@@ -43,7 +41,6 @@ class VCenterMonitorTask implements Runnable, MonitoredTask {
         vcenterDB = new VCenterDB(vcenterUrl, vcenterUsername, vcenterPassword,
                                   vcenterDcName, vcenterDvsName, vcenterIpFabricPg);
         vncDB     = new VncDB(apiServerAddress, apiServerPort);
-        timestamp = System.currentTimeMillis();
     }
 
     public void Initialize() {
@@ -514,12 +511,12 @@ class VCenterMonitorTask implements Runnable, MonitoredTask {
             System.exit(0);
         }
 
-        timestamp = System.currentTimeMillis();
         // Don't perform one time or periodic sync if
         // Vnc AND Vcenter DB init aren't complete or successful.
 
         if ( (VncDBInitCompelete == false) || (VcenterDBInitCompelete == false)) {
-            TaskWatchDog.startMonitoring(this, 300000, TimeUnit.MILLISECONDS);
+            TaskWatchDog.startMonitoring(this, "Init",
+                    300000, TimeUnit.MILLISECONDS);
             if (VncDBInitCompelete == false) {
                 if (vncDB.Initialize() == true) {
                     VncDBInitCompelete = true;
@@ -537,7 +534,8 @@ class VCenterMonitorTask implements Runnable, MonitoredTask {
 
         // Perform one time sync between VNC and VCenter DBs.
         if (getAddPortSyncAtPluginStart() == true) {
-            TaskWatchDog.startMonitoring(this, 300000, TimeUnit.MILLISECONDS);
+            TaskWatchDog.startMonitoring(this, "One time sync",
+                    300000, TimeUnit.MILLISECONDS);
 
             // When syncVirtualNetworks is run the first time, it also does
             // addPort to vrouter agent for existing VMIs.
@@ -566,7 +564,8 @@ class VCenterMonitorTask implements Runnable, MonitoredTask {
             return;
         }
 
-        TaskWatchDog.startMonitoring(this, 60000, TimeUnit.MILLISECONDS);
+        TaskWatchDog.startMonitoring(this, "Periodic sync",
+                60000, TimeUnit.MILLISECONDS);
         // 8 second timeout. run KeepAlive with vRouter Agent.
         if (iteration == 0) {
             try {
@@ -609,10 +608,5 @@ class VCenterMonitorTask implements Runnable, MonitoredTask {
             iteration = 0;
         }
         TaskWatchDog.stopMonitoring(this);
-    }
-
-    @Override
-    public long getLastTimeStamp() {
-        return timestamp;
     }
 }

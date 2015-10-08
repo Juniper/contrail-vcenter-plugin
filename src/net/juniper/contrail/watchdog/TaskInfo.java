@@ -48,22 +48,22 @@ public class TaskInfo implements SandeshObject
         .append("</blocked>");
     }
 
-    private String timeStamp;
-    public String getTimeStamp() {
-        return timeStamp;
+    private String startTime;
+    public String getStartTime() {
+        return startTime;
     }
-    public void setTimeStamp(String timeStamp) {
-        this.timeStamp = timeStamp;
+    public void setStartTime(String startTime) {
+        this.startTime = startTime;
     }
-    private void writeFieldTimeStamp(StringBuilder s, int identifier,
+    private void writeFieldStartTime(StringBuilder s, int identifier,
             DetailLevel detail)
     {
-        s.append("<timeStamp type=\"string\" identifier=\"")
+        s.append("<startTime type=\"string\" identifier=\"")
         .append(identifier)
         .append("\"");
         s.append(">")
-        .append(timeStamp)
-        .append("</timeStamp>");
+        .append(startTime)
+        .append("</startTime>");
     }
 
     private String timeout;
@@ -116,7 +116,7 @@ public class TaskInfo implements SandeshObject
         int inner_id = 1;
         writeFieldName(s, inner_id++, detail);
         writeFieldBlocked(s, inner_id++, detail);
-        writeFieldTimeStamp(s, inner_id++, detail);
+        writeFieldStartTime(s, inner_id++, detail);
         writeFieldTimeout(s, inner_id++, detail);
         writeFieldStackTrace(s, inner_id++, detail);
 
