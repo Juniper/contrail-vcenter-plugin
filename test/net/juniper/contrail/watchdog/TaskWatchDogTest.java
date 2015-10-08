@@ -3,7 +3,6 @@ package net.juniper.contrail.watchdog;
 import static org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -15,8 +14,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import net.juniper.contrail.watchdog.MonitoredTask;
 import net.juniper.contrail.watchdog.TaskWatchDog;
 
 @RunWith(JUnit4.class)
@@ -82,7 +79,7 @@ public class TaskWatchDogTest {
 
         assertFalse(TaskWatchDog.getMonitoredTasks().isEmpty());
 
-        for (ConcurrentHashMap.Entry<MonitoredTask, MonitoredTaskRecord> entry:
+        for (ConcurrentHashMap.Entry<Runnable, MonitoredTaskRecord> entry:
             TaskWatchDog.getMonitoredTasks().entrySet()) {
             MonitoredTaskRecord tRec = entry.getValue();
             assertTrue(tRec.blocked);
@@ -93,15 +90,9 @@ public class TaskWatchDogTest {
         }
     }
 
-    class MonitoredTaskTest implements Runnable, MonitoredTask {
-        private volatile long timestamp = System.currentTimeMillis() ;
+    class MonitoredTaskTest implements Runnable {
         private long timeout;
         Random r;
-
-        @Override
-        public long getLastTimeStamp() {
-            return timestamp;
-        }
 
         MonitoredTaskTest(long timeout) {
             this.timeout = timeout;
@@ -110,9 +101,8 @@ public class TaskWatchDogTest {
 
         @Override
         public void run() {
-            timestamp = System.currentTimeMillis();
 
-            TaskWatchDog.startMonitoring(this, timeout, TimeUnit.MILLISECONDS);
+            TaskWatchDog.startMonitoring(this, "Test", timeout, TimeUnit.MILLISECONDS);
             latch.countDown();
 
             // loop forever
