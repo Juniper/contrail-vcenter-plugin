@@ -63,10 +63,10 @@ import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
 public class VCenterDB {
     private static final Logger s_logger =
             Logger.getLogger(VCenterDB.class);
-    private static final String contrailVRouterVmNamePrefix = "contrailVM";
+    protected static final String contrailVRouterVmNamePrefix = "contrailVM";
     private static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
     private static final int SERVICE_INSTANCE_READ_TIMEOUT = 30000; //30 sec
-    private final String contrailDvSwitchName;
+    protected final String contrailDvSwitchName;
     private final String contrailDataCenterName;
     private final String vcenterUrl;
     private final String vcenterUsername;
@@ -77,8 +77,8 @@ public class VCenterDB {
     private Folder rootFolder;
     private InventoryNavigator inventoryNavigator;
     private IpPoolManager ipPoolManager;
-    private Datacenter contrailDC;
-    private VmwareDistributedVirtualSwitch contrailDVS;
+    protected Datacenter contrailDC;
+    protected VmwareDistributedVirtualSwitch contrailDVS;
     private volatile SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
 
     public volatile Map<String, String> esxiToVRouterIpMap;
@@ -361,7 +361,7 @@ public class VCenterDB {
         return null;
     }
     
-    private static String getVirtualMachineMacAddress(
+    protected static String getVirtualMachineMacAddress(
             VirtualMachineConfigInfo vmConfigInfo,
             DistributedVirtualPortgroup portGroup) {
         VirtualDevice devices[] = vmConfigInfo.getHardware().getDevice();
@@ -399,7 +399,7 @@ public class VCenterDB {
         return null;
     }
 
-    private String getVRouterVMIpFabricAddress(String dvPgName,
+    protected String getVRouterVMIpFabricAddress(String dvPgName,
             String hostName, HostSystem host, String vmNamePrefix)
                     throws Exception {
         // Find if vRouter Ip Fabric mapping exists..
@@ -724,7 +724,7 @@ public class VCenterDB {
         return vmInfos;
     }
 
-    private static boolean doIgnoreVirtualNetwork(DVPortSetting portSetting) {
+    protected static boolean doIgnoreVirtualNetwork(DVPortSetting portSetting) {
         // Ignore dvPgs that do not have PVLAN/VLAN configured
         if (portSetting instanceof VMwareDVSPortSetting) {
             VMwareDVSPortSetting vPortSetting = 

@@ -104,7 +104,7 @@ public class VCenterMonitorTaskTest extends TestCase {
 
         // Setup VCenter object
         //ApiConnectorFactory.setImplementation(ApiConnectorMock.class);
-        _vcenterMonitorTask = new VCenterMonitorTask("https://10.20.30.40/sdk", "admin", "admin123",
+        _vcenterMonitorTask = new VCenterOnlyMonitorTask("https://10.20.30.40/sdk", "admin", "admin123",
                                    "unittest_dc", "unittest_dvs", null, 0, "unittest_fabric_pg");
 
         // Create mock for VCenterDB.
@@ -134,7 +134,7 @@ public class VCenterMonitorTaskTest extends TestCase {
     //  VCENTER : 1 VN 
     //  Afert Virtual-machine sync, Vnc shouldn't have any VMs.
     @Test
-    public void TestSyncVirtualMachineTC1() throws IOException {
+    public void TestSyncVirtualMachineTC1() throws Exception {
         String vnUuid         = UUID.randomUUID().toString();
         String vnName         = "TestVN-A";
         String subnetAddr     = "192.168.2.0";
@@ -221,7 +221,7 @@ public class VCenterMonitorTaskTest extends TestCase {
     //  VCENTER : 1 VN  & 1 VM
     //  After Virtual-machine sync, Vnc should have 1 VM.
     @Test
-    public void TestSyncVirtualMachineTC2() throws IOException {
+    public void TestSyncVirtualMachineTC2() throws Exception {
         String vnUuid         = UUID.randomUUID().toString();
         String vnName         = "TestVN-A";
         String subnetAddr     = "192.168.2.0";
@@ -305,7 +305,7 @@ public class VCenterMonitorTaskTest extends TestCase {
     //  VCENTER : 1 VN (TestVN-A) & 1 VM (VM-B)
     //  After Virtual-machine sync, Vnc should have 1 VM (VM-B).
     @Test
-    public void TestSyncVirtualMachineTC3() throws IOException {
+    public void TestSyncVirtualMachineTC3() throws Exception {
         String vnUuid         = UUID.randomUUID().toString();
         String vnName         = "TestVN-A";
         String subnetAddr     = "192.168.2.0";

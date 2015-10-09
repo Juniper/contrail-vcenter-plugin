@@ -467,7 +467,7 @@ public class VCenterNotify implements Runnable
                     do {
                         System.out.println("Waiting for periodic thread to reconnect...");
                         Thread.sleep(2000);
-                        if (monitorTask.VCenterNotifyForceRefresh) {
+                        if (monitorTask.getVCenterNotifyForceRefresh()) {
                             s_logger.info("periodic thread reconnect successful.. initialize Notify..");
                             Cleanup();
                             initialize();
@@ -475,7 +475,7 @@ public class VCenterNotify implements Runnable
                             PropertyFilterSpec eventFilterSpec = createEventFilterSpec();
                             propColl = serviceInstance.getPropertyCollector();
                             propFilter = propColl.createFilter(eventFilterSpec, true);
-                            monitorTask.VCenterNotifyForceRefresh = false;
+                            monitorTask.setVCenterNotifyForceRefresh(false);
                             version = "";
                             s_logger.info("reInit Notify Complete..");
                             break;

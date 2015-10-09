@@ -56,6 +56,7 @@ public class VCenterMonitor {
             Executors.newScheduledThreadPool(1);
     private static Logger s_logger = Logger.getLogger(VCenterMonitor.class);
     private static String _configurationFile = "/etc/contrail/contrail-vcenter-plugin.conf";
+
     private static String _vcenterURL        = "https://10.84.24.111/sdk";
     private static String _vcenterUsername   = "admin";
     private static String _vcenterPassword   = "Contrail123!";
@@ -77,9 +78,17 @@ public class VCenterMonitor {
     static VCenterNotify _eventMonitor;    
     private static String _apiServerAddress  = "10.84.13.23";
     private static int _apiServerPort        = 8082;
+    private static String _username          = "admin";
+    private static String _password          = "contrail123";
+    private static String _tenant            = "admin";
+    private static String _authtype          = "keystone";
+    private static String _authurl           = "http://10.84.24.54:35357/v2.0";
+
     private static String _zookeeperAddrPort  = "127.0.0.1:2181";
-    private static String _zookeeperLatchPath  = "/vcenter-plugin";
-    private static String _zookeeperId  = "node-vcenter-plugin";
+    private static String _zookeeperLatchPath = "/vcenter-plugin";
+    private static String _zookeeperId        = "node-vcenter-plugin";
+
+    private static String _mode  = "vcenter-only";
     
     private static volatile MasterSelection zk_ms;
     public static boolean isZookeeperLeader() {
@@ -98,17 +107,46 @@ public class VCenterMonitor {
             try {
                 configProps.load(fileStream);
 
+                String ipFabricPg = configProps.getProperty("vcenter.ipfabricpg");
+                if (ipFabricPg != null)
+                    _vcenterIpFabricPg = ipFabricPg;
+
                 _vcenterURL = configProps.getProperty("vcenter.url");
                 _vcenterUsername = configProps.getProperty("vcenter.username");
                 _vcenterPassword = configProps.getProperty("vcenter.password");
                 _vcenterDcName = configProps.getProperty("vcenter.datacenter");
                 _vcenterDvsName = configProps.getProperty("vcenter.dvswitch");
-                _apiServerAddress = configProps.getProperty("api.hostname");
+
                 _zookeeperAddrPort = configProps.getProperty("zookeeper.serverlist");
                 _vcenterIpFabricPg = configProps.getProperty("vcenter.ipfabricpg");
+
+                _apiServerAddress = configProps.getProperty("api.hostname");
                 String portStr = configProps.getProperty("api.port");
                 if (portStr != null && portStr.length() > 0) {
                     _apiServerPort = Integer.parseInt(portStr);
+                }
+
+                _mode = configProps.getProperty("mode");
+                if (_mode == null)
+                    _mode = "vcenter-only";
+
+                if (_mode.equals("vcenter-as-compute")) {
+                    String authurl  = configProps.getProperty("auth_url");
+                    if (authurl != null && authurl.length() > 0)
+                        _authurl = authurl;
+
+                    String username = configProps.getProperty("admin_user");
+                    if (username != null && username.length() > 0)
+                        _username = username;
+
+                    String password = configProps.getProperty("admin_password");
+                    if (password != null && password.length() > 0)
+                        _password = password;
+
+                    String tenant   = configProps.getProperty("admin_tenant_name");
+                    if (tenant != null && tenant.length() > 0)
+                        _tenant = tenant;
+
                 }
             } finally {
                 fileStream.close();
@@ -146,15 +184,26 @@ public class VCenterMonitor {
         s_logger.info("Acquired zookeeper Mastership .. ");
 
         // Launch the periodic VCenterMonitorTask
-        VCenterMonitorTask _monitorTask = new VCenterMonitorTask(_vcenterURL, 
-                              _vcenterUsername, _vcenterPassword, 
-                              _vcenterDcName, _vcenterDvsName,
-                              _apiServerAddress, _apiServerPort, _vcenterIpFabricPg);
-        _vncDB = _monitorTask.getVncDB();
-        _vcenterDB = _monitorTask.getVCenterDB();
-        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask,
-                    0, 4, TimeUnit.SECONDS); //4 second periodic
+        VCenterMonitorTask _monitorTask = null;
+        if (_mode == "vcenter-only") {
+            s_logger.info("vcenter-only mode of operation.. ");
+            _monitorTask = new VCenterOnlyMonitorTask(_vcenterURL, 
+                                  _vcenterUsername, _vcenterPassword, 
+                                  _vcenterDcName, _vcenterDvsName,
+                                  _apiServerAddress, _apiServerPort, _vcenterIpFabricPg);
+        } else {
+            s_logger.info("vcenter-as-compute mode of operation.. ");
+            _monitorTask = new VCenterAsComputeMonitorTask(_vcenterURL, 
+                                  _vcenterUsername, _vcenterPassword, 
+                                  _vcenterDcName, _vcenterDvsName,
+                                  _vcenterIpFabricPg,
+                                  _apiServerAddress, _apiServerPort,
+                                  _username, _password, _tenant,
+                                  _authtype, _authurl);
+        }
 
+        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 4, //4 second periodic
+                TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));
 
