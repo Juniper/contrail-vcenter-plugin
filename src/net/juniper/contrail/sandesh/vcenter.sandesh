@@ -67,7 +67,8 @@ struct VirtualNetworkInfo {
 }
 
 struct VRouterInfo {
-	1: string ipAddr;
+	1: string ipAddr
+		(link="vRouterDetail" && detail != "FULL", goto=":8085" && detail = "FULL");
     2: bool state;
     3: string EsxiHost;
     4: list<VirtualNetworkInfo> vNetworks;
