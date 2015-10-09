@@ -23,21 +23,21 @@ public class VCenterPlugin {
         .append("</master>");  
     }
     
-    boolean pluginState;
-    public boolean getPluginState() {
-        return pluginState;
+    boolean pluginSessions;
+    public boolean getPluginSessions() {
+        return pluginSessions;
     }
 
-    public void setPluginState(boolean state) {
-        this.pluginState = state;
+    public void setPluginSessions(boolean state) {
+        this.pluginSessions = state;
     }
-    private void writeFieldPluginState(StringBuilder s, int identifier)
+    private void writeFieldPluginSessions(StringBuilder s, int identifier)
     {
-        s.append("<pluginState type=\"bool\" identifier=\"")
+        s.append("<pluginSessions type=\"bool\" identifier=\"")
          .append(identifier)
          .append("\">")
-         .append(pluginState)
-         .append("</pluginState>");
+         .append(pluginSessions)
+         .append("</pluginSessions>");
     }
   
     private VRouterStats vRouterStats;
@@ -102,7 +102,7 @@ public class VCenterPlugin {
         
         int inner_identifier = 1;
         writeFieldMaster(s, inner_identifier++);
-        writeFieldPluginState(s, inner_identifier++);
+        writeFieldPluginSessions(s, inner_identifier++);
         writeFieldVRouterStats(s, inner_identifier++);
         writeFieldApiServerInfo(s, inner_identifier++);
         writeFieldVCenterServerInfo(s, inner_identifier++);

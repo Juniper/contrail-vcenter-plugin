@@ -22,12 +22,10 @@ public class VCenterPluginResp {
     }
 
     private void populatePluginState() {
-        vCenterPluginInfo.setPluginState(
+        vCenterPluginInfo.setPluginSessions(
                 (vCenterPluginInfo.getApiServerInfo().getConnected() == true)
                 && (vCenterPluginInfo.getVCenterServerInfo().getConnected() == true)
-                && (( vCenterPluginInfo.getVRouterStats().getTotal() > 0
-                            && vCenterPluginInfo.getVRouterStats().getUp() > 0)
-                      || (vCenterPluginInfo.getVRouterStats().getTotal() == 0)));
+                && (( vCenterPluginInfo.getVRouterStats().getDown() == 0)));
     }
     
     private void populateVRouterStats() {         

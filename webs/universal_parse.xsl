@@ -483,6 +483,24 @@
                     </pre>
                 </td>
             </xsl:when>
+            <xsl:when test="../@goto">
+                <xsl:variable name="gotox" select="../@goto"/>
+                <xsl:variable name="goto_title" select="../@goto_title"/>
+                <td style="color:blue">
+                    <pre>
+	                    <a href="http://{$gotox}">
+	                        <xsl:choose>
+	                            <xsl:when test="$goto_title != ''">
+	                                <xsl:value-of select="$goto_title" />
+	                            </xsl:when>
+	                            <xsl:otherwise>
+	                                <xsl:value-of select=".." />
+	                            </xsl:otherwise>
+	                        </xsl:choose>
+	                    </a>
+                    </pre>
+                </td>
+            </xsl:when>
             <xsl:otherwise>
                 <xsl:choose>
                     <xsl:when test="$snhreq = 'rlist'">
