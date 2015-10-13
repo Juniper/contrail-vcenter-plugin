@@ -202,6 +202,9 @@ public class VCenterMonitor {
                                   _authtype, _authurl);
         }
 
+        _vncDB = _monitorTask.getVncDB();
+        _vcenterDB = _monitorTask.getVCenterDB();
+
         scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 4, //4 second periodic
                 TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(
