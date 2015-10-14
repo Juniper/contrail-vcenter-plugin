@@ -22,18 +22,25 @@ public class VCenterPluginResp {
     }
 
     private void populatePluginState() {
-        vCenterPluginInfo.setPluginState(
+        vCenterPluginInfo.setPluginSessions(
                 (vCenterPluginInfo.getApiServerInfo().getConnected() == true)
                 && (vCenterPluginInfo.getVCenterServerInfo().getConnected() == true)
-                && (( vCenterPluginInfo.getVRouterStats().getTotal() > 0
-                            && vCenterPluginInfo.getVRouterStats().getUp() > 0)
-                      || (vCenterPluginInfo.getVRouterStats().getTotal() == 0)));
+                && (( vCenterPluginInfo.getVRouterStats().getDown() == 0)));
     }
     
     private void populateVRouterStats() {         
         int up = 0;
         int down = 0;
+
+        if (VCenterMonitor.getVncDB() == null) {
+            return;
+        }
         Map<String, ContrailVRouterApi> apiMap = VCenterMonitor.getVncDB().getVRouterApiMap();
+
+        if (apiMap == null) {
+            return;
+        }
+
         for (Map.Entry<String, ContrailVRouterApi> entry: apiMap.entrySet()) {
             Boolean active = (entry.getValue() != null);
             if (active == Boolean.TRUE) {

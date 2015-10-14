@@ -20,6 +20,10 @@ public class VRouterInfo implements SandeshObject
          .append("\"");
         if (detail != DetailLevel.FULL) {
           s.append(" link=\"vRouterDetail\"");
+        } else {
+            s.append(" goto=\"")
+            .append(ipAddr)
+            .append(":8085\"");
         }
         s.append(">")
          .append(ipAddr)
