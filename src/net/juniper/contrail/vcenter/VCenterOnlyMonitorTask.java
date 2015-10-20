@@ -313,11 +313,12 @@ class VCenterOnlyMonitorTask implements Runnable, VCenterMonitorTask {
             String prevVmwareVmUuid = prevVmwareItem.getKey();
             Integer cmp = curVmwareVmUuid.compareTo(prevVmwareVmUuid);
             VmwareVirtualMachineInfo prevVmwareVmInfo = prevVmwareItem.getValue();
-            String prev_vrouter = prevVmwareVmInfo.getVrouterIpAddress();
             if (cmp == 0) {
-                //If VM has migrated from one host to other, uuid is same, so handle it
                 VmwareVirtualMachineInfo curVmwareVmInfo = curVmwareItem.getValue();
                 curVmwareVmInfo.setInterfaceUuid(prevVmwareVmInfo.getInterfaceUuid());
+
+                //If VM has migrated from one host to other, uuid is same, so handle it
+                String prev_vrouter = prevVmwareVmInfo.getVrouterIpAddress();
                 String cur_vrouter  = curVmwareVmInfo.getVrouterIpAddress();
                 Integer cmp_vrouter = prev_vrouter.compareTo(cur_vrouter);
                 if (cmp_vrouter != 0) {
@@ -354,6 +355,38 @@ class VCenterOnlyMonitorTask implements Runnable, VCenterMonitorTask {
                     }
                 }
 
+                // Check if vm's mac address has changed.
+                // Applicable only for static networks.
+                if (curVmwareVmInfo.isPoweredOnState()
+                    && (curVmwareVNInfo.getExternalIpam() == true)
+                    && !curVmwareVmInfo.getMacAddress().equals(prevVmwareVmInfo.getMacAddress())) {
+                    s_logger.info("Mac address changed for VM");
+                    s_logger.info("VM Name:" + curVmwareVmInfo.getName() +
+                                  " VMI UUID:" + curVmwareVmInfo.getInterfaceUuid() +
+                                  " New MAC:" + curVmwareVmInfo.getMacAddress() +
+                                  " Old MAC:" + prevVmwareVmInfo.getMacAddress());
+
+                    // Unplug, update-mac and plugin port .
+                    // This is to ensure that control and data plane are in Sync.
+                    if (curVmwareVmInfo.isPoweredOnState()) {
+                        vncDB.VifUnplug(curVmwareVmInfo.getInterfaceUuid(),
+                                        curVmwareVmInfo.getVrouterIpAddress());
+                    }
+                    vncDB.updateMacAddress(curVmwareVmInfo.getInterfaceUuid(),
+                                                 curVmwareVmInfo.getMacAddress());
+                    if (curVmwareVmInfo.isPoweredOnState()) {
+                        vncDB.VifPlug(vnUuid, curVmwareVmUuid,
+                            curVmwareVmInfo.getMacAddress(),
+                            curVmwareVmInfo.getName(),
+                            curVmwareVmInfo.getVrouterIpAddress(),
+                            curVmwareVmInfo.getHostName(),
+                            curVmwareVNInfo.getIsolatedVlanId(),
+                            curVmwareVNInfo.getPrimaryVlanId(), curVmwareVmInfo);
+                    }
+                }
+
+                // Check if vm's static-ip has changed.
+                // Applicable only for static networks.
                 if (curVmwareVmInfo.isPoweredOnState() 
                     && (curVmwareVNInfo.getExternalIpam() == true)
                     && (curVmwareVmInfo.getIpAddress() != null)
@@ -365,7 +398,7 @@ class VCenterOnlyMonitorTask implements Runnable, VCenterMonitorTask {
                 curVmwareItem = curVmwareIter.hasNext() ? curVmwareIter.next() : null; 
             } else if (cmp > 0){
                 // Delete Vnc virtual machine
-                vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid, prev_vrouter);
+                vncDB.DeleteVirtualMachine(prevVmwareItem.getKey(), vnUuid, prevVmwareVmInfo.getVrouterIpAddress());
                 prevVmwareItem = prevVmwareIter.hasNext() ? prevVmwareIter.next() : null;
             } else if (cmp < 0){
                 // create VMWare virtual machine in VNC

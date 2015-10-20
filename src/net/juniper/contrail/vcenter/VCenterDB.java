@@ -970,27 +970,26 @@ public class VCenterDB {
         return null;
     }
  
-    private String getVirtualMachineIpAddress(GuestNicInfo[] nicInfos, 
+    private String[] getVirtualMachineIpMacAddress(GuestNicInfo[] nicInfos,
                                               String dvPgName, 
                                               String vmName, String vmMac)
                                              throws Exception {
 
-        // Assumption here is that VMware Tools are installed
-        // and IP address is available
         if (nicInfos == null) {
             s_logger.debug("dvPg: " + dvPgName + " vm:" + vmName
                     + " GuestNicInfo - VMware Tools " + " NOT installed");
             return null;
         }
         for (GuestNicInfo nicInfo : nicInfos) {
-            // Extract the IP address associated with interface based on macAddress.
+            // Extract the IP address associated with port group.
+            String networkName = nicInfo.getNetwork();
             String guestMac = nicInfo.getMacAddress();
 
-            if (guestMac == null) {
+            if (networkName == null) {
                 continue;
             }
 
-            if (!guestMac.equals(vmMac)) {
+            if (!networkName.equals(dvPgName)) {
                 continue;
             }
 
@@ -1011,7 +1010,7 @@ public class VCenterDB {
                 // Choose IPv4 only
                 InetAddress ipAddr = InetAddress.getByName(ipAddress);
                 if (ipAddr instanceof Inet4Address) {
-                    return ipAddress;
+                    return new String[] {ipAddress, guestMac};
                 }
             }
         }
@@ -1085,17 +1084,21 @@ public class VCenterDB {
 
         // Save static-ip read via tools if static-ip addressing enabled on network.
         if ((externalIpam == true) && (vmInfo.isPoweredOnState())) {
-            String ipAddress = null;
+            String ipMacAddress[] = null;
+            String ipAddress      = null;
+            String macAddress     = null;
             String toolsRunningStatus  = (String)  pTable.get("guest.toolsRunningStatus");
             if (VirtualMachineToolsRunningStatus.guestToolsRunning.toString().equals(toolsRunningStatus)) {
                 if (pTable.get("guest.net") instanceof GuestNicInfo[]) {
                     GuestNicInfo[] nicInfos    = (GuestNicInfo[])pTable.get("guest.net");
-                    ipAddress = getVirtualMachineIpAddress(nicInfos, dvPgName, vmName, vmMac);
+                    ipMacAddress = getVirtualMachineIpMacAddress(nicInfos, dvPgName, vmName, vmMac);
                 }
             }
 
-            if (ipAddress == null) {
+            if (ipMacAddress == null) {
                 String prevIpAddress = null;
+
+                s_logger.debug("VM (" + vmName + ")'s network (" + dvPgName + ") couldn't be found..");
 
                 if (prevVmwareVmInfo != null) {
                     prevIpAddress = prevVmwareVmInfo.getIpAddress();
@@ -1112,10 +1115,11 @@ public class VCenterDB {
                     s_logger.debug("Using IP address:" + prevIpAddress + " read previously for VM ("
                                    + vmName + ") since vCenter didn't provide an current IP address");
                 }
-            }
-
-            if (ipAddress != null) {
+            } else { // ipMacAddress != null
               // Ensure that ip-address is within subnet range
+              ipAddress  = ipMacAddress[0];
+              macAddress = ipMacAddress[1];
+              vmInfo.setMacAddress(macAddress);
             }
 
             vmInfo.setIpAddress(ipAddress);

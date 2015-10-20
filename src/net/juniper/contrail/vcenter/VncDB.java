@@ -932,7 +932,14 @@ public class VncDB {
             }
             List<ObjectReference<ApiPropertyBase>> vnRefs =
                                             vmiTmp.getVirtualNetwork();
+            if (vnRefs == null) {
+              continue;
+            }
+
             for (ObjectReference<ApiPropertyBase> vnRef : vnRefs) {
+                if (vnRef == null || vnRef.getUuid() == null) {
+                  continue;
+                }
                 if (vnRef.getUuid().equals(vnUuid)) {
                     vmInterface = vmiTmp;
                 }
@@ -1048,6 +1055,29 @@ public class VncDB {
                           + vmInterfaceUuid + ")");
         }
         s_logger.info("VifUnplug  VMI:" + vmInterfaceUuid + " Done");
+    }
+
+    public void updateMacAddress(String vmiUuid, String macAddress)
+                                                 throws IOException {
+        VirtualMachineInterface vmi = (VirtualMachineInterface)
+                apiConnector.findById(VirtualMachineInterface.class, vmiUuid);
+
+        if (vmi == null) {
+            s_logger.warn("Trying to update mac for VMI:" + vmiUuid +
+                          " when VM Interface doesn't exist");
+            return;
+        }
+
+        VirtualMachineInterface vmInterface = new VirtualMachineInterface();
+        vmInterface.setUuid(vmiUuid);
+        vmInterface.setParent(vmi.getParent());
+        vmInterface.setName(vmi.getName());
+
+        MacAddressesType macAddrType = new MacAddressesType();
+        macAddrType.addMacAddress(macAddress);
+        vmInterface.setMacAddresses(macAddrType);
+
+        apiConnector.update(vmInterface);
     }
 
     public void CreateVirtualNetwork(String vnUuid, String vnName,
