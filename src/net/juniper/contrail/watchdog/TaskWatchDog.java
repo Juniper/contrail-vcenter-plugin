@@ -8,20 +8,11 @@ public enum TaskWatchDog implements Runnable {
     AKER1, AKER2;
 
     ConcurrentMap<Runnable, MonitoredTaskRecord> monitored;
-    ConcurrentHashMap<String, RunningTimeStats> completed;
-
-    class RunningTimeStats {
-        long count;
-        long min;
-        long max;
-        long avg;
-
-        public RunningTimeStats() {}
-    }
+    ConcurrentHashMap<Runnable, MonitoredTaskRecord> completed;
 
     private TaskWatchDog() {
         monitored = new ConcurrentHashMap<Runnable, MonitoredTaskRecord>();
-        completed = new ConcurrentHashMap<String, RunningTimeStats>();
+        completed = new ConcurrentHashMap<Runnable, MonitoredTaskRecord>();
     }
 
     public static
@@ -29,6 +20,11 @@ public enum TaskWatchDog implements Runnable {
         return AKER1.monitored;
     }
 
+    public static
+    ConcurrentMap<Runnable, MonitoredTaskRecord> getCompletedTasks() {
+        return AKER1.completed;
+    }
+    
     public static void startMonitoring(Runnable task,
             String name,
             long timeout, TimeUnit unit) {
@@ -61,28 +57,27 @@ public enum TaskWatchDog implements Runnable {
             tRec.stopTime = System.currentTimeMillis();
             monitored.remove(task);
 
-            computeStats(tRec);
+            computeStats(task, tRec);
         }
     }
 
-    private void computeStats(MonitoredTaskRecord tRec) {
-        RunningTimeStats stats = null;
+    private void computeStats(Runnable task, MonitoredTaskRecord tRec) {
         long time = tRec.stopTime - tRec.startTime;
-        if (AKER1.completed.containsKey(tRec.name)) {
-            stats = AKER1.completed.get(tRec.name);
-            if (time < stats.min) {
-                stats.min = time;
-            } else if (time > stats.max) {
-                stats.max = time;
+        if (AKER1.completed.containsKey(task)) {
+            if (time < tRec.minTime) {
+                tRec.minTime = time;
+            } else if (time > tRec.maxTime) {
+                tRec.maxTime = time;
             }
-            stats.avg = (stats.count * stats.avg + time)/(stats.count+1);
-            stats.count++;
+            tRec.avgTime = (tRec.count * tRec.avgTime)/(tRec.count+1)
+                    + time/(tRec.count+1);
+            tRec.count++;
         } else {
-            stats = AKER1.new RunningTimeStats();
-            stats.count = 1;
-            stats.min = stats.max = stats.avg = time;
+            tRec.count = 1;
+            tRec.minTime = tRec.maxTime = time;
+            tRec.avgTime = (double)time;
+            completed.put(task, tRec);
         }
-        completed.put(tRec.name, stats);
     }
 
     @Override
