@@ -13,9 +13,10 @@ public class MonitoredTaskRecord {
     boolean blocked;
     Date date;
     StackTraceElement[] stackTrace;
+    long count;
     long minTime;
     long maxTime;
-    long avgTime;
+    double avgTime;
 
     MonitoredTaskRecord(Thread thread, long timeout, TimeUnit unit) {
         this.thread = thread;

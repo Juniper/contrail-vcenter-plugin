@@ -1,19 +1,6 @@
 package net.juniper.contrail.vcenter;
 
-import java.io.IOException;
-import java.io.File;
-import java.io.FileInputStream;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.SortedMap;
-import java.util.Iterator;
-import java.util.Properties;
-import java.util.UUID;
-
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Logger;
-import org.apache.log4j.Level;
-
 
 public class VmwareVirtualNetworkInfo {
     private String name;
