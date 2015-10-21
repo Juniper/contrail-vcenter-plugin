@@ -1152,6 +1152,176 @@ public class VCenterMonitorTaskTest extends TestCase {
 
     }
 
+    //  prevVCenterINfo : 1 VN(Static-Ip)
+    //  currVCenterINfo : 1 VN(Static-Ip) & 1 VM (VM-B-PoweredOff)
+    //  Afert Virtual-machine sync, Vnc should have 1 VM (VN-B-PoweredOff).
+    //  Change macAddress of VM and then PowerOn the VM.
+    //  Check that mac-address of vm interface is changed to new value.
+    @Test
+    public void TestSyncVmwareVirtualMachinesTC6() throws Exception {
+        String vnUuid         = UUID.randomUUID().toString();
+        String vnName         = "TestSyncVmwareVirtualMachinesTC6-VN-A";
+        String subnetAddr     = "192.168.6.0";
+        String subnetMask     = "255.255.255.0";
+        String gatewayAddr    = "192.168.6.1";
+        short primaryVlanId   = 600;
+        short isolatedVlanId  = 601;
+        boolean ipPoolEnabled = true;
+        String range          = "192.18.6.2#230";
+        boolean externalIpam  = true;
+
+        // Create virtual-network on api-server
+        _vncDB.CreateVirtualNetwork(vnUuid, vnName, subnetAddr, subnetMask,
+                                    gatewayAddr, isolatedVlanId, primaryVlanId,
+                                    ipPoolEnabled, range, externalIpam, null);
+
+        // Verify virtual-network creation
+        VirtualNetwork vn1 = (VirtualNetwork) _api.findById(VirtualNetwork.class, vnUuid);
+        assertNotNull(vn1);
+
+       // Populate prevVmwareVirtualNetworkInfo . No VMs
+        VmwareVirtualNetworkInfo prevVmwareVNInfo =
+                                            new VmwareVirtualNetworkInfo(
+                                                  vnName, isolatedVlanId, primaryVlanId,
+                                                  null, subnetAddr, subnetMask,
+                                                  gatewayAddr, ipPoolEnabled, range, externalIpam);
+
+        // Populate currVmwareVirtualMachineInfo with VM-B info
+        String vmUuidB            = UUID.randomUUID().toString();
+        String vmNameB            = "VM-B";
+        String hostNameB          = "10.20.30.40";
+        String vrouterIpAddressB  = "10.84.24.45";
+        String macAddressB        = "00:11:22:33:44:66";
+        ManagedObjectReference hmor = new ManagedObjectReference();
+        hmor.setVal("host-19209");
+        hmor.setType("HostSystem");
+        VmwareVirtualMachineInfo vmInfoCurr = new
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
+                                         vrouterIpAddressB, macAddressB,
+                                         VirtualMachinePowerState.poweredOff);
+
+        SortedMap<String, VmwareVirtualMachineInfo> vmInfosCurr =
+                                    new TreeMap<String, VmwareVirtualMachineInfo>();
+        vmInfosCurr.put(vmUuidB, vmInfoCurr);
+
+        // Populate currVmwareVirtualNetworkInfo
+        VmwareVirtualNetworkInfo currVmwareVNInfo =
+                                            new VmwareVirtualNetworkInfo(
+                                                  vnName, isolatedVlanId, primaryVlanId,
+                                                  vmInfosCurr, subnetAddr, subnetMask,
+                                                  gatewayAddr, ipPoolEnabled, range, externalIpam);
+
+        _vcenterMonitorTask.syncVmwareVirtualMachines(vnUuid,
+                                     currVmwareVNInfo, prevVmwareVNInfo);
+
+        // VM-B should be present on api-server since it's present on
+        // latest vmware database read
+        VirtualMachine vmB =(VirtualMachine) _api.findById(VirtualMachine.class, vmUuidB);
+        assertNotNull(vmB);
+        List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
+                vmB.getVirtualMachineInterfaceBackRefs();
+        assertNotNull(vmInterfaceRefs);
+        assertEquals(1, vmInterfaceRefs.size());
+
+        String vmInterfaceUuid = vmInterfaceRefs.get(0).getUuid();
+        VirtualMachineInterface vmInterface = (VirtualMachineInterface)
+                                  _api.findById(VirtualMachineInterface.class,
+                                                vmInterfaceUuid);
+        assertNotNull(vmInterface);
+
+        assertNotNull(vmInfoCurr.getInterfaceUuid());
+        assertEquals(vmInterfaceUuid, vmInfoCurr.getInterfaceUuid());
+
+        // Check that instance-ip is null
+        List<ObjectReference<ApiPropertyBase>> instanceIpRefs =
+                vmInterface.getInstanceIpBackRefs();
+        assertNull(instanceIpRefs);
+
+        // **********************************************************************
+        // Update ip-address on VM and check that
+        // instance-ip is created for the VM interface
+        // **********************************************************************
+        VmwareVirtualMachineInfo vmInfoCurrPlus1 = new
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
+                                         vrouterIpAddressB, macAddressB,
+                                         VirtualMachinePowerState.poweredOn);
+        vmInfoCurrPlus1.setIpAddress("192.168.6.10");
+
+        SortedMap<String, VmwareVirtualMachineInfo> vmInfosCurrPlus1 =
+                                    new TreeMap<String, VmwareVirtualMachineInfo>();
+        vmInfosCurrPlus1.put(vmUuidB, vmInfoCurrPlus1);
+
+        VmwareVirtualNetworkInfo currPlus1VmwareVNInfo =
+                                            new VmwareVirtualNetworkInfo(
+                                                  vnName, isolatedVlanId, primaryVlanId,
+                                                  vmInfosCurrPlus1, subnetAddr, subnetMask,
+                                                  gatewayAddr, ipPoolEnabled, range, externalIpam);
+
+        // (prev = curr) and (cur = curr+1)
+        _vcenterMonitorTask.syncVmwareVirtualMachines(vnUuid,
+                                     currPlus1VmwareVNInfo, currVmwareVNInfo);
+
+        // Now check that vmInterface has macAddress "macAddressB"
+        VirtualMachineInterface vmInterfaceUpdated = (VirtualMachineInterface)
+                                  _api.findById(VirtualMachineInterface.class,
+                                                vmInterfaceUuid);
+        assertNotNull(vmInterfaceUpdated);
+        MacAddressesType macAddr = vmInterfaceUpdated.getMacAddresses();
+        assertNotNull(macAddr);
+        assertNotNull(macAddr.getMacAddress());
+        assertEquals(1, macAddr.getMacAddress().size());
+        assertEquals(macAddressB, macAddr.getMacAddress().get(0));
+
+        assertNotNull(vmInfoCurrPlus1.getInterfaceUuid());
+        assertEquals(vmInterfaceUuid, vmInfoCurrPlus1.getInterfaceUuid());
+
+        // Check that instance-ip is not null
+        List<ObjectReference<ApiPropertyBase>> instanceIpRefsPlus1 =
+                vmInterface.getInstanceIpBackRefs();
+        assertNotNull(instanceIpRefsPlus1);
+
+        assertNotNull(vmInfoCurrPlus1.getInterfaceUuid());
+        assertEquals(vmInterfaceUuid, vmInfoCurrPlus1.getInterfaceUuid());
+
+        // **********************************************************************
+        // Update macAddress on VM
+        // **********************************************************************
+        SortedMap<String, VmwareVirtualMachineInfo> vmInfosCurrPlus2 = 
+                                    new TreeMap<String, VmwareVirtualMachineInfo>();
+        VmwareVirtualMachineInfo vmInfoCurrPlus2 = new
+                VmwareVirtualMachineInfo(vmNameB, hostNameB, hmor,
+                                         vrouterIpAddressB, macAddressB,
+                                         VirtualMachinePowerState.poweredOn);
+        String macAddressBPlus        = "00:12:34:56:78:9A";
+        vmInfoCurrPlus2.setMacAddress(macAddressBPlus);
+        vmInfosCurrPlus2.put(vmUuidB, vmInfoCurrPlus2);
+
+        VmwareVirtualNetworkInfo currPlus2VmwareVNInfo =
+                                            new VmwareVirtualNetworkInfo(
+                                                  vnName, isolatedVlanId, primaryVlanId,
+                                                  vmInfosCurrPlus2, subnetAddr, subnetMask,
+                                                  gatewayAddr, ipPoolEnabled, range, externalIpam);
+
+        // (prev = curr+1) and (cur = curr+2)
+        _vcenterMonitorTask.syncVmwareVirtualMachines(vnUuid,
+                                     currPlus2VmwareVNInfo, currPlus1VmwareVNInfo);
+
+        assertNotNull(vmInfoCurrPlus2.getInterfaceUuid());
+        assertEquals(vmInterfaceUuid, vmInfoCurrPlus2.getInterfaceUuid());
+
+        // Check that vmInterface has macAddress macAddressBPlus
+        VirtualMachineInterface vmInterfaceUpdated1 = (VirtualMachineInterface)
+                                  _api.findById(VirtualMachineInterface.class,
+                                                vmInterfaceUuid);
+        assertNotNull(vmInterfaceUpdated1);
+        MacAddressesType macAddrType = vmInterfaceUpdated1.getMacAddresses();
+        assertNotNull(macAddrType);
+        assertNotNull(macAddrType.getMacAddress());
+        assertEquals(1, macAddrType.getMacAddress().size());
+        assertEquals(macAddressBPlus, macAddrType.getMacAddress().get(0));
+
+    }
+
 
     //  prevVCenterINfo : 1 VN (TestVN-A)(Static-Ip)
     //  currVCenterINfo : 0 VN 
