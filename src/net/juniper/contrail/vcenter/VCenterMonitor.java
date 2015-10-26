@@ -147,6 +147,8 @@ public class VCenterMonitor {
                     if (tenant != null && tenant.length() > 0)
                         _tenant = tenant;
 
+                } else { // vcenter-only mode
+                    _mode = "vcenter-only";
                 }
             } finally {
                 fileStream.close();
