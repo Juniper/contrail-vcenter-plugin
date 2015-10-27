@@ -15,15 +15,14 @@ import java.util.TreeMap;
 import java.util.SortedMap;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.net.MalformedURLException;
 import java.rmi.RemoteException;
 import java.io.FileNotFoundException;
 import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.RuntimeFault;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
-
 import org.apache.log4j.Logger;
-
 import com.vmware.vim25.DVPortSetting;
 import com.vmware.vim25.DVPortgroupConfigInfo;
 import com.vmware.vim25.GuestInfo;
@@ -40,6 +39,7 @@ import com.vmware.vim25.VirtualDeviceBackingInfo;
 import com.vmware.vim25.VirtualEthernetCard;
 import com.vmware.vim25.VirtualEthernetCardDistributedVirtualPortBackingInfo;
 import com.vmware.vim25.VirtualMachineConfigInfo;
+import com.vmware.vim25.VirtualMachineConfigSpec;
 import com.vmware.vim25.VirtualMachinePowerState;
 import com.vmware.vim25.VirtualMachineRuntimeInfo;
 import com.vmware.vim25.VmwareDistributedVirtualSwitchPvlanSpec;
@@ -80,6 +80,8 @@ public class VCenterDB {
     protected Datacenter contrailDC;
     protected VmwareDistributedVirtualSwitch contrailDVS;
     private volatile SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
+    private volatile SortedMap<String, VmwareVirtualNetworkInfo> vmwareVNs;
+    private volatile SortedMap<String, VmwareVirtualMachineInfo> vmwareVMs;
 
     public volatile Map<String, String> esxiToVRouterIpMap;
     public volatile Map<String, Boolean> vRouterActiveMap;
@@ -98,6 +100,9 @@ public class VCenterDB {
         // Create ESXi host to vRouterVM Ip address map
         esxiToVRouterIpMap = new HashMap<String, String>();
         vRouterActiveMap = new HashMap<String, Boolean>();
+
+        vmwareVNs = new ConcurrentSkipListMap<String, VmwareVirtualNetworkInfo>();
+        vmwareVMs = new ConcurrentSkipListMap<String, VmwareVirtualMachineInfo>();
     }
 
     public boolean Initialize() {
@@ -1346,5 +1351,298 @@ public class VCenterDB {
     
     public String getVcenterUrl() { 
         return vcenterUrl; 
+    }
+
+    public void addVM(EventData event) {
+        VirtualMachine vm = event.vm;
+        VirtualMachineConfigInfo vmConfigInfo = vm.getConfig();
+        String instanceUuid = vmConfigInfo.getInstanceUuid();
+
+        if (vmwareVMs.containsKey(instanceUuid)) {
+            // log some error, is is possible UUID already existed??
+        }
+        vmwareVMs.put(instanceUuid, event.vmInfo);
+    }
+
+    public void updateVM(EventData event) {
+        VirtualMachine vm = event.vm;
+        VirtualMachineConfigInfo vmConfigInfo = vm.getConfig();
+        String instanceUuid = vmConfigInfo.getInstanceUuid();
+
+        if (vmwareVMs.containsKey(instanceUuid)) {
+            // log some error, is is possible UUID already existed??
+        }
+        VmwareVirtualMachineInfo vmInfo = vmwareVMs.get(instanceUuid);
+        //TODO update the info
+
+        vmwareVMs.put(instanceUuid, vmInfo);
+    }
+
+    public void deleteVM(EventData event)
+        throws RemoteException {
+        vmwareVMs.remove(event.vm.getConfig().getInstanceUuid());
+    }
+
+    public Datacenter getVmwareDatacenter(String name)
+        throws RemoteException {
+        String description = "<datacenter " + name
+                + ", vCenter " + vcenterUrl + ">.";
+
+        Folder rootFolder = serviceInstance.getRootFolder();
+        if (rootFolder == null) {
+            String msg = "Failed to get rootfolder for vCenter " + vcenterUrl;
+            s_logger.error(msg);
+            throw new RemoteException(msg);
+        }
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(rootFolder);
+        Datacenter dc = null;
+        try {
+            dc = (Datacenter) inventoryNavigator.searchManagedEntity(
+                          "Datacenter", name);
+        } catch (RemoteException e ) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg, e);
+        }
+
+        if (dc == null) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg);
+        }
+
+        s_logger.info("Found " + description);
+        return dc;
+    }
+
+    public VmwareDistributedVirtualSwitch getVmwareDvs(String name,
+            Datacenter dc, String dcName)
+                    throws RemoteException {
+        String description = "<dvs " + name
+                + ", datacenter " + dcName
+                + ", vCenter " + vcenterUrl + ">.";
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(dc);
+
+        VmwareDistributedVirtualSwitch dvs = null;
+        try {
+            dvs = (VmwareDistributedVirtualSwitch)inventoryNavigator.searchManagedEntity(
+                    "VmwareDistributedVirtualSwitch", name);
+        } catch (RemoteException e ) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg, e);
+        }
+
+        if (dvs == null) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg);
+        }
+
+        s_logger.info("Found " + description);
+        return dvs;
+    }
+
+    public Network getVmwareNetwork(String name,
+            VmwareDistributedVirtualSwitch dvs, String dvsName, String dcName)
+            throws RemoteException {
+        String description = "<network " + name
+                + ", dvs " + dvsName + ", datacenter " + dcName
+                + ", vCenter " + vcenterUrl + ">.";
+
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(dvs);
+
+        Network nw = null;
+        try {
+            nw = (Network)inventoryNavigator.searchManagedEntity(
+                    "Network", name);
+        } catch (RemoteException e ) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg, e);
+        }
+
+        if (nw == null) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg);
+        }
+
+        s_logger.info("Found " + description);
+        return nw;
+    }
+
+    public DistributedVirtualPortgroup getVmwareDpg(String name,
+            VmwareDistributedVirtualSwitch dvs, String dvsName, String dcName)
+            throws RemoteException {
+        String description = "<dpg " + name + ", dvs " + dvsName
+                + ", datacenter " + dcName + ", vCenter " + vcenterUrl + ">.";
+
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(dvs);
+
+        DistributedVirtualPortgroup dpg = null;
+        try {
+            dpg = (DistributedVirtualPortgroup)inventoryNavigator.searchManagedEntity(
+                    "DistributedVirtualPortgroup", name);
+        } catch (RemoteException e ) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg, e);
+        }
+
+        if (dpg == null) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg);
+        }
+
+        s_logger.info("Found " + description);
+        return dpg;
+    }
+
+    public HostSystem getVmwareHost(String name,
+            Datacenter dc, String dcName)
+        throws RemoteException {
+        String description = "<host " + name 
+                + ", datacenter " + dcName + ", vCenter " + vcenterUrl +">.";
+        // narrow the search to the dc level
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(dc);
+
+        HostSystem host = null;
+        try {
+            host = (HostSystem)inventoryNavigator.searchManagedEntity(
+                    "HostSystem", name);
+        } catch (RemoteException e ) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg, e);
+        }
+
+        if (host == null) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg);
+        }
+
+        s_logger.info("Found " + description);
+        return host;
+    }
+
+    public VirtualMachine getVmwareVirtualMachine(String name,
+            HostSystem host, String hostName, String dcName) 
+        throws RemoteException {
+        String description = "<virtual machine " + name + ", host " + hostName 
+                + ", datacenter " + dcName + ", vCenter " + vcenterUrl +">.";
+        // narrow the search to the host level
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(host);
+
+        VirtualMachine vm = null;
+        try {
+            vm = (VirtualMachine)inventoryNavigator.searchManagedEntity(
+                    "VirtualMachine", name);
+        } catch (RemoteException e ) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg, e);
+        }
+
+        if (vm == null) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg);
+        }
+
+        s_logger.info("Found " + description);
+        return vm;
+    }
+
+    protected String getVRouterVMIpFabricAddress(String vmNamePrefix, HostSystem host, String hostName,
+            VmwareDistributedVirtualSwitch dvs) throws Exception {
+        // Find if vRouter Ip Fabric mapping exists..
+        String vRouterIpAddress = esxiToVRouterIpMap.get(hostName);
+
+        // this is not the best place for the next 2 lines
+        if (host.getRuntime().isInMaintenanceMode() && vRouterIpAddress != null) {
+            vRouterActiveMap.put(vRouterIpAddress, false);
+        }
+
+        if (vRouterIpAddress != null) {
+            return vRouterIpAddress;
+        }
+
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(dvs);
+        
+        VirtualMachine[] vms = host.getVms();
+        for (VirtualMachine vm : vms) {
+            String vmName = vm.getName();
+            if (!vmName.toLowerCase().contains(vmNamePrefix.toLowerCase())) {
+                continue;
+            }
+            // XXX Assumption here is that VMware Tools are installed
+            // and IP address is available
+            GuestInfo guestInfo = vm.getGuest();
+            if (guestInfo == null) {
+                /*
+                 * s_logger.debug("dvPg: " + dvPgName + " host: " + hostName +
+                 * " vm:" + vmName + " GuestInfo - VMware Tools " +
+                 * " NOT installed");
+                 */
+                continue;
+            }
+            GuestNicInfo[] nicInfos = guestInfo.getNet();
+            if (nicInfos == null) {
+                /*
+                 * s_logger.debug("dvPg: " + dvPgName + " host: " + hostName +
+                 * " vm:" + vmName + " GuestNicInfo - VMware Tools " +
+                 * " NOT installed");
+                 */
+                continue;
+            }
+            for (GuestNicInfo nicInfo : nicInfos) {
+                // Extract the IP address associated with simple port
+                // group. Assumption here is that Contrail VRouter VM will
+                // have only one standard port group
+                String networkName = nicInfo.getNetwork();
+                if (networkName == null
+                        || !networkName.equals(contrailIpFabricPgName)) {
+                    continue;
+                }
+                Network network = (Network) inventoryNavigator.searchManagedEntity("Network", networkName);
+                if (network == null) {
+                    /*
+                     * s_logger.debug("dvPg: " + dvPgName + "host: " + hostName
+                     * + " vm: " + vmName + " network: " + networkName +
+                     * " NOT found");
+                     */
+                    continue;
+                }
+                NetIpConfigInfo ipConfigInfo = nicInfo.getIpConfig();
+                if (ipConfigInfo == null) {
+                    continue;
+                }
+                NetIpConfigInfoIpAddress[] ipAddrConfigInfos = ipConfigInfo.getIpAddress();
+                if (ipAddrConfigInfos == null || ipAddrConfigInfos.length == 0) {
+                    continue;
+
+                }
+                for (NetIpConfigInfoIpAddress ipAddrConfigInfo : ipAddrConfigInfos) {
+                    String ipAddress = ipAddrConfigInfo.getIpAddress();
+                    // Choose IPv4 only
+                    InetAddress ipAddr = InetAddress.getByName(ipAddress);
+                    if (ipAddr instanceof Inet4Address) {
+                        // found vRouter VM ip-fabric address. Store it.
+                        esxiToVRouterIpMap.put(host.getName(), ipAddress);
+
+                        // this is not the best place for the next 2 lines
+                        if (host.getRuntime().isInMaintenanceMode() && vRouterIpAddress != null) {
+                            vRouterActiveMap.put(vRouterIpAddress, false);
+                        }
+
+                        return ipAddress;
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

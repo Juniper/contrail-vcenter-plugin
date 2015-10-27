@@ -6,6 +6,10 @@ package net.juniper.contrail.vcenter;
 import java.net.URL;
 import java.net.MalformedURLException;
 import java.rmi.RemoteException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim25.ArrayOfEvent;
 import com.vmware.vim25.Event;
@@ -24,7 +28,9 @@ import com.vmware.vim25.RequestCanceled;
 import com.vmware.vim25.SelectionSpec;
 import com.vmware.vim25.UpdateSet;
 import com.vmware.vim25.VmEvent;
+import com.vmware.vim25.VmMacChangedEvent;
 import com.vmware.vim25.VmPoweredOnEvent;
+import com.vmware.vim25.VmReconfiguredEvent;
 import com.vmware.vim25.VmPoweredOffEvent;
 import com.vmware.vim25.DvsEvent;
 import com.vmware.vim25.DVPortgroupEvent;
@@ -39,7 +45,7 @@ import com.vmware.vim25.mo.InventoryNavigator;
 import com.vmware.vim25.mo.PropertyCollector;
 import com.vmware.vim25.mo.PropertyFilter;
 import com.vmware.vim25.mo.ServiceInstance;
-import com.vmware.vim25.VmMigratedEvent; 
+import com.vmware.vim25.VmMigratedEvent;
 import com.vmware.vim25.EnteredMaintenanceModeEvent;
 import com.vmware.vim25.ExitMaintenanceModeEvent;
 import com.vmware.vim25.HostConnectedEvent;
@@ -53,14 +59,14 @@ import org.apache.log4j.Logger;
 
 /**
  * @author Sachchidanand Vaidya
- * 
+ *
  */
 public class VCenterNotify implements Runnable
 {
 
-    private static final Logger s_logger = 
+    private static final Logger s_logger =
             Logger.getLogger(VCenterNotify.class);
-    private static VCenterMonitorTask monitorTask = null;
+    static VCenterMonitorTask monitorTask = null;
 
     private final String contrailDataCenterName;
     private final String vcenterUrl;
@@ -78,16 +84,71 @@ public class VCenterNotify implements Runnable
     private static PropertyCollector propColl;
     private static Boolean shouldRun;
     private static Thread watchUpdates = null;
+    ScheduledExecutorService notifExec;
 
-    public VCenterNotify(VCenterMonitorTask _monitorTask, 
-                         String vcenterUrl, String vcenterUsername,
-                         String vcenterPassword, String contrailDcName)
+    private static final String[] handledEvents = {
+            // Host events
+            "HostConnectionLostEvent",
+            "HostConnectedEvent",
+            "EnteredMaintenanceModeEvent",
+            "ExitMaintenanceModeEvent",
+
+            // VM events
+            // VM create events
+            "VmBeingCreated",
+            "VmCreatedEvent",
+            "VmClonedEvent",
+            "VmCloneEvent",
+            "VmDeployedEvent",
+            // VM modify events
+            "VmPoweredOnEvent",
+            "VmPoweredOffEvent",
+            "VmRenamedEvent",
+            "VmMacChangedEvent",
+            "VmMacAssignedEvent",
+            "VmReconfiguredEvent",
+            "VmConnectedEvent",
+            "VmEmigratingEvent",
+            "VmMigratedEvent",
+            "VmBeingMigratedEvent",
+            "VmBeingHotMigratedEvent",
+            // VM delete events
+            "VmRemovedEvent",
+
+            // DV Port group events
+            // DV port create
+            "DVPortgroupCreatedEvent",
+            // DV port modify
+            "DVPortgroupReconfiguredEvent",
+            "DVPortgroupRenamedEvent",
+            // DV port delete
+            "DVPortgroupDestroyedEvent",
+
+            // DVS port events
+            // DVS port create
+            "DvsPortCreatedEvent",
+            // DVS port modify
+            "DvsPortJoinPortgroupEvent",
+            "DvsPortLeavePortgroupEvent",
+            // DVS port deleted
+            "DvsPortDeletedEvent",
+
+            // General
+            "MigrationEvent",
+    };
+
+    public VCenterNotify(VCenterMonitorTask _monitorTask,
+            String vcenterUrl, String vcenterUsername,
+            String vcenterPassword, String contrailDcName)
     {
         this.monitorTask            = _monitorTask;
         this.vcenterUrl             = vcenterUrl;
         this.vcenterUsername        = vcenterUsername;
         this.vcenterPassword        = vcenterPassword;
         this.contrailDataCenterName = contrailDcName;
+
+        notifExec = Executors.newScheduledThreadPool(4);
+
     }
 
     /**
@@ -96,20 +157,20 @@ public class VCenterNotify implements Runnable
     private boolean initialize() {
         // Connect to VCenter
         s_logger.info("Connecting to vCenter Server : " + "("
-                                + vcenterUrl + "," + vcenterUsername + ")");
+                + vcenterUrl + "," + vcenterUsername + ")");
         if (serviceInstance == null) {
             try {
                 serviceInstance = new ServiceInstance(new URL(vcenterUrl),
-                                            vcenterUsername, vcenterPassword, true);
+                        vcenterUsername, vcenterPassword, true);
                 if (serviceInstance == null) {
                     s_logger.error("Failed to connect to vCenter Server : " + "("
-                                    + vcenterUrl + "," + vcenterUsername + "," 
-                                    + vcenterPassword + ")");
+                            + vcenterUrl + "," + vcenterUsername + ","
+                            + vcenterPassword + ")");
                 }
             } catch (MalformedURLException e) {
-                    return false;
+                return false;
             } catch (RemoteException e) {
-               s_logger.error("Remote exception while connecting to vcenter" + e);
+                s_logger.error("Remote exception while connecting to vcenter" + e);
                 e.printStackTrace();
                 return false;
             } catch (Exception e) {
@@ -119,8 +180,8 @@ public class VCenterNotify implements Runnable
             }
         }
         s_logger.info("Connected to vCenter Server : " + "("
-                                + vcenterUrl + "," + vcenterUsername + "," 
-                                + vcenterPassword + ")");
+                + vcenterUrl + "," + vcenterUsername + ","
+                + vcenterPassword + ")");
 
         if (rootFolder == null) {
             rootFolder = serviceInstance.getRootFolder();
@@ -144,17 +205,17 @@ public class VCenterNotify implements Runnable
         if (_contrailDC == null) {
             try {
                 _contrailDC = (Datacenter) inventoryNavigator.searchManagedEntity(
-                                          "Datacenter", contrailDataCenterName);
+                        "Datacenter", contrailDataCenterName);
             } catch (InvalidProperty e) {
-                    return false;
+                return false;
             } catch (RuntimeFault e) {
-                    return false;
+                return false;
             } catch (RemoteException e) {
-                    return false;
+                return false;
             }
             if (_contrailDC == null) {
-                s_logger.error("Failed to find " + contrailDataCenterName 
-                               + " DC on vCenter ");
+                s_logger.error("Failed to find " + contrailDataCenterName
+                        + " DC on vCenter ");
                 return false;
             }
         }
@@ -188,11 +249,8 @@ public class VCenterNotify implements Runnable
         // Add as many events you want to track relating to vm.
         // Refer to API Data Object vmEvent and see the extends class list for
         // elaborate list of vmEvents
-        eventFilter.setType(new String[] {"HostConnectionLostEvent", "HostConnectedEvent", "EnteredMaintenanceModeEvent", "ExitMaintenanceModeEvent", "VmPoweredOnEvent", "VmPoweredOffEvent", 
-                                           "VmRenamedEvent", 
-                                           "DVPortgroupCreatedEvent", "DVPortgroupDestroyedEvent", 
-                                           "DVPortgroupReconfiguredEvent", "DVPortgroupRenamedEvent", 
-                                           "DvsPortCreatedEvent", "DvsPortDeletedEvent", "DvsPortJoinPortgroupEvent", "DvsPortLeavePortgroupEvent","MigrationEvent","VmEmigratingEvent","VmMigratedEvent","VmBeingMigratedEvent","VmBeingHotMigratedEvent"});
+
+        eventFilter.setType(handledEvents);
 
         // create the EventHistoryCollector to monitor events for a VM
         // and get the ManagedObjectReference of the EventHistoryCollector
@@ -276,7 +334,7 @@ public class VCenterNotify implements Runnable
             s_logger.error("handleChanges received null change array from vCenter");
             return;
         }
-        
+
         for (int pci = 0; pci < changes.length; ++pci)
         {
             if (changes[pci] == null) {
@@ -319,8 +377,8 @@ public class VCenterNotify implements Runnable
                         monitorTask.syncVmwareVirtualNetworks();
                     } catch (Exception e) {
                         String stackTrace = Throwables.getStackTraceAsString(e);
-                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
-                        s_logger.error(stackTrace); 
+                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e);
+                        s_logger.error(stackTrace);
                         e.printStackTrace();
                     }
                 } else if ((value instanceof EnteredMaintenanceModeEvent) || (value instanceof HostConnectionLostEvent)) {
@@ -328,7 +386,7 @@ public class VCenterNotify implements Runnable
                     String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
                         monitorTask.getVCenterDB().vRouterActiveMap.put(vRouterIpAddress, false);
-                    s_logger.info("\nEntering maintenance mode. Marking the host " + vRouterIpAddress +" inactive");
+                        s_logger.info("\nEntering maintenance mode. Marking the host " + vRouterIpAddress +" inactive");
                     } else {
                         s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
                     }
@@ -337,7 +395,7 @@ public class VCenterNotify implements Runnable
                     String vRouterIpAddress = monitorTask.getVCenterDB().esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
                         monitorTask.getVCenterDB().vRouterActiveMap.put(vRouterIpAddress, true);
-                    s_logger.info("\nExit maintenance mode. Marking the host " + vRouterIpAddress +" active");
+                        s_logger.info("\nExit maintenance mode. Marking the host " + vRouterIpAddress +" active");
                     } else {
                         s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
                     }
@@ -347,8 +405,8 @@ public class VCenterNotify implements Runnable
                         monitorTask.syncVmwareVirtualNetworks();
                     } catch (Exception e) {
                         String stackTrace = Throwables.getStackTraceAsString(e);
-                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
-                        s_logger.error(stackTrace); 
+                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e);
+                        s_logger.error(stackTrace);
                         e.printStackTrace();
                     }
                 } else if (value instanceof VmMigratedEvent) {
@@ -357,8 +415,8 @@ public class VCenterNotify implements Runnable
                         monitorTask.syncVmwareVirtualNetworks();
                     } catch (Exception e) {
                         String stackTrace = Throwables.getStackTraceAsString(e);
-                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
-                        s_logger.error(stackTrace); 
+                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e);
+                        s_logger.error(stackTrace);
                         e.printStackTrace();
                     }
 
@@ -370,8 +428,8 @@ public class VCenterNotify implements Runnable
                         monitorTask.syncVmwareVirtualNetworks();
                     } catch (Exception e) {
                         String stackTrace = Throwables.getStackTraceAsString(e);
-                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
-                        s_logger.error(stackTrace); 
+                        s_logger.error("Error while syncVmwareVirtualNetworks: " + e);
+                        s_logger.error(stackTrace);
                         e.printStackTrace();
                     }
 
@@ -389,11 +447,14 @@ public class VCenterNotify implements Runnable
                             + "\n----------\n");
                 } else {
                     Event anEvent = (Event) value;
-                    s_logger.info("\n----------" 
-                            + "\n Event ID: " + anEvent.getKey() 
+                    s_logger.info("\n----------"
+                            + "\n Event ID: " + anEvent.getKey()
                             + "\n Event: " + anEvent.getClass().getName()
                             + "\n FullFormattedMessage: " + anEvent.getFullFormattedMessage()
                             + "\n----------\n");
+                    notifExec.schedule(new VCenterEventHandler(anEvent, 
+                            monitorTask.getVCenterDB(), monitorTask.getVncDB()), 
+                            0, TimeUnit.SECONDS);
                 }
                 s_logger.info("===============");
             } else if (op == PropertyChangeOp.remove) {
@@ -404,12 +465,12 @@ public class VCenterNotify implements Runnable
     }
 
 
-     public void start() {
+    public void start() {
         try
         {
             this.initialize();
-            System.out.println("info---" + 
-                serviceInstance.getAboutInfo().getFullName());
+            System.out.println("info---" +
+                    serviceInstance.getAboutInfo().getFullName());
             this.createEventHistoryCollector();
 
             PropertyFilterSpec eventFilterSpec = this
@@ -438,6 +499,7 @@ public class VCenterNotify implements Runnable
         watchUpdates.stop();
     }
 
+    @Override
     public void run()
     {
         String version = "";
@@ -452,7 +514,7 @@ public class VCenterNotify implements Runnable
                     {
 
                         version = update.getVersion();
-                        
+
                         this.handleUpdate(update);
 
                     } else
@@ -495,7 +557,7 @@ public class VCenterNotify implements Runnable
                         + e.getClass().getName() + " Message : "
                         + e.getMessage() + " Trace : ");
                 String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace); 
+                s_logger.error(stackTrace);
             }
         }
     }

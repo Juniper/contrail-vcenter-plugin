@@ -10,6 +10,7 @@ public class VmwareVirtualMachineInfo {
     private String macAddress;
     private String ipAddress;
     private String name;
+    private String uuid;
     private String interfaceUuid;
     private VirtualMachinePowerState powerState;
     
@@ -24,6 +25,8 @@ public class VmwareVirtualMachineInfo {
         this.powerState       = powerState;
         this.hmor             = hmor;
     }
+    
+    public VmwareVirtualMachineInfo() {}
 
     public String getHostName() {
         return hostName;
@@ -79,6 +82,14 @@ public class VmwareVirtualMachineInfo {
 
     public void setInterfaceUuid(String uuid) {
         this.interfaceUuid = uuid;
+    }
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
 
     public VirtualMachinePowerState getPowerState() {

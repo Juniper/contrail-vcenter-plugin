@@ -4,6 +4,7 @@ import java.util.SortedMap;
 
 public class VmwareVirtualNetworkInfo {
     private String name;
+    private String uuid;
     private short isolatedVlanId;
     private short primaryVlanId;
     private SortedMap<String, VmwareVirtualMachineInfo> vmInfo;
@@ -29,6 +30,8 @@ public class VmwareVirtualNetworkInfo {
         this.range = range;
         this.externalIpam = externalIpam;
     }
+    
+    public VmwareVirtualNetworkInfo() {}
     
     public String getName() {
         return name;
@@ -108,6 +111,14 @@ public class VmwareVirtualNetworkInfo {
 
     public void setExternalIpam(boolean externalIpam) {
         this.externalIpam = externalIpam;
+    }
+    
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
 }
 
