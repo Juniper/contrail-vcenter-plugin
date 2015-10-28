@@ -673,10 +673,27 @@ public class VncDB {
         }
     }
     
+    public void updateApiServerVmObjects(EventData event) 
+            throws IOException {
+        // TODO : is this a modify or a delete-recreate?
+        
+        event.apiVm = createVirtualMachine(event);
+        event.apiVmi = createVirtualMachineInterface(event);
+        event.apiInstanceIp = null;
+        if (event.vnInfo.getExternalIpam() == false) {
+            event.apiInstanceIp = createInstanceIp(event);
+        }
+    }
+    
     public VirtualMachine createVirtualMachine(EventData event) 
             throws IOException {
         VmwareVirtualMachineInfo vmInfo = event.vmInfo;
         VmwareVirtualNetworkInfo vnInfo = event.vnInfo;
+        
+        if (vnInfo == null || vmInfo == null) {
+            s_logger.error("Incomplete information for creating API VM");
+            throw new IllegalArgumentException();
+        }
         String vnUuid = vnInfo.getUuid();
         String vmUuid = vmInfo.getUuid();
         

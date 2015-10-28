@@ -32,6 +32,8 @@ import com.vmware.vim25.mo.IpPoolManager;
 public class EventData {
     VCenterDB vcenterDB;
     VncDB vncDB;
+    boolean changed;
+    boolean updateVrouterNeeded;
 
     //VCenter objects
     // using fully qualified name because of collisions
@@ -70,36 +72,59 @@ public class EventData {
 
         ipPoolManager = vcenterDB.getIpPoolManager();
 
-        String dcName = event.getDatacenter().getName();
-        dc = vcenterDB.getVmwareDatacenter(dcName);
+        if (event.getDatacenter() != null) {
+            dcName = event.getDatacenter().getName();
+            dc = vcenterDB.getVmwareDatacenter(dcName);
+        }
 
-        String dvsName = event.getDvs().getName();
-        dvs = vcenterDB.getVmwareDvs(dcName, dc, dcName);
+        if (event.getDvs() != null) {
+            dvsName = event.getDvs().getName();
+            dvs = vcenterDB.getVmwareDvs(dvsName, dc, dcName);
+        } else {
+            dvsName = vcenterDB.contrailDvSwitchName;
+            dvs = vcenterDB.getVmwareDvs(dvsName, dc, dcName);
+        }
 
-        String nwName = event.getNet().getName();
-        nw = vcenterDB.getVmwareNetwork(nwName, dvs, dvsName, dcName);
+        if (event.getNet() != null) {
+            nwName = event.getNet().getName();
+            nw = vcenterDB.getVmwareNetwork(nwName, dvs, dvsName, dcName);
+        
+            dpgName = event.getNet().getName();
+            dpg = vcenterDB.getVmwareDpg(dpgName, dvs, dvsName, dcName);
+            
+            vnInfo = new VmwareVirtualNetworkInfo();
+            vnInfo.setName(dpg.getName());
+            String vnUuid = UUID.nameUUIDFromBytes(dpg.getKey().getBytes()).toString();
+            vnInfo.setUuid(vnUuid);
+            //TODO populate all fields
+            //vnInfo.setExternalIpam(externalIpam);
+            //vnInfo.setGatewayAddress(gatewayAddress);
+            //vnInfo.setIsolatedVlanId(vlanId);
+        }
 
-        String dpgName = event.getNet().getName();
-        dpg = vcenterDB.getVmwareDpg(dpgName, dvs, dvsName, dcName);
+        if (event.getHost() != null) {
+            hostName = event.getHost().getName();
+            host = vcenterDB.getVmwareHost(hostName, dc, dcName);
+            
+            vrouterIpAddress = vcenterDB.getVRouterVMIpFabricAddress(
+                    VCenterDB.contrailVRouterVmNamePrefix,
+                    host, hostName);
 
-        String hostName = event.getHost().getName();
-        host = vcenterDB.getVmwareHost(hostName, dc, dcName);
+            if (event.getVm() != null) {
+                vmName = event.getVm().getName();
+                vm = vcenterDB.getVmwareVirtualMachine(vmName, host, hostName, dcName);
+                //dpg is not set
+                //vmInfo = vcenterDB.fillVmwareVirtualMachineInfo(vm, vm.getConfig(), dpg);
 
-        String vmName = event.getVm().getName();
-        vm = vcenterDB.getVmwareVirtualMachine(vmName, host, hostName, dcName);
-
-        vrouterIpAddress = vcenterDB.getVRouterVMIpFabricAddress(dpgName,
-                hostName, host, VCenterDB.contrailVRouterVmNamePrefix);
-
-        // finished retrieving all info from Vcenter
-
-        //populate vnInfo to our own cached objects
-        vnInfo = new VmwareVirtualNetworkInfo();
-        vnInfo.setName(dpg.getName());
-        String vnUuid = UUID.nameUUIDFromBytes(dpg.getKey().getBytes()).toString();
-        vnInfo.setUuid(vnUuid);
-        //TODO populate all fields
-
-        vmInfo = vcenterDB.fillVmwareVirtualMachineInfo(vm, vm.getConfig(), dpg);
+                vmInfo = new VmwareVirtualMachineInfo();
+                vmInfo.setName(vmName);
+                vmInfo.setHostName(hostName);
+                vmInfo.setVrouterIpAddress(vrouterIpAddress);
+                vmInfo.setUuid(vm.getConfig().getInstanceUuid());
+                //vmInfo.setPowerState();,
+                //vmInfo.setVmMac();
+                //vmInfo.setVnInfo();
+            }
+        }
     }
 }

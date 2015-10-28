@@ -74,9 +74,16 @@ public class VCenterEventHandler implements Runnable {
     }
 
     public void handleEvent(VmDeployedEvent event) throws IOException {
-        vcenterDB.addVM(vcenterEvent);
+        vcenterDB.updateVM(vcenterEvent);
 
-        vncDB.createApiServerVmObjects(vcenterEvent);
+        if (!vcenterEvent.changed) {
+            // it is possible to receive VmDeployedEvent after VmReconfiguredEvent
+            // nothing to do in this case
+            return;
+        }
+        vncDB.updateApiServerVmObjects(vcenterEvent);
+        
+        // add a watch on this Vm so we are notified of further changes
         watchVm(vcenterEvent);
 
         // if vmpowered on add port
@@ -85,28 +92,38 @@ public class VCenterEventHandler implements Runnable {
         }
     }
 
-    public void handleEvent(VmReconfiguredEvent event) {
+    public void handleEvent(VmReconfiguredEvent event) throws IOException {
         vcenterDB.updateVM(vcenterEvent);
+        
+        if (!vcenterEvent.changed) {
+            return;
+        }
+        vncDB.updateApiServerVmObjects(vcenterEvent);
+        
         // if reconfigured triggered a change in new, ip address or mac
-        VRouterNotifier.deletePort(vcenterEvent);
-        VRouterNotifier.addPort(vcenterEvent);
+        if (vcenterEvent.updateVrouterNeeded) {
+            VRouterNotifier.deletePort(vcenterEvent);
+            VRouterNotifier.addPort(vcenterEvent);
+        }
     }
 
-    public void handleEvent(VmPoweredOnEvent value) {
+    public void handleEvent(VmPoweredOnEvent value) throws IOException {
         // TODO if this is VCenter as a compute, do not do the below line
         vcenterDB.updateVM(vcenterEvent);
-        // update vrouter addPort
-        VRouterNotifier.addPort(vcenterEvent);
+        if (vcenterEvent.updateVrouterNeeded) {
+            VRouterNotifier.addPort(vcenterEvent);
+        }
     }
 
-    public void handleEvent(VmPoweredOffEvent value) {
+    public void handleEvent(VmPoweredOffEvent value) throws IOException {
         // TODO if this is VCenter as a compute, do not do the below line
         vcenterDB.updateVM(vcenterEvent);
-        // update vrouter deletePort
-        VRouterNotifier.deletePort(vcenterEvent);
+        if (vcenterEvent.updateVrouterNeeded) {
+            VRouterNotifier.deletePort(vcenterEvent);
+        }
     }
 
-    public void handleEvent(Event event) {
+    public void handleEvent(Event event) throws IOException {
         throw new UnsupportedOperationException("Buddy you need to get a hold off this event");
     }
 }

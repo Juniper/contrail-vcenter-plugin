@@ -1,6 +1,9 @@
 package net.juniper.contrail.vcenter;
 
 import com.vmware.vim25.VirtualMachinePowerState;
+
+import java.util.SortedMap;
+
 import com.vmware.vim25.ManagedObjectReference;
 
 public class VmwareVirtualMachineInfo {
@@ -13,6 +16,7 @@ public class VmwareVirtualMachineInfo {
     private String uuid;
     private String interfaceUuid;
     private VirtualMachinePowerState powerState;
+    private SortedMap<String, VmwareVirtualNetworkInfo> vnInfo;
     
     public VmwareVirtualMachineInfo(String name, String hostName, 
             ManagedObjectReference hmor,
@@ -111,5 +115,42 @@ public class VmwareVirtualMachineInfo {
             return true;
         else
             return false;
+    }
+    
+    public SortedMap<String, VmwareVirtualNetworkInfo> getVnInfo() {
+        return vnInfo;
+    }
+
+    public void setVnInfo(SortedMap<String, VmwareVirtualNetworkInfo> vnInfo) {
+        this.vnInfo = vnInfo;
+    }
+    
+    public boolean updateVrouterNeeded(VmwareVirtualMachineInfo vm) {
+        if (vm == null) {
+            return true;
+        }
+        
+        return (!ipAddress.equals(vm.ipAddress))
+                || (!macAddress.equals(vm.macAddress))
+                || (!powerState.equals(vm.powerState));
+    }
+    
+    public boolean equals(VmwareVirtualMachineInfo vm) {
+        if (vm == null) {
+            return false;
+        }
+        
+        //TODO check all fields
+        return uuid.equals(vm.uuid)
+            && name.equals(name)
+            && vrouterIpAddress.equals(vrouterIpAddress)
+            && hostName.equals(hostName)
+            && ipAddress.equals(vm.ipAddress)
+            && macAddress.equals(vm.macAddress)
+            && powerState.equals(vm.powerState);
+    }
+    
+    public String toString() {
+        return "VM <name " + name + ", host " + hostName + ", UUID " + uuid + ">";
     }
 }

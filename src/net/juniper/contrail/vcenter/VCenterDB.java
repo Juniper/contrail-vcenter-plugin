@@ -1353,34 +1353,35 @@ public class VCenterDB {
         return vcenterUrl; 
     }
 
-    public void addVM(EventData event) {
-        VirtualMachine vm = event.vm;
-        VirtualMachineConfigInfo vmConfigInfo = vm.getConfig();
-        String instanceUuid = vmConfigInfo.getInstanceUuid();
-
-        if (vmwareVMs.containsKey(instanceUuid)) {
-            // log some error, is is possible UUID already existed??
-        }
-        vmwareVMs.put(instanceUuid, event.vmInfo);
-    }
-
     public void updateVM(EventData event) {
-        VirtualMachine vm = event.vm;
-        VirtualMachineConfigInfo vmConfigInfo = vm.getConfig();
-        String instanceUuid = vmConfigInfo.getInstanceUuid();
+        VmwareVirtualMachineInfo vmInfo = event.vmInfo;
+        String uuid = vmInfo.getUuid();
 
-        if (vmwareVMs.containsKey(instanceUuid)) {
-            // log some error, is is possible UUID already existed??
+        if (vmwareVMs.containsKey(uuid)) {
+            s_logger.info("Update: " + vmInfo);
+        } else {
+            s_logger.info("Add: " + vmInfo);
         }
-        VmwareVirtualMachineInfo vmInfo = vmwareVMs.get(instanceUuid);
-        //TODO update the info
-
-        vmwareVMs.put(instanceUuid, vmInfo);
+        VmwareVirtualMachineInfo oldVmInfo = vmwareVMs.get(uuid);
+        event.changed = !vmInfo.equals(oldVmInfo);
+        event.updateVrouterNeeded = vmInfo.updateVrouterNeeded(oldVmInfo);
+        vmwareVMs.put(uuid, vmInfo);
     }
 
     public void deleteVM(EventData event)
         throws RemoteException {
-        vmwareVMs.remove(event.vm.getConfig().getInstanceUuid());
+        
+        VmwareVirtualMachineInfo vmInfo = event.vmInfo;
+        String uuid = vmInfo.getUuid();
+
+        if (!vmwareVMs.containsKey(uuid)) {
+            s_logger.info("Already deleted: " + vmInfo);
+            return;
+        }
+        s_logger.info("Delete: " + vmInfo);
+        vmwareVMs.remove(uuid);
+        event.changed = true;
+        event.updateVrouterNeeded = true;
     }
 
     public Datacenter getVmwareDatacenter(String name)
@@ -1556,8 +1557,8 @@ public class VCenterDB {
         return vm;
     }
 
-    protected String getVRouterVMIpFabricAddress(String vmNamePrefix, HostSystem host, String hostName,
-            VmwareDistributedVirtualSwitch dvs) throws Exception {
+    protected String getVRouterVMIpFabricAddress(String vmNamePrefix,
+            HostSystem host, String hostName) throws Exception {
         // Find if vRouter Ip Fabric mapping exists..
         String vRouterIpAddress = esxiToVRouterIpMap.get(hostName);
 
@@ -1570,7 +1571,7 @@ public class VCenterDB {
             return vRouterIpAddress;
         }
 
-        InventoryNavigator inventoryNavigator = new InventoryNavigator(dvs);
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(host);
         
         VirtualMachine[] vms = host.getVms();
         for (VirtualMachine vm : vms) {
