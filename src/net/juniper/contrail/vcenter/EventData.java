@@ -9,7 +9,10 @@ package net.juniper.contrail.vcenter;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.rmi.RemoteException;
+import java.util.SortedMap;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import com.vmware.vim25.Event;
 import com.vmware.vim25.GuestInfo;
@@ -88,10 +91,10 @@ public class EventData {
         if (event.getNet() != null) {
             nwName = event.getNet().getName();
             nw = vcenterDB.getVmwareNetwork(nwName, dvs, dvsName, dcName);
-        
+
             dpgName = event.getNet().getName();
             dpg = vcenterDB.getVmwareDpg(dpgName, dvs, dvsName, dcName);
-            
+
             vnInfo = new VmwareVirtualNetworkInfo();
             vnInfo.setName(dpg.getName());
             String vnUuid = UUID.nameUUIDFromBytes(dpg.getKey().getBytes()).toString();
@@ -105,7 +108,7 @@ public class EventData {
         if (event.getHost() != null) {
             hostName = event.getHost().getName();
             host = vcenterDB.getVmwareHost(hostName, dc, dcName);
-            
+
             vrouterIpAddress = vcenterDB.getVRouterVMIpFabricAddress(
                     VCenterDB.contrailVRouterVmNamePrefix,
                     host, hostName);
@@ -113,6 +116,7 @@ public class EventData {
             if (event.getVm() != null) {
                 vmName = event.getVm().getName();
                 vm = vcenterDB.getVmwareVirtualMachine(vmName, host, hostName, dcName);
+
                 //dpg is not set
                 //vmInfo = vcenterDB.fillVmwareVirtualMachineInfo(vm, vm.getConfig(), dpg);
 
@@ -124,6 +128,22 @@ public class EventData {
                 //vmInfo.setPowerState();,
                 //vmInfo.setVmMac();
                 //vmInfo.setVnInfo();
+
+                Network[] nets = vm.getNetworks();
+                SortedMap<String, VmwareVirtualNetworkInfo> vnInfoMap =
+                        vmInfo.getVnInfo();
+
+                for (Network net: nets) {
+                    String vnName = net.getName();
+                    VmwareVirtualNetworkInfo vnInfo =
+                            vcenterDB.getVN(vnName, dvs, dvsName, dcName);
+                    if (vnInfo == null) {
+                        vnInfo = vcenterDB.createVN(vnName, dvs, dvsName, dcName);
+                    }
+                    if (vnInfo != null) {
+                        vnInfoMap.put(vnInfo.getUuid(), vnInfo);
+                    }
+                }
             }
         }
     }

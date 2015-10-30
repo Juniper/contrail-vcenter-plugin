@@ -12,7 +12,7 @@ import java.util.UUID;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
 public class VRouterNotifier {
-    static HashMap<String, ContrailVRouterApi> vrouterApiMap;
+    static volatile HashMap<String, ContrailVRouterApi> vrouterApiMap;
     static final int vrouterApiPort = 9090;
 
     public VRouterNotifier() {

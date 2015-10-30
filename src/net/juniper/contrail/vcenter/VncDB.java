@@ -663,175 +663,6 @@ public class VncDB {
         }
     }
     
-    public void createApiServerVmObjects(EventData event) 
-            throws IOException {
-        event.apiVm = createVirtualMachine(event);
-        event.apiVmi = createVirtualMachineInterface(event);
-        event.apiInstanceIp = null;
-        if (event.vnInfo.getExternalIpam() == false) {
-            event.apiInstanceIp = createInstanceIp(event);
-        }
-    }
-    
-    public void updateApiServerVmObjects(EventData event) 
-            throws IOException {
-        // TODO : is this a modify or a delete-recreate?
-        
-        event.apiVm = createVirtualMachine(event);
-        event.apiVmi = createVirtualMachineInterface(event);
-        event.apiInstanceIp = null;
-        if (event.vnInfo.getExternalIpam() == false) {
-            event.apiInstanceIp = createInstanceIp(event);
-        }
-    }
-    
-    public VirtualMachine createVirtualMachine(EventData event) 
-            throws IOException {
-        VmwareVirtualMachineInfo vmInfo = event.vmInfo;
-        VmwareVirtualNetworkInfo vnInfo = event.vnInfo;
-        
-        if (vnInfo == null || vmInfo == null) {
-            s_logger.error("Incomplete information for creating API VM");
-            throw new IllegalArgumentException();
-        }
-        String vnUuid = vnInfo.getUuid();
-        String vmUuid = vmInfo.getUuid();
-        
-        //TODO is getInterfaceUuid same as Uuid? uuid is missing
-        s_logger.info("Create Virtual Machine : " 
-                + "VM:" + vmInfo.getName() + " (uuid=" + vmUuid + ")"
-                + ", VN:" + vnUuid
-                + ", vrouterIp: " + event.vrouterIpAddress
-                + ", EsxiHost:" + event.host.getName()
-                + ", vlan:" + vnInfo.getPrimaryVlanId() + "/" + 
-                + vnInfo.getIsolatedVlanId());
- 
-         // Virtual Network
-         VirtualNetwork network = (VirtualNetwork) apiConnector.findById(
-                 VirtualNetwork.class, vnUuid);
-         if (network == null) {
-             s_logger.warn("Create Virtual Machine requested with invalid VN Uuid: " + vnUuid);
-             return null;
-         }
-        
-         // Virtual Machine
-         VirtualMachine vm = (VirtualMachine) apiConnector.findById(
-                 VirtualMachine.class, vmUuid);
-         if (vm == null) {
-             // Create Virtual machine
-             vm = new VirtualMachine();
-             vm.setName(vmUuid);
-             vm.setUuid(vmUuid);
-        
-             // Encode VRouter IP address in display name
-             if (event.vrouterIpAddress != null) {
-                 vm.setDisplayName(event.vrouterIpAddress);
-             }
-             vm.setIdPerms(vCenterIdPerms);
-             apiConnector.create(vm);
-             apiConnector.read(vm);
-         }
-        
-         // find VMI matching vmUuid & vnUuid
-         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
-                 vm.getVirtualMachineInterfaceBackRefs();
-         for (ObjectReference<ApiPropertyBase> vmInterfaceRef :
-             Utils.safe(vmInterfaceRefs)) {
-             String vmInterfaceUuid = vmInterfaceRef.getUuid();
-             VirtualMachineInterface vmInterface = (VirtualMachineInterface)
-                     apiConnector.findById(VirtualMachineInterface.class, 
-                             vmInterfaceUuid);
-             List<ObjectReference<ApiPropertyBase>> vnRefs =
-                                             vmInterface.getVirtualNetwork();
-             for (ObjectReference<ApiPropertyBase> vnRef : vnRefs) {
-                 if (vnRef.getUuid().equals(vnUuid)) {
-                     s_logger.debug("VMI exits with vnUuid =" + vnUuid 
-                                  + " vmUuid = " + vmUuid + " no need to create new ");
-                     return null;
-                 }
-             }
-         }
-         
-         return vm;
-    }
-    
-    public VirtualMachineInterface createVirtualMachineInterface(EventData event)
-            throws IOException {
-        VirtualMachine vm = event.apiVm;
-        VirtualNetwork network = event.apiVn;
-        // find VMI matching vmUuid & vnUuid
-        List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
-                vm.getVirtualMachineInterfaceBackRefs();
-        for (ObjectReference<ApiPropertyBase> vmInterfaceRef :
-            Utils.safe(vmInterfaceRefs)) {
-            String vmInterfaceUuid = vmInterfaceRef.getUuid();
-            VirtualMachineInterface vmInterface = (VirtualMachineInterface)
-                    apiConnector.findById(VirtualMachineInterface.class, 
-                            vmInterfaceUuid);
-            List<ObjectReference<ApiPropertyBase>> vnRefs =
-                                            vmInterface.getVirtualNetwork();
-            for (ObjectReference<ApiPropertyBase> vnRef : vnRefs) {
-                if (vnRef.getUuid().equals(network.getUuid())) {
-                    s_logger.debug("VMI exits with vnUuid =" + network.getUuid()
-                                 + " vmUuid = " + network.getUuid() 
-                                 + " no need to create new ");
-                    return vmInterface;
-                }
-            }
-        }
-
-        // create Virtual machine interface
-        String vmInterfaceName = "vmi-" + network.getName() 
-                + "-" + vm.getName();
-        String vmiUuid = UUID.randomUUID().toString();
-        VirtualMachineInterface vmInterface = new VirtualMachineInterface();
-        vmInterface.setDisplayName(vmInterfaceName);
-        vmInterface.setUuid(vmiUuid);
-        vmInterface.setParent(vCenterProject);
-        vmInterface.setSecurityGroup(vCenterDefSecGrp);
-        vmInterface.setName(vmiUuid);
-        vmInterface.setVirtualNetwork(event.apiVn);
-        vmInterface.addVirtualMachine(vm);
-        MacAddressesType macAddrType = new MacAddressesType();
-        macAddrType.addMacAddress(event.vmInfo.getMacAddress());
-        vmInterface.setMacAddresses(macAddrType);
-        vmInterface.setIdPerms(vCenterIdPerms);
-        apiConnector.create(vmInterface);
-        
-        //TODO fix this is wrong, it should allow multiple intf in one VM
-        event.vmInfo.setInterfaceUuid(vmiUuid);
-        s_logger.debug("Created virtual machine interface:" + vmInterfaceName + 
-                ", vmiUuid:" + vmiUuid);
-        
-        return vmInterface;
-    }
-    
-    public InstanceIp createInstanceIp(EventData event) 
-            throws IOException {
-        VirtualNetwork network = event.apiVn;
-        VirtualMachine vm = event.apiVm;
-        VirtualMachineInterface vmIntf = event.apiVmi;
-        String vmIpAddress = "0.0.0.0";
-        String instanceIpName = "ip-" + network.getName() + "-" + event.vmInfo.getName() ;
-        String instIpUuid = UUID.randomUUID().toString();
-        InstanceIp instanceIp = new InstanceIp();
-        instanceIp.setDisplayName(instanceIpName);
-        instanceIp.setUuid(instIpUuid);
-        instanceIp.setName(instIpUuid);
-        instanceIp.setVirtualNetwork(network);
-        instanceIp.setVirtualMachineInterface(vmIntf);
-        instanceIp.setIdPerms(vCenterIdPerms);
-        apiConnector.create(instanceIp);
-    
-        // Read back to get assigned IP address
-        /*apiConnector.read(instanceIp);
-        vmIpAddress = instanceIp.getAddress();
-        
-        vmIntf.setAddress(vmIpAddress);*/
-        s_logger.debug("Created instanceIP:" + instanceIp.getName() + ": " +
-                        vmIpAddress);
-        return instanceIp;
-    }
     
     public void CreateVirtualMachine(String vnUuid, String vmUuid,
             String macAddress, String vmName, String vrouterIpAddress,
@@ -1310,6 +1141,7 @@ public class VncDB {
         s_logger.info("Create Virtual Network: Done");
     }
     
+
     public void DeleteVirtualNetwork(String uuid) 
             throws IOException {
         if (uuid == null) {
@@ -1464,7 +1296,7 @@ public class VncDB {
                 // host is in maintenance mode
                 continue;
             }
-        
+
             String vrouterIpAddress = entry.getKey();
             ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
             if (vrouterApi == null) {
@@ -1482,5 +1314,226 @@ public class VncDB {
             // run Keep Alive with vRouter Agent.
             vrouterApi.PeriodicConnectionCheck();
         }
+    }
+
+    public void createOrUpdateVmApiObjects(EventData event)
+            throws IOException {
+        VmwareVirtualMachineInfo vmInfo = event.vmInfo;
+
+        event.apiVm = createOrUpdateVm(event.vmInfo);
+
+         // loop through all the networks in which
+         // this VM participates and create VMIs and IP Instances
+         for (Map.Entry<String, VmwareVirtualNetworkInfo> entry: vmInfo.getVnInfo().entrySet()) {
+             VmwareVirtualNetworkInfo vnInfo = entry.getValue();
+             event.apiVn = createOrUpdateVn(vnInfo);
+             event.apiVmi = createOrUpdateVmi(event.apiVm, vmInfo, event.apiVn);
+             if (vnInfo.getExternalIpam() == false) {
+                 event.apiInstanceIp = createOrUpdateInstanceIp(event);
+             }
+         }
+    }
+
+    public void createOrUpdateVnApiObjects(EventData event)
+            throws IOException {
+        createOrUpdateVn(event.vnInfo);
+    }
+
+    public VirtualNetwork createOrUpdateVn(VmwareVirtualNetworkInfo vnInfo)
+            throws IOException {
+        if (vnInfo == null) {
+            s_logger.error("Incomplete information for creating API VN");
+            throw new IllegalArgumentException();
+        }
+        String vnUuid = vnInfo.getUuid();
+        String descr = "Virtual Network <"
+                + vnInfo.getName()
+                + ", UUID " + vnUuid
+                + ", vlan " + vnInfo.getPrimaryVlanId() + "/"
+                + vnInfo.getIsolatedVlanId() + ">";
+
+         boolean found = false;
+         VirtualNetwork vn = (VirtualNetwork) apiConnector.findById(
+                 VirtualNetwork.class, vnUuid);
+
+         if (vn != null) {
+             found = true;
+         } else {
+             vn = new VirtualNetwork();
+         }
+
+         vn.setName(vnInfo.getName());
+         vn.setDisplayName(vnInfo.getName());
+         vn.setUuid(vnInfo.getUuid());
+         vn.setIdPerms(vCenterIdPerms);
+         vn.setParent(vCenterProject);
+         vn.setExternalIpam(vnInfo.getExternalIpam());
+
+         //TODO
+         /*
+         SubnetUtils subnetUtils = new SubnetUtils(vnInfo.getSubnetAddress(), vnInfo.getSubnetMask());
+         String cidr = subnetUtils.getInfo().getCidrSignature();
+         String[] addr_pair = cidr.split("\\/");
+
+         List<VnSubnetsType.IpamSubnetType.AllocationPoolType> allocation_pools = null;
+         if (ipPoolEnabled == true && !range.isEmpty()) {
+             String[] pools = range.split("\\#");
+             if (pools.length == 2) {
+                 allocation_pools = new ArrayList<VnSubnetsType.IpamSubnetType.AllocationPoolType>();
+                 String start = (pools[0]).replace(" ","");
+                 String num   = (pools[1]).replace(" ","");
+                 String[] bytes = start.split("\\.");
+                 String end   = bytes[0] + "." + bytes[1] + "." + bytes[2] + "."
+                                + Integer.toString(Integer.parseInt(bytes[3]) +  Integer.parseInt(num) - 1);
+                 s_logger.info("Subnet IP Range :  Start:"  + start + " End:" + end);
+                 VnSubnetsType.IpamSubnetType.AllocationPoolType pool1 = new
+                        VnSubnetsType.IpamSubnetType.AllocationPoolType(start, end);
+                 allocation_pools.add(pool1);
+             }
+         }
+
+         VnSubnetsType subnet = new VnSubnetsType();
+         subnet.addIpamSubnets(new VnSubnetsType.IpamSubnetType(
+                                    new SubnetType(addr_pair[0],
+                                        Integer.parseInt(addr_pair[1])),
+                                        gatewayAddr,
+                                        null,                          // dns_server_address
+                                        UUID.randomUUID().toString(),  // subnet_uuid
+                                        true,                          // enable_dhcp
+                                        null,                          // dns_nameservers
+                                        allocation_pools,
+                                        true,                          // addr_from_start
+                                        null,                          // dhcp_options_list
+                                        null,                          // host_routes
+                                        vn.getName() + "-subnet"));
+
+         vn.setNetworkIpam(vCenterIpam, subnet);
+         */
+         if (found) {
+             s_logger.info("Update " + descr);
+             apiConnector.update(vn);
+         } else {
+             s_logger.info("Create " + descr);
+             apiConnector.create(vn);
+         }
+         apiConnector.read(vn);
+         return vn;
+    }
+
+    public VirtualMachine createOrUpdateVm(VmwareVirtualMachineInfo vmInfo)
+            throws IOException {
+        if (vmInfo == null) {
+            s_logger.error("Incomplete information for creating VM in the Api Server");
+            throw new IllegalArgumentException("vmInfo is null");
+        }
+
+        String vmUuid = vmInfo.getUuid();
+        String descr = "VM <" + vmInfo.getName()
+                + ", EsxiHost:" + vmInfo.getHostName()
+                + ", uuid " + vmUuid
+                + ", vrouterIp: " + vmInfo.getVrouterIpAddress();
+
+         // Virtual Machine
+         boolean found = false;
+         VirtualMachine vm = (VirtualMachine) apiConnector.findById(
+                 VirtualMachine.class, vmUuid);
+
+         if (vm != null) {
+             found = true;
+         } else {
+             vm = new VirtualMachine();
+         }
+         vm.setName(vmUuid);
+         vm.setUuid(vmUuid);
+
+         // Encode VRouter IP address in display name
+         if (vmInfo.getVrouterIpAddress() != null) {
+             vm.setDisplayName(vmInfo.getVrouterIpAddress());
+         }
+         vm.setIdPerms(vCenterIdPerms);
+         if (found) {
+             s_logger.info("Update " + descr);
+             apiConnector.update(vm);
+         } else {
+             s_logger.info("Create " + descr);
+             apiConnector.create(vm);
+         }
+
+         apiConnector.read(vm);
+         return vm;
+    }
+
+    public VirtualMachineInterface createOrUpdateVmi(VirtualMachine vm,
+            VmwareVirtualMachineInfo vmInfo, VirtualNetwork network)
+            throws IOException {
+        // find VMI matching vmUuid & vnUuid
+        List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
+                vm.getVirtualMachineInterfaceBackRefs();
+        for (ObjectReference<ApiPropertyBase> vmInterfaceRef :
+            Utils.safe(vmInterfaceRefs)) {
+            String vmInterfaceUuid = vmInterfaceRef.getUuid();
+            VirtualMachineInterface vmInterface = (VirtualMachineInterface)
+                    apiConnector.findById(VirtualMachineInterface.class,
+                            vmInterfaceUuid);
+            List<ObjectReference<ApiPropertyBase>> vnRefs =
+                                            vmInterface.getVirtualNetwork();
+            for (ObjectReference<ApiPropertyBase> vnRef : vnRefs) {
+                if (vnRef.getUuid().equals(network.getUuid())) {
+                    s_logger.debug("VMI exits with vnUuid =" + network.getUuid()
+                                 + " vmUuid = " + network.getUuid()
+                                 + " no need to create new ");
+                    return vmInterface;
+                }
+            }
+        }
+
+        // create Virtual machine interface
+        String vmInterfaceName = "vmi-" + network.getName()
+                + "-" + vm.getName();
+        String vmiUuid = UUID.randomUUID().toString();
+        VirtualMachineInterface vmInterface = new VirtualMachineInterface();
+        vmInterface.setDisplayName(vmInterfaceName);
+        vmInterface.setUuid(vmiUuid);
+        vmInterface.setParent(vCenterProject);
+        vmInterface.setSecurityGroup(vCenterDefSecGrp);
+        vmInterface.setName(vmiUuid);
+        vmInterface.setVirtualNetwork(network);
+        vmInterface.addVirtualMachine(vm);
+        MacAddressesType macAddrType = new MacAddressesType();
+        macAddrType.addMacAddress(vmInfo.getMacAddress());
+        vmInterface.setMacAddresses(macAddrType);
+        vmInterface.setIdPerms(vCenterIdPerms);
+        apiConnector.create(vmInterface);
+
+        s_logger.debug("Created virtual machine interface:" + vmInterfaceName
+                + ", vmiUuid:" + vmiUuid);
+
+        return vmInterface;
+    }
+
+    public InstanceIp createOrUpdateInstanceIp(EventData event)
+            throws IOException {
+        VirtualNetwork network = event.apiVn;
+        VirtualMachine vm = event.apiVm;
+        VirtualMachineInterface vmIntf = event.apiVmi;
+        String vmIpAddress = "0.0.0.0";
+        String instanceIpName = "ip-" + network.getName() + "-" + event.vmInfo.getName() ;
+        String instIpUuid = UUID.randomUUID().toString();
+        InstanceIp instanceIp = new InstanceIp();
+        instanceIp.setDisplayName(instanceIpName);
+        instanceIp.setUuid(instIpUuid);
+        instanceIp.setName(instIpUuid);
+        instanceIp.setVirtualNetwork(network);
+        instanceIp.setVirtualMachineInterface(vmIntf);
+        instanceIp.setIdPerms(vCenterIdPerms);
+        apiConnector.create(instanceIp);
+
+        // Read back to get assigned IP address
+        /*apiConnector.read(instanceIp);
+        vmIpAddress = instanceIp.getAddress();
+        vmIntf.setAddress(vmIpAddress);*/
+        s_logger.debug("Created instanceIP:" + instanceIp.getName() + ": " +
+                        vmIpAddress);
+        return instanceIp;
     }
 }

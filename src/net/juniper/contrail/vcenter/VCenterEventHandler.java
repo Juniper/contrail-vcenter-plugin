@@ -81,12 +81,13 @@ public class VCenterEventHandler implements Runnable {
             // nothing to do in this case
             return;
         }
-        vncDB.updateApiServerVmObjects(vcenterEvent);
+        vncDB.createOrUpdateVmApiObjects(vcenterEvent);
         
         // add a watch on this Vm so we are notified of further changes
+        // from CacheFrameworkSample
         watchVm(vcenterEvent);
 
-        // if vmpowered on add port
+        // if vm powered on add port
         if (vcenterEvent.vmInfo.isPoweredOnState()) {
             VRouterNotifier.addPort(vcenterEvent);
         }
@@ -98,7 +99,7 @@ public class VCenterEventHandler implements Runnable {
         if (!vcenterEvent.changed) {
             return;
         }
-        vncDB.updateApiServerVmObjects(vcenterEvent);
+        vncDB.createOrUpdateVmApiObjects(vcenterEvent);
         
         // if reconfigured triggered a change in new, ip address or mac
         if (vcenterEvent.updateVrouterNeeded) {

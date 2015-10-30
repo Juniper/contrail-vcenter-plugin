@@ -15,6 +15,8 @@ import java.util.TreeMap;
 import java.util.SortedMap;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.net.MalformedURLException;
 import java.rmi.RemoteException;
@@ -82,6 +84,8 @@ public class VCenterDB {
     private volatile SortedMap<String, VmwareVirtualNetworkInfo> prevVmwareVNInfos;
     private volatile SortedMap<String, VmwareVirtualNetworkInfo> vmwareVNs;
     private volatile SortedMap<String, VmwareVirtualMachineInfo> vmwareVMs;
+    private volatile ConcurrentMap<String, Datacenter> datacenters;
+    private volatile ConcurrentMap<String, VmwareDistributedVirtualSwitch> dvswitches;
 
     public volatile Map<String, String> esxiToVRouterIpMap;
     public volatile Map<String, Boolean> vRouterActiveMap;
@@ -103,6 +107,8 @@ public class VCenterDB {
 
         vmwareVNs = new ConcurrentSkipListMap<String, VmwareVirtualNetworkInfo>();
         vmwareVMs = new ConcurrentSkipListMap<String, VmwareVirtualMachineInfo>();
+        datacenters = new ConcurrentHashMap<String, Datacenter>();
+        dvswitches = new ConcurrentHashMap<String, VmwareDistributedVirtualSwitch>();
     }
 
     public boolean Initialize() {
@@ -197,6 +203,7 @@ public class VCenterDB {
             }
         }
         s_logger.info("Found " + contrailDataCenterName + " DC on vCenter ");
+        datacenters.put(contrailDataCenterName, contrailDC);
 
         // Search contrailDvSwitch
         if (contrailDVS == null) {
@@ -220,6 +227,7 @@ public class VCenterDB {
             }
         }
         s_logger.info("Found " + contrailDvSwitchName + " DVSwitch on vCenter ");
+        dvswitches.put(contrailDvSwitchName, contrailDVS);
 
         // All well on vCenter front.
         return true;
@@ -1368,9 +1376,50 @@ public class VCenterDB {
         vmwareVMs.put(uuid, vmInfo);
     }
 
+    public VmwareVirtualNetworkInfo getVN(String name,
+            VmwareDistributedVirtualSwitch dvs, String dvsName,
+            String dcName) {
+
+        for (VmwareVirtualNetworkInfo vnInfo: vmwareVNs.values()) {
+            if (vnInfo.getName().equals(name)) {
+                return vnInfo;
+            }
+        }
+        return null;
+    }
+
+    public VmwareVirtualNetworkInfo createVN(String name,
+            VmwareDistributedVirtualSwitch dvs, String dvsName,
+            String dcName) {
+
+        DistributedVirtualPortgroup dpg = null;
+        try {
+            dpg = getVmwareDpg(name, dvs, dvsName, dcName);
+        } catch (RemoteException e) {
+            //log error
+            return null;
+        }
+
+        VmwareVirtualNetworkInfo vnInfo = new VmwareVirtualNetworkInfo();
+        vnInfo.setName(name);
+        vnInfo.setUuid(UUID.nameUUIDFromBytes(dpg.getKey().getBytes()).toString());
+        //vnInfo.setExternalIpam(externalIpam);
+        //vnInfo.setGatewayAddress(gatewayAddress);
+        //vnInfo.setIpPoolEnabled(_ipPoolEnabled);
+        /*vnInfo.setPrimaryVlanId(vlanId);
+        vnInfo.setIsolatedVlanId(vlanId);
+        vnInfo.setRange(_range);
+        vnInfo.setSubnetAddress(subnetAddress);
+        vnInfo.setSubnetMask(subnetMask);*/
+
+        vmwareVNs.put(vnInfo.getUuid(), vnInfo);
+
+        return vnInfo;
+    }
+
     public void deleteVM(EventData event)
         throws RemoteException {
-        
+
         VmwareVirtualMachineInfo vmInfo = event.vmInfo;
         String uuid = vmInfo.getUuid();
 
@@ -1388,6 +1437,11 @@ public class VCenterDB {
         throws RemoteException {
         String description = "<datacenter " + name
                 + ", vCenter " + vcenterUrl + ">.";
+
+        if (datacenters.containsKey(name)) {
+            s_logger.info("Found in cache " + description);
+            return datacenters.get(name);
+        }
 
         Folder rootFolder = serviceInstance.getRootFolder();
         if (rootFolder == null) {
@@ -1412,6 +1466,8 @@ public class VCenterDB {
             throw new RemoteException(msg);
         }
 
+        datacenters.put(name, dc);
+
         s_logger.info("Found " + description);
         return dc;
     }
@@ -1422,6 +1478,12 @@ public class VCenterDB {
         String description = "<dvs " + name
                 + ", datacenter " + dcName
                 + ", vCenter " + vcenterUrl + ">.";
+
+        if (dvswitches.containsKey(name)) {
+            s_logger.info("Found in cache " + description);
+            return dvswitches.get(name);
+        }
+
         InventoryNavigator inventoryNavigator = new InventoryNavigator(dc);
 
         VmwareDistributedVirtualSwitch dvs = null;
@@ -1441,6 +1503,7 @@ public class VCenterDB {
         }
 
         s_logger.info("Found " + description);
+        dvswitches.put(name, dvs);
         return dvs;
     }
 
@@ -1479,7 +1542,7 @@ public class VCenterDB {
         String description = "<dpg " + name + ", dvs " + dvsName
                 + ", datacenter " + dcName + ", vCenter " + vcenterUrl + ">.";
 
-        InventoryNavigator inventoryNavigator = new InventoryNavigator(dvs);
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(rootFolder);
 
         DistributedVirtualPortgroup dpg = null;
         try {
