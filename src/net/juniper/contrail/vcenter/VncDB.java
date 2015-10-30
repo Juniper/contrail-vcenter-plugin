@@ -1095,6 +1095,14 @@ public class VncDB {
 
         }
 
+        // if gateway address is empty string, don't pass empty string to
+        // api-server. INstead set it to null so that java binding will
+        // drop gateway address from json content for virtual-network create
+        if (gatewayAddr != null) {
+            if (gatewayAddr.trim().isEmpty())
+              gatewayAddr = null;
+        }
+
         VnSubnetsType subnet = new VnSubnetsType();
         subnet.addIpamSubnets(new VnSubnetsType.IpamSubnetType(
                                    new SubnetType(addr_pair[0],
