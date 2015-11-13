@@ -95,14 +95,13 @@ public class VCenterMonitor {
         return zk_ms.isLeader();
     }
         
-    private static boolean readVcenterPluginConfigFile() {
-
+    private static Properties readVcenterPluginConfigFile() {
+        final Properties configProps = new Properties();
         File configFile = new File(_configurationFile);
         if (!configFile.isFile()) {
-            return false;
+            return configProps;
         }
-        try {       
-            final Properties configProps = new Properties();
+        try {
             FileInputStream fileStream = new FileInputStream(configFile);
             try {
                 configProps.load(fileStream);
@@ -160,24 +159,22 @@ public class VCenterMonitor {
             ex.printStackTrace();
         }
 
-        return true;
+        return configProps;
     }
 
-
-    
     public static void main(String[] args) throws Exception {
 
        // log4j logger
         BasicConfigurator.configure();
 
         //Read contrail-vcenter-plugin.conf file
-        readVcenterPluginConfigFile();
+        Properties configProps = readVcenterPluginConfigFile();
         s_logger.info("Config params vcenter url: " + _vcenterURL + ", _vcenterUsername: " 
                        + _vcenterUsername + ", api server: " + _apiServerAddress);
 
         launchWatchDogs();
 
-        VCenterHttpServices.init();
+        VCenterHttpServices.init(configProps);
                 
         // Zookeeper mastership logic
         zk_ms = new MasterSelection(_zookeeperAddrPort, _zookeeperLatchPath, _zookeeperId);

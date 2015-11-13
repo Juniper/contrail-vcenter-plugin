@@ -77,10 +77,10 @@ public class VCenterPluginReqHttpHandler implements HttpHandler {
         if (fileName.equals("/")) {
             fileName = "/vcenter-plugin.html";
         }
-        File file = new File(VCenterHttpServer.INSTANCE.getWebRoot() + fileName)
+        File file = new File(VCenterHttpServer.getWebRoot() + fileName)
                             .getCanonicalFile();
         
-        if (!file.getPath().startsWith(VCenterHttpServer.INSTANCE.getWebRoot())) {
+        if (!file.getPath().startsWith(VCenterHttpServer.getWebRoot())) {
             // Suspected path traversal attack: reject with 403 error.
             String response = "403 (Forbidden)\n";
             t.sendResponseHeaders(403, response.getBytes().length); 

@@ -1,6 +1,7 @@
 package net.juniper.contrail.sandesh;
 
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.juniper.contrail.watchdog.TaskWatchDogHttpHandler;
@@ -43,8 +44,8 @@ public class VCenterHttpServices {
         new TaskWatchDogHttpHandler();
     }
     
-    public static void init() {
-        registerDefaultProvider(new VCenterHttpProvider());
+    public static void init(Properties configProps) {
+        registerDefaultProvider(new VCenterHttpProvider(configProps));
         registerHttpHandlers();
     }
 }
