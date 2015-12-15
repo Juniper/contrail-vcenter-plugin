@@ -235,10 +235,10 @@ public class VncDB {
                                       UUID.randomUUID().toString(),
                                       ">",
                                       "any",
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null)}),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null, null)}),
                                        Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
                                        null, //application
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null) }),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null, null) }),
                                        Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
                                        null, // action_list
                                        "IPv4"); // ethertype
@@ -250,10 +250,10 @@ public class VncDB {
                                       UUID.randomUUID().toString(),
                                       ">",
                                       "any",
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null) }),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null, null) }),
                                        Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
                                        null, //application
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(new SubnetType("0.0.0.0", 0), null, null, null) }),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(new SubnetType("0.0.0.0", 0), null, null, null, null) }),
                                        Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
                                        null, // action_list
                                        "IPv4"); // ethertype);
@@ -358,10 +358,10 @@ public class VncDB {
                                       UUID.randomUUID().toString(),
                                       ">",
                                       "any",
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null)}),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null, null)}),
                                        Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
                                        null, //application
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null) }),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null, null) }),
                                        Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
                                        null, // action_list
                                        "IPv4"); // ethertype
@@ -373,10 +373,10 @@ public class VncDB {
                                       UUID.randomUUID().toString(),
                                       ">",
                                       "any",
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null) }),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null, null) }),
                                        Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
                                        null, //application
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(new SubnetType("0.0.0.0", 0), null, null, null) }),
+                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(new SubnetType("0.0.0.0", 0), null, null, null, null) }),
                                        Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
                                        null, // action_list
                                        "IPv4"); // ethertype);
