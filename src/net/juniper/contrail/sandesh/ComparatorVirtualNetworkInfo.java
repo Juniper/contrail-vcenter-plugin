@@ -3,9 +3,9 @@ package net.juniper.contrail.sandesh;
 import java.util.Comparator;
 
 public class ComparatorVirtualNetworkInfo 
-    implements Comparator<VirtualNetworkInfo> {
+    implements Comparator<VirtualNetworkSandesh> {
 
-    public int compare(VirtualNetworkInfo vn1, VirtualNetworkInfo vn2) {
+    public int compare(VirtualNetworkSandesh vn1, VirtualNetworkSandesh vn2) {
         return SandeshUtils.nullSafeComparator(vn1.getName(), vn2.getName());
     }
 }

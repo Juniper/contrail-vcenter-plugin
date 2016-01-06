@@ -1,10 +1,10 @@
-/* This class will be generated based on struct VirtualNetworkInfo
+/* This class will be generated based on struct VirtualNetworkSandesh
  * from vcenter.sandesh 
  */
 
 package net.juniper.contrail.sandesh;
 
-public class VirtualNetworkInfo implements SandeshObject 
+public class VirtualNetworkSandesh implements SandeshObject 
 {    
     private String name;
     public String getName() {
@@ -22,30 +22,30 @@ public class VirtualNetworkInfo implements SandeshObject
          .append("</name>");
     }
    
-    private SandeshObjectList<VirtualMachineInfo> vMachines;
+    private SandeshObjectList<VirtualMachineSandesh> vMachines;
     
-    public SandeshObjectList<VirtualMachineInfo> getVMachines() {
+    public SandeshObjectList<VirtualMachineSandesh> getVMachines() {
         return vMachines;
     }
     
-    public void setVMachines(SandeshObjectList<VirtualMachineInfo> vMachines) {
+    public void setVMachines(SandeshObjectList<VirtualMachineSandesh> vMachines) {
         this.vMachines = vMachines;
     }
     
-    public VirtualNetworkInfo() {
+    public VirtualNetworkSandesh() {
         vMachines = 
-                new SandeshObjectList<VirtualMachineInfo>(VirtualMachineInfo.class,
+                new SandeshObjectList<VirtualMachineSandesh>(VirtualMachineSandesh.class,
                         ComparatorVirtualMachineInfo.BY_NAME);
     }
     
     public void writeObject(StringBuilder s,  DetailLevel detail, int identifier)
     {
-        s.append("<VirtualNetworkInfo type=\"struct\" identifier=\"")
+        s.append("<VirtualNetworkSandesh type=\"struct\" identifier=\"")
          .append(identifier)
          .append("\">");
         int inner_id = 1;
         writeFieldName(s, inner_id++);
         vMachines.writeObject(s, "VirtualMachines", DetailLevel.PARENT, inner_id++);
-        s.append("</VirtualNetworkInfo>");
+        s.append("</VirtualNetworkSandesh>");
     }
 }

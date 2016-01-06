@@ -5,6 +5,7 @@ import java.security.InvalidParameterException;
 import java.util.Map;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 import net.juniper.contrail.vcenter.VCenterMonitor;
+import net.juniper.contrail.vcenter.VRouterNotifier;
 
 public class VRouterDetailReq {
     URI uri;
@@ -19,7 +20,7 @@ public class VRouterDetailReq {
         int idx = req.indexOf("Snh_vRouterDetail?x=");
         this.ipAddr = req.substring(idx + "Snh_vRouterDetail?x=".length());
         
-        Map<String, ContrailVRouterApi> vRouters = VCenterMonitor.getVncDB().getVRouterApiMap();
+        Map<String, ContrailVRouterApi> vRouters = VRouterNotifier.getVrouterApiMap();
         
         if (!vRouters.containsKey(this.ipAddr)) {
             throw new InvalidParameterException(); 

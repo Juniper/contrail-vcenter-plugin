@@ -26,7 +26,7 @@ class ExecutorServiceShutdownThread extends Thread {
     private static final TimeUnit timeoutUnit = TimeUnit.SECONDS;
     private static Logger s_logger = Logger.getLogger(ExecutorServiceShutdownThread.class);
     private ExecutorService es;
-        
+
     public ExecutorServiceShutdownThread(ExecutorService es) {
         this.es = es;
     }
@@ -62,19 +62,8 @@ public class VCenterMonitor {
     private static String _vcenterPassword   = "Contrail123!";
     private static String _vcenterDcName     = "Datacenter";
     private static String _vcenterDvsName    = "dvSwitch";
-    private static String _vcenterIpFabricPg = "contrail-fab-pg";
-    
-    private static volatile VCenterDB _vcenterDB;
-    public static VCenterDB getVcenterDB() {
-        return _vcenterDB;
-    }
-    
-    private static volatile VncDB _vncDB;
-    
-    public static VncDB getVncDB() {
-        return _vncDB;
-    }
-    
+    private static String _vcenterIpFabricPg = "contrail-fab-pg";    
+   
     static VCenterNotify _eventMonitor;    
     private static String _apiServerAddress  = "10.84.13.23";
     private static int _apiServerPort        = 8082;
@@ -88,7 +77,7 @@ public class VCenterMonitor {
     private static String _zookeeperLatchPath = "/vcenter-plugin";
     private static String _zookeeperId        = "node-vcenter-plugin";
 
-    private static String _mode  = "vcenter-only";
+    static volatile Mode mode  = Mode.VCENTER_ONLY;
     
     private static volatile MasterSelection zk_ms;
     public static boolean isZookeeperLeader() {
@@ -125,11 +114,10 @@ public class VCenterMonitor {
                     _apiServerPort = Integer.parseInt(portStr);
                 }
 
-                _mode = configProps.getProperty("mode");
-                if (_mode == null)
-                    _mode = "vcenter-only";
-
-                if (_mode.equals("vcenter-as-compute")) {
+                String _mode = configProps.getProperty("mode");
+                
+                if (_mode != null && _mode.equals("vcenter-as-compute")) {
+                    mode = Mode.VCENTER_AS_COMPUTE;
                     String authurl  = configProps.getProperty("auth_url");
                     if (authurl != null && authurl.length() > 0)
                         _authurl = authurl;
@@ -147,7 +135,7 @@ public class VCenterMonitor {
                         _tenant = tenant;
 
                 } else { // vcenter-only mode
-                    _mode = "vcenter-only";
+                    mode = Mode.VCENTER_ONLY;
                 }
             } finally {
                 fileStream.close();
@@ -181,49 +169,26 @@ public class VCenterMonitor {
         s_logger.info("Waiting for zookeeper Mastership .. ");
         zk_ms.waitForLeadership();
         s_logger.info("Acquired zookeeper Mastership .. ");
-
+        
         // Launch the periodic VCenterMonitorTask
-        VCenterMonitorTask _monitorTask = null;
-        if (_mode == "vcenter-only") {
-            s_logger.info("vcenter-only mode of operation.. ");
-            _monitorTask = new VCenterOnlyMonitorTask(_vcenterURL, 
-                                  _vcenterUsername, _vcenterPassword, 
-                                  _vcenterDcName, _vcenterDvsName,
-                                  _apiServerAddress, _apiServerPort, _vcenterIpFabricPg);
-        } else {
-            s_logger.info("vcenter-as-compute mode of operation.. ");
-            _monitorTask = new VCenterAsComputeMonitorTask(_vcenterURL, 
-                                  _vcenterUsername, _vcenterPassword, 
-                                  _vcenterDcName, _vcenterDvsName,
-                                  _vcenterIpFabricPg,
-                                  _apiServerAddress, _apiServerPort,
-                                  _username, _password, _tenant,
-                                  _authtype, _authurl);
-        }
-
-        _vncDB = _monitorTask.getVncDB();
-        _vcenterDB = _monitorTask.getVCenterDB();
-
-        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 4, //4 second periodic
+        VCenterMonitorTask _monitorTask = new VCenterMonitorTask(_eventMonitor,
+                 _vcenterURL, _vcenterUsername, _vcenterPassword,
+                               _vcenterDcName, _vcenterDvsName, _vcenterIpFabricPg);
+        
+        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 8, //8 second periodic
                 TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));
-
-        //Start event notify thread if VNC & VCenter one time resync is complete.
-        s_logger.info("Waiting for one time resync to complete.. ");
-        while (_monitorTask.getAddPortSyncAtPluginStart() == true) {
-            // wait for sync to complete.
-            try {
-                Thread.sleep(2);
-            } catch (java.lang.InterruptedException e) {
-              System.out.println(e);
-            }
-        }
-        s_logger.info("Starting event monitor Task.. ");
-        _eventMonitor = new VCenterNotify(_monitorTask, _vcenterURL,
-                                          _vcenterUsername, _vcenterPassword,
-                                          _vcenterDcName);
+        
+        s_logger.info("Starting periodic monitor Task.. ");
+        _eventMonitor = new VCenterNotify(_vcenterURL, _vcenterUsername, _vcenterPassword,
+                            _vcenterDcName, _vcenterDvsName, _vcenterIpFabricPg,
+                            _apiServerAddress, _apiServerPort, _username, _password,
+                            _tenant,
+                            _authtype, _authurl, mode);
         _eventMonitor.start();
+        
+        s_logger.info("Periodic monitor Task started.");
     }
 
     private static void launchWatchDogs() {

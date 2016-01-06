@@ -1,10 +1,10 @@
-/* This class will be generated based on struct VirtualMachineInfo
+/* This class will be generated based on struct VirtualMachineSandesh
  * from vcenter.sandesh 
  */
 
 package net.juniper.contrail.sandesh;
 
-public class VirtualMachineInfo implements SandeshObject 
+public class VirtualMachineSandesh implements SandeshObject 
 {    
     private String name;   
     public String getName() {
@@ -105,13 +105,13 @@ public class VirtualMachineInfo implements SandeshObject
          .append("</network>");
     }
     
-    public VirtualMachineInfo() {
+    public VirtualMachineSandesh() {
 
     }
     
     public void writeObject(StringBuilder s, DetailLevel detail, int identifier)
     {
-        s.append("<VirtualMachineInfo type=\"struct\" identifier=\"")
+        s.append("<VirtualMachineSandesh type=\"struct\" identifier=\"")
          .append(identifier)
          .append("\">");
         int inner_id = 1;
@@ -128,6 +128,6 @@ public class VirtualMachineInfo implements SandeshObject
         if (detail != DetailLevel.PARENT) {
             writeFieldNetwork(s, inner_id++);
         }
-        s.append("</VirtualMachineInfo>");
+        s.append("</VirtualMachineSandesh>");
     }
 }

@@ -3,6 +3,8 @@ package net.juniper.contrail.sandesh;
 import java.util.Map;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 import net.juniper.contrail.vcenter.VCenterMonitor;
+import net.juniper.contrail.vcenter.VCenterNotify;
+import net.juniper.contrail.vcenter.VRouterNotifier;
 import net.juniper.contrail.vcenter.VncDB;
 
 public class VCenterPluginResp {    
@@ -32,10 +34,7 @@ public class VCenterPluginResp {
         int up = 0;
         int down = 0;
 
-        if (VCenterMonitor.getVncDB() == null) {
-            return;
-        }
-        Map<String, ContrailVRouterApi> apiMap = VCenterMonitor.getVncDB().getVRouterApiMap();
+        Map<String, ContrailVRouterApi> apiMap = VRouterNotifier.getVrouterApiMap();
 
         if (apiMap == null) {
             return;
@@ -56,7 +55,7 @@ public class VCenterPluginResp {
     
     private void populateApiServerInfo() {
         ApiServerInfo apiServerInfo = vCenterPluginInfo.getApiServerInfo();
-        VncDB vncDB = VCenterMonitor.getVncDB();
+        VncDB vncDB = VCenterNotify.getVncDB();
         if (vncDB != null) {
             apiServerInfo.setIpAddr(vncDB.getApiServerAddress());
             apiServerInfo.setPort(vncDB.getApiServerPort());
@@ -67,14 +66,14 @@ public class VCenterPluginResp {
     private void populateVCenterServerInfo() {
         VCenterServerInfo vCenterServerInfo = vCenterPluginInfo.getVCenterServerInfo();
         
-        if (VCenterMonitor.getVcenterDB() != null) {
-            vCenterServerInfo.setUrl(VCenterMonitor.getVcenterDB().getVcenterUrl() );
+        if (VCenterNotify.getVcenterDB() != null) {
+            vCenterServerInfo.setUrl(VCenterNotify.getVcenterDB().getVcenterUrl() );
             
             vCenterServerInfo.setConnected(
-                    VCenterMonitor.getVcenterDB().getServiceInstance() != null);
+                    VCenterNotify.getVcenterDB().isConnected());
         }
     }
-    
+
     public void writeObject(StringBuilder s) {
         if (s == null) {
             // log error

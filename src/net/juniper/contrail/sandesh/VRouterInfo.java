@@ -63,19 +63,19 @@ public class VRouterInfo implements SandeshObject
          .append("</EsxiHost>");
     }
     
-    private SandeshObjectList<VirtualNetworkInfo> vNetworks;
+    private SandeshObjectList<VirtualNetworkSandesh> vNetworks;
     
-    public SandeshObjectList<VirtualNetworkInfo> getVNetworks() {
+    public SandeshObjectList<VirtualNetworkSandesh> getVNetworks() {
         return vNetworks;
     }
     
-    public void setVNetworks(SandeshObjectList<VirtualNetworkInfo> vNetworks) {
+    public void setVNetworks(SandeshObjectList<VirtualNetworkSandesh> vNetworks) {
         this.vNetworks = vNetworks;
     }
     
     public VRouterInfo() {
         this.vNetworks = 
-                new SandeshObjectList<VirtualNetworkInfo>(VirtualNetworkInfo.class,
+                new SandeshObjectList<VirtualNetworkSandesh>(VirtualNetworkSandesh.class,
                         new ComparatorVirtualNetworkInfo());
     }
     
