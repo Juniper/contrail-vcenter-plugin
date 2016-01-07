@@ -10,7 +10,6 @@ import java.util.SortedMap;
 import java.util.UUID;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
-
 import com.vmware.vim25.DVPortSetting;
 import com.vmware.vim25.DVSConfigInfo;
 import com.vmware.vim25.DistributedVirtualSwitchKeyedOpaqueBlob;
@@ -29,7 +28,6 @@ import com.vmware.vim25.mo.DistributedVirtualPortgroup;
 import com.vmware.vim25.mo.ManagedObject;
 import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
 import com.vmware.vim25.mo.util.PropertyCollectorUtil;
-
 import net.juniper.contrail.api.types.VirtualNetwork;
 
 public class VirtualNetworkInfo extends VCenterObject {

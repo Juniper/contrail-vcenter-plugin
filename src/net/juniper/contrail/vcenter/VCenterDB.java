@@ -13,10 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Hashtable;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.SortedMap;
 import java.util.Scanner;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -29,24 +27,17 @@ import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import org.apache.log4j.Logger;
 import com.vmware.vim25.DVPortSetting;
 import com.vmware.vim25.DVPortgroupConfigInfo;
-import com.vmware.vim25.DVSConfigInfo;
 import com.vmware.vim25.GuestInfo;
 import com.vmware.vim25.GuestNicInfo;
 import com.vmware.vim25.IpPool;
-import com.vmware.vim25.IpPoolIpPoolConfigInfo;
-import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.NetIpConfigInfo;
 import com.vmware.vim25.NetIpConfigInfoIpAddress;
-import com.vmware.vim25.NetworkSummary;
 import com.vmware.vim25.VMwareDVSPortSetting;
 import com.vmware.vim25.VirtualDevice;
 import com.vmware.vim25.VirtualDeviceBackingInfo;
 import com.vmware.vim25.VirtualEthernetCard;
 import com.vmware.vim25.VirtualEthernetCardDistributedVirtualPortBackingInfo;
 import com.vmware.vim25.VirtualMachineConfigInfo;
-import com.vmware.vim25.VirtualMachineConfigSpec;
-import com.vmware.vim25.VirtualMachinePowerState;
-import com.vmware.vim25.VirtualMachineRuntimeInfo;
 import com.vmware.vim25.VmwareDistributedVirtualSwitchPvlanSpec;
 import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanIdSpec;
 import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanSpec;
@@ -60,7 +51,6 @@ import com.vmware.vim25.mo.HostSystem;
 import com.vmware.vim25.mo.InventoryNavigator;
 import com.vmware.vim25.mo.IpPoolManager;
 import com.vmware.vim25.mo.ManagedEntity;
-import com.vmware.vim25.mo.ManagedObject;
 import com.vmware.vim25.mo.Network;
 import com.vmware.vim25.mo.util.PropertyCollectorUtil;
 import com.vmware.vim25.mo.ServiceInstance;
@@ -87,7 +77,6 @@ public class VCenterDB {
     private volatile IpPoolManager ipPoolManager;
     protected volatile Datacenter contrailDC;
     protected volatile VmwareDistributedVirtualSwitch contrailDVS;
-    private volatile SortedMap<String, VirtualNetworkInfo> prevVmwareVNInfos;
     private volatile ConcurrentMap<String, Datacenter> datacenters;
     private volatile ConcurrentMap<String, VmwareDistributedVirtualSwitch> dvswitches;
 
@@ -255,6 +244,7 @@ public class VCenterDB {
                 esxiToVRouterIpMap.put(part[0], part[1]);
                 vRouterActiveMap.put(part[1], true);
             }
+            input.close();
         } catch (FileNotFoundException e) {
             s_logger.error("file not found :" + esxiToVRouterIpMapFile);
             return false;
@@ -308,7 +298,7 @@ public class VCenterDB {
             DistributedVirtualPortgroup portGroup) {
         VirtualDevice devices[] = vmConfigInfo.getHardware().getDevice();
         for (VirtualDevice device : devices) {
-            // XXX Assuming only one interface
+            // Assuming only one interface
             if (device instanceof VirtualEthernetCard) {
                 VirtualDeviceBackingInfo backingInfo = 
                         device.getBacking();
@@ -358,7 +348,7 @@ public class VCenterDB {
             if (!vmName.toLowerCase().contains(vmNamePrefix.toLowerCase())) {
                 continue;
             }
-            // XXX Assumption here is that VMware Tools are installed
+            // Assumption here is that VMware Tools are installed
             // and IP address is available
             GuestInfo guestInfo = vm.getGuest();
             if (guestInfo == null) {
@@ -413,82 +403,6 @@ public class VCenterDB {
                         return ipAddress;
                     }
                 }
-            }
-        }
-        return null;
-    }
-
-
-    private String getVirtualMachineIpAddress(String dvPgName,
-            String hostName, HostSystem host, String vmNamePrefix) 
-                    throws Exception {
-        VirtualMachine[] vms = host.getVms();
-        for (VirtualMachine vm : vms) {
-            String vmName = vm.getName();
-            if (!vmName.toLowerCase().contains(vmNamePrefix.toLowerCase())) {
-                continue;
-            }
-            // XXX Assumption here is that VMware Tools are installed
-            // and IP address is available
-            GuestInfo guestInfo = vm.getGuest();
-            if (guestInfo == null) {
-                s_logger.debug("dvPg: " + dvPgName + " host: " + hostName +
-                        " vm:" + vmName + " GuestInfo - VMware Tools " +
-                        " NOT installed");
-                continue;
-            }
-            GuestNicInfo[] nicInfos = guestInfo.getNet();
-            if (nicInfos == null) {
-                s_logger.debug("dvPg: " + dvPgName + " host: " + hostName +
-                        " vm:" + vmName + " GuestNicInfo - VMware Tools " +
-                        " NOT installed");
-                continue;
-            }
-            for (GuestNicInfo nicInfo : nicInfos) {
-                // Extract the IP address associated with simple port 
-                // group. Assumption here is that Contrail VRouter VM will
-                // have only one standard port group
-                String networkName = nicInfo.getNetwork();
-                if (networkName == null) {
-                    continue;
-                }
-                Network network = (Network)
-                        inventoryNavigator.searchManagedEntity("Network",
-                                networkName);
-                if (network == null) {
-                    s_logger.debug("dvPg: " + dvPgName + "host: " + 
-                            hostName + " vm: " + vmName + " network: " +
-                            networkName + " NOT found");
-                    continue;
-                }
-                if (network instanceof DistributedVirtualPortgroup) {
-                    s_logger.debug("dvPg: " + dvPgName + "host: " + 
-                            hostName + "vm: " + vmName + " network: " +
-                            networkName + " is distributed virtual port " +
-                            "group");
-                    continue;
-                }
-                NetIpConfigInfo ipConfigInfo = nicInfo.getIpConfig();
-                if (ipConfigInfo == null) {
-                    continue;
-                }
-                NetIpConfigInfoIpAddress[] ipAddrConfigInfos =
-                        ipConfigInfo.getIpAddress();
-                if (ipAddrConfigInfos == null ||
-                        ipAddrConfigInfos.length == 0) {
-                    continue;
-
-                }
-                for (NetIpConfigInfoIpAddress ipAddrConfigInfo :
-                    ipAddrConfigInfos) {
-                    String ipAddress = ipAddrConfigInfo.getIpAddress();
-                    // Choose IPv4 only
-                    InetAddress ipAddr = InetAddress.getByName(ipAddress);
-                    if (ipAddr instanceof Inet4Address) {
-                        return ipAddress;
-                    }
-                }
-
             }
         }
         return null;
@@ -671,54 +585,6 @@ public class VCenterDB {
         return false;
     }
 
-    private String getVirtualMachineIpAddress(GuestNicInfo[] nicInfos, 
-                                              String dvPgName, 
-                                              String vmName, String vmMac)
-                                             throws Exception {
-
-        // Assumption here is that VMware Tools are installed
-        // and IP address is available
-        if (nicInfos == null) {
-            s_logger.debug("dvPg: " + dvPgName + " vm:" + vmName
-                    + " GuestNicInfo - VMware Tools " + " NOT installed");
-            return null;
-        }
-        for (GuestNicInfo nicInfo : nicInfos) {
-            // Extract the IP address associated with interface based on macAddress.
-            String guestMac = nicInfo.getMacAddress();
-
-            if (guestMac == null) {
-                continue;
-            }
-
-            if (!guestMac.equals(vmMac)) {
-                continue;
-            }
-
-            NetIpConfigInfo ipConfigInfo = nicInfo.getIpConfig();
-            if (ipConfigInfo == null) {
-                continue;
-            }
-            NetIpConfigInfoIpAddress[] ipAddrConfigInfos = 
-                    ipConfigInfo.getIpAddress();
-            if (ipAddrConfigInfos == null || 
-                    ipAddrConfigInfos.length == 0) {
-                continue;
-            }
-
-            for (NetIpConfigInfoIpAddress ipAddrConfigInfo : 
-                ipAddrConfigInfos) {
-                String ipAddress = ipAddrConfigInfo.getIpAddress();
-                // Choose IPv4 only
-                InetAddress ipAddr = InetAddress.getByName(ipAddress);
-                if (ipAddr instanceof Inet4Address) {
-                    return ipAddress;
-                }
-            }
-        }
-        return null;
-    }
-  
     public String getVcenterUrl() { 
         return vcenterUrl; 
     }

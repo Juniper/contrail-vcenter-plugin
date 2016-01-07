@@ -17,8 +17,6 @@ import org.junit.runners.MethodSorters;
 @RunWith(JUnit4.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class VCenterDBTest extends TestCase {
-    private static final Logger s_logger =
-        Logger.getLogger(VCenterDBTest.class);
     private static VCenterDB vcenterDB;
 
     @Before

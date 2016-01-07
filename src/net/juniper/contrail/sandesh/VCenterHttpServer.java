@@ -7,7 +7,6 @@ import org.apache.log4j.Logger;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
-@SuppressWarnings("restriction")
 public class VCenterHttpServer implements HttpService {
     private HttpServer server;
     private int port = 8234;

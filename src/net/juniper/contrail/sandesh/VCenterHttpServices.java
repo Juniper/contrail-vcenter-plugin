@@ -3,7 +3,6 @@ package net.juniper.contrail.sandesh;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
-
 import net.juniper.contrail.watchdog.TaskWatchDogHttpHandler;
 
 public class VCenterHttpServices {

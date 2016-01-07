@@ -3,7 +3,6 @@ package net.juniper.contrail.sandesh;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.SortedSet;
 import java.util.TreeSet;
 
 public class SandeshObjectList<T> {

@@ -4,8 +4,6 @@ import java.util.Map;
 import java.util.SortedMap;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 import net.juniper.contrail.vcenter.MainDB;
-import net.juniper.contrail.vcenter.VCenterDB;
-import net.juniper.contrail.vcenter.VCenterMonitor;
 import net.juniper.contrail.vcenter.VCenterNotify;
 import net.juniper.contrail.vcenter.VRouterNotifier;
 import net.juniper.contrail.vcenter.VirtualMachineInfo;

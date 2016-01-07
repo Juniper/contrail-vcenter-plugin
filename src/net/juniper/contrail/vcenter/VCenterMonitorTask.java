@@ -17,11 +17,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 import com.google.common.base.Throwables;
 import com.vmware.vim25.PropertyFilterSpec;
-
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
-
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
 import net.juniper.contrail.watchdog.TaskWatchDog;

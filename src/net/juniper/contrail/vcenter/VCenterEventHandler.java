@@ -7,7 +7,6 @@
  */
 package net.juniper.contrail.vcenter;
 
-import java.io.IOException;
 import org.apache.log4j.Logger;
 import com.vmware.vim25.DVPortgroupCreatedEvent;
 import com.vmware.vim25.DVPortgroupDestroyedEvent;

@@ -5,7 +5,6 @@
 package net.juniper.contrail.vcenter;
 
 import java.io.IOException;
-import org.apache.log4j.Logger;
 import junit.framework.TestCase;
 import org.junit.Test;
 import org.junit.Before;

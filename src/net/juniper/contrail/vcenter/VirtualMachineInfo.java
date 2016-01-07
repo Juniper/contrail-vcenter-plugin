@@ -148,6 +148,7 @@ public class VirtualMachineInfo extends VCenterObject {
             vrouterIpAddress = vcenterDB.getVRouterVMIpFabricAddress(
                     hostName, host, contrailVRouterVmNamePrefix);
         }
+        this.vrouterIpAddress = vrouterIpAddress;
 
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
     }

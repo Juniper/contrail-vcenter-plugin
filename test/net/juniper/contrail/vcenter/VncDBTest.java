@@ -4,10 +4,7 @@
 
 package net.juniper.contrail.vcenter;
 
-
-
 import java.util.UUID;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Map;
@@ -16,15 +13,12 @@ import java.util.TreeMap;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.UUID;
-
 import org.apache.log4j.Logger;
-
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
-
 import junit.framework.TestCase;
 import org.junit.Test;
 import org.junit.Before;
@@ -34,10 +28,8 @@ import org.junit.FixMethodOrder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.junit.runners.MethodSorters;
-
 import org.apache.log4j.Logger;
 import org.apache.commons.net.util.SubnetUtils;
-
 import net.juniper.contrail.api.ApiConnector;
 import net.juniper.contrail.api.ApiConnectorMock;
 import net.juniper.contrail.api.ApiConnectorFactory;
@@ -55,7 +47,6 @@ import net.juniper.contrail.api.types.VirtualNetwork;
 import net.juniper.contrail.api.types.VnSubnetsType;
 import net.juniper.contrail.api.types.Project;
 import net.juniper.contrail.api.types.IdPermsType;
-
 import com.vmware.vim25.VirtualMachinePowerState;
 import com.vmware.vim25.ManagedObjectReference;
 

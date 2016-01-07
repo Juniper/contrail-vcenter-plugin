@@ -13,7 +13,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim.cf.ManagedObjectWatcher;
 import com.vmware.vim25.ArrayOfEvent;
@@ -44,7 +43,6 @@ import com.vmware.vim25.DVPortgroupEvent;
 import com.vmware.vim25.DVPortgroupCreatedEvent;
 import com.vmware.vim25.DVPortgroupDestroyedEvent;
 import com.vmware.vim25.DVPortgroupReconfiguredEvent;
-import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim25.mo.EventHistoryCollector;
 import com.vmware.vim25.mo.EventManager;
 import com.vmware.vim25.mo.Folder;
@@ -54,9 +52,7 @@ import com.vmware.vim25.mo.ManagedObject;
 import com.vmware.vim25.mo.PropertyCollector;
 import com.vmware.vim25.mo.PropertyFilter;
 import com.vmware.vim25.mo.ServiceInstance;
-
 import net.juniper.contrail.watchdog.TaskWatchDog;
-
 import com.vmware.vim25.VmMigratedEvent;
 import com.vmware.vim25.EnteredMaintenanceModeEvent;
 import com.vmware.vim25.ExitMaintenanceModeEvent;
@@ -66,9 +62,7 @@ import com.vmware.vim25.HostConnectionLostEvent;
 import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.RuntimeFault;
-
 import com.google.common.base.Throwables;
-
 import org.apache.log4j.Logger;
 
 /**
@@ -430,7 +424,7 @@ public class VCenterNotify implements Runnable
                     Event anEvent = (Event) value;
                     String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
-                        vcenterDB.vRouterActiveMap.put(vRouterIpAddress, false);
+                        VCenterDB.vRouterActiveMap.put(vRouterIpAddress, false);
                         s_logger.info("\nEntering maintenance mode. Marking the host " + vRouterIpAddress +" inactive");
                     } else {
                         s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
@@ -439,7 +433,7 @@ public class VCenterNotify implements Runnable
                     Event anEvent = (Event) value;
                     String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
-                        vcenterDB.vRouterActiveMap.put(vRouterIpAddress, true);
+                        VCenterDB.vRouterActiveMap.put(vRouterIpAddress, true);
                         s_logger.info("\nExit maintenance mode. Marking the host " + vRouterIpAddress +" active");
                     } else {
                         s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");

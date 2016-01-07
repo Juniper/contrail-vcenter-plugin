@@ -7,7 +7,6 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
-@SuppressWarnings("restriction")
 public class VRouterDetailReqHttpHandler implements HttpHandler {
     
     public final String styleSheet = "/universal_parse.xsl";

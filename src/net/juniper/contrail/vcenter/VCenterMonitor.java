@@ -11,12 +11,9 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
-
-import net.juniper.contrail.sandesh.VCenterHttpProvider;
 import net.juniper.contrail.sandesh.VCenterHttpServices;
 import net.juniper.contrail.watchdog.TaskWatchDog;
 import net.juniper.contrail.zklibrary.MasterSelection;

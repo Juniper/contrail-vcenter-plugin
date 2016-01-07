@@ -5,18 +5,15 @@
  */
 package net.juniper.contrail.vcenter;
 
-import net.juniper.contrail.api.types.VirtualNetwork;
-import net.juniper.contrail.api.types.VirtualMachine;
-import net.juniper.contrail.api.types.VirtualMachineInterface;
-
 import java.io.IOException;
-
 import com.vmware.vim25.GuestNicInfo;
 import com.vmware.vim25.NetIpConfigInfo;
 import com.vmware.vim25.NetIpConfigInfoIpAddress;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
-
 import net.juniper.contrail.api.types.InstanceIp;
+import net.juniper.contrail.api.types.VirtualNetwork;
+import net.juniper.contrail.api.types.VirtualMachine;
+import net.juniper.contrail.api.types.VirtualMachineInterface;
 
 public class VirtualMachineInterfaceInfo extends VCenterObject {
     private String uuid;

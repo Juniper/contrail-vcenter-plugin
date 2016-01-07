@@ -4,8 +4,6 @@
 
 package net.juniper.contrail.vcenter;
 
-
-
 import java.util.UUID;
 
 import java.io.IOException;
