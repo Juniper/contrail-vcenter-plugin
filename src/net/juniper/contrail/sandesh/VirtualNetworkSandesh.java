@@ -22,20 +22,21 @@ public class VirtualNetworkSandesh implements SandeshObject
          .append("</name>");
     }
    
-    private SandeshObjectList<VirtualMachineSandesh> vMachines;
+    private SandeshObjectList<VirtualMachineInterfaceSandesh> vInterfaces;
     
-    public SandeshObjectList<VirtualMachineSandesh> getVMachines() {
-        return vMachines;
+    public SandeshObjectList<VirtualMachineInterfaceSandesh> getVInterfaces() {
+        return vInterfaces;
     }
     
-    public void setVMachines(SandeshObjectList<VirtualMachineSandesh> vMachines) {
-        this.vMachines = vMachines;
+    public void setVInterfaces(SandeshObjectList<VirtualMachineInterfaceSandesh> vInterfaces) {
+        this.vInterfaces = vInterfaces;
     }
     
     public VirtualNetworkSandesh() {
-        vMachines = 
-                new SandeshObjectList<VirtualMachineSandesh>(VirtualMachineSandesh.class,
-                        ComparatorVirtualMachineInfo.BY_NAME);
+        vInterfaces = 
+                new SandeshObjectList<VirtualMachineInterfaceSandesh>(
+                        VirtualMachineInterfaceSandesh.class,
+                        ComparatorVirtualMachineInterfaceSandesh.BY_NAME);
     }
     
     public void writeObject(StringBuilder s,  DetailLevel detail, int identifier)
@@ -45,7 +46,7 @@ public class VirtualNetworkSandesh implements SandeshObject
          .append("\">");
         int inner_id = 1;
         writeFieldName(s, inner_id++);
-        vMachines.writeObject(s, "VirtualMachines", DetailLevel.PARENT, inner_id++);
+        vInterfaces.writeObject(s, "VirtualMachineInterfaces", DetailLevel.PARENT, inner_id++);
         s.append("</VirtualNetworkSandesh>");
     }
 }

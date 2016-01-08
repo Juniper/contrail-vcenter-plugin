@@ -22,57 +22,6 @@ public class VirtualMachineSandesh implements SandeshObject
          .append("</name>");
     }
     
-    private String ipAddr;
-    public String getIpAddr() {
-        return ipAddr;
-    }
-    public void setIpAddr(String ipAddr) {
-        this.ipAddr = ipAddr;
-    }
-
-    @SuppressWarnings("unused")
-    private void writeFieldIpAddr(StringBuilder s, int identifier)
-    {
-        s.append("<ipAddr type=\"string\" identifier=\"")
-         .append(identifier)
-         .append("\">")
-         .append(ipAddr)
-         .append("</ipAddr>");
-    }
-   
-    private String macAddr;
-    public String getMacAddr() {
-        return macAddr;
-    }
-    public void setMacAddr(String macAddr) {
-        this.macAddr = macAddr;
-    }
-    private void writeFieldMacAddr(StringBuilder s, int identifier)
-    {
-        s.append("<macAddr type=\"string\" identifier=\"")
-         .append(identifier)
-         .append("\">")
-         .append(macAddr)
-         .append("</macAddr>");
-    }
-   
-    String powerState;
-    public String getPowerState() {
-        return powerState;
-    }
-
-    public void setPowerState(String powerState) {
-        this.powerState = powerState;
-    }
-    private void writeFieldPowerState(StringBuilder s, int identifier)
-    {
-        s.append("<powerState type=\"string\" identifier=\"")
-         .append(identifier)
-         .append("\">")
-         .append(powerState)
-         .append("</powerState>");
-    }
-  
     private String esxiHost;   
     public String getEsxiHost() {
         return esxiHost;
@@ -89,20 +38,58 @@ public class VirtualMachineSandesh implements SandeshObject
          .append("</EsxiHost>");
     }
     
-    private String network;   
-    public String getNetwork() {
-        return network;
+    String vrouterIpAddress;
+    
+    public String getVrouterIpAddress() {
+        return vrouterIpAddress;
     }
-    public void setNetwork(String network) {
-        this.network = network;
+
+    public void setVrouterIpAddress(String vrouterIpAddress) {
+        this.vrouterIpAddress = vrouterIpAddress;
     }
-    private void writeFieldNetwork(StringBuilder s, int identifier)
+    
+    private void writeFieldVrouterIpAddress(StringBuilder s, int identifier)
     {
-        s.append("<network type=\"string\" identifier=\"")
+        s.append("<vRouterIpAddress type=\"string\" identifier=\"")
          .append(identifier)
          .append("\">")
-         .append(network)
-         .append("</network>");
+         .append(vrouterIpAddress)
+         .append("</vRouterIpAddress>");
+    }
+
+    String powerState;
+    public String getPowerState() {
+        return powerState;
+    }
+
+    public void setPowerState(String powerState) {
+        this.powerState = powerState;
+    }
+    private void writeFieldPowerState(StringBuilder s, int identifier)
+    {
+        s.append("<powerState type=\"string\" identifier=\"")
+         .append(identifier)
+         .append("\">")
+         .append(powerState)
+         .append("</powerState>");
+    }
+
+    boolean toolsRunningStatus;
+    public boolean getToolsRunningStatus() {
+        return toolsRunningStatus;
+    }
+
+    public void setToolsRunningStatus(boolean toolsRunningStatus) {
+        this.toolsRunningStatus = toolsRunningStatus;
+    }
+
+    private void writeFieldToolsRunningStatus(StringBuilder s, int identifier)
+    {
+        s.append("<toolsRunningStatus type=\"string\" identifier=\"")
+         .append(identifier)
+         .append("\">")
+         .append(toolsRunningStatus)
+         .append("</toolsRunningStatus>");
     }
     
     public VirtualMachineSandesh() {
@@ -116,17 +103,19 @@ public class VirtualMachineSandesh implements SandeshObject
          .append("\">");
         int inner_id = 1;
         writeFieldName(s, inner_id++);
-        // TODO VCenterDB does not have the correct value
-        // comment out until fixed to avoid misleading info
-        // writeFieldIpAddr(s, inner_id++);
-        writeFieldMacAddr(s, inner_id++);
-        writeFieldPowerState(s, inner_id++);
+        
         if (detail != DetailLevel.PARENT) {
             writeFieldEsxiHost(s,inner_id++);
            
         }
         if (detail != DetailLevel.PARENT) {
-            writeFieldNetwork(s, inner_id++);
+            writeFieldPowerState(s, inner_id++);
+        }
+        if (detail != DetailLevel.PARENT) {
+            writeFieldVrouterIpAddress(s, inner_id++);
+        }
+        if (detail != DetailLevel.PARENT) {
+            writeFieldToolsRunningStatus(s, inner_id++);
         }
         s.append("</VirtualMachineSandesh>");
     }

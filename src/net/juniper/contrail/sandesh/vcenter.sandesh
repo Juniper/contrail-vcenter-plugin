@@ -54,16 +54,32 @@ response sandesh VRouterListResp {
 
 struct VirtualMachineInfo {
 	1: string name;
-	2: string ipAddr;
-	3: string macAddr;
-	4: bool state;
-	5: string esxiHost;
-	6: string network;
+	2: bool state;
+	3: string esxiHost;
+	4: string network;
+}
+
+struct VirtualMachineInterfaceInfo {
+	1: string macAddress;
+	2: string network;
+	3: string virtualMachine;
+	4: string ipAddress;
+	5: bool poweredOn;
+	6: bool addPort;
+}
+
+struct VirtualMachineInfo {
+	1: string name;
+	2: string esxiHost;
+	3: list<VirtualMachineInterfaceInfo> vInterfaces;
+	4: string vrouterIpAddress;
+	5: String powerState;
+	6: bool toolsRunningStatus;
 }
 
 struct VirtualNetworkInfo {
 	1: string name;
-	2: list<VirtualMachineInfo> vMachines;
+	2: list<VirtualMachineInterfaceInfo> vInterfaces;
 }
 
 struct VRouterInfo {
@@ -72,6 +88,7 @@ struct VRouterInfo {
     2: bool state;
     3: string EsxiHost;
     4: list<VirtualNetworkInfo> vNetworks;
+    5: list<VirtualMachineInfo> vMachines;
 }
 
 request sandesh VRouterDetailReq {

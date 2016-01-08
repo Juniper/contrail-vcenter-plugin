@@ -76,7 +76,7 @@ public class VRouterInfo implements SandeshObject
     public VRouterInfo() {
         this.vNetworks = 
                 new SandeshObjectList<VirtualNetworkSandesh>(VirtualNetworkSandesh.class,
-                        new ComparatorVirtualNetworkInfo());
+                        new ComparatorVirtualNetworkSandesh());
     }
     
     public void writeObject(StringBuilder s,  DetailLevel detail, int identifier)

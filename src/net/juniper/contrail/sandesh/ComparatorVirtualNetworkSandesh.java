@@ -2,7 +2,7 @@ package net.juniper.contrail.sandesh;
 
 import java.util.Comparator;
 
-public class ComparatorVirtualNetworkInfo 
+public class ComparatorVirtualNetworkSandesh 
     implements Comparator<VirtualNetworkSandesh> {
 
     public int compare(VirtualNetworkSandesh vn1, VirtualNetworkSandesh vn2) {
