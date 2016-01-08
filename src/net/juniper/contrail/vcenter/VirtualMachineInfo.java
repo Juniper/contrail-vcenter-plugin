@@ -28,16 +28,13 @@ import net.juniper.contrail.api.types.VirtualMachine;
 
 public class VirtualMachineInfo extends VCenterObject {
     private String uuid; // required attribute, key for this object
+    private String name;
     ManagedObjectReference hmor;
     private String hostName;
     private String vrouterIpAddress;
-    private String macAddress;
-    private String ipAddress;
-    private String name;
-    private String interfaceUuid;
     private VirtualMachinePowerState powerState;
     private String toolsRunningStatus;
-    private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap; // key is MAC address
+    private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap; // keyed by MAC address
     protected static final String contrailVRouterVmNamePrefix = "contrailVM";
 
     // Vmware objects
@@ -177,36 +174,12 @@ public class VirtualMachineInfo extends VCenterObject {
         this.vrouterIpAddress = vrouterIpAddress;
     }
 
-    public String getMacAddress() {
-        return macAddress;
-    }
-
-    public void setMacAddress(String macAddress) {
-        this.macAddress = macAddress;
-    }
-
-    public String getIpAddress() {
-        return ipAddress;
-    }
-
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-    }
-
     public String getName() {
         return name;
     }
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getInterfaceUuid() {
-        return interfaceUuid;
-    }
-
-    public void setInterfaceUuid(String uuid) {
-        this.interfaceUuid = uuid;
     }
 
     public String getUuid() {
@@ -313,14 +286,6 @@ public class VirtualMachineInfo extends VCenterObject {
                 || (hostName == null && vm.hostName != null)) {
             return false;
         }
-        if ((ipAddress != null && !ipAddress.equals(vm.ipAddress))
-                || (ipAddress == null && vm.ipAddress != null)) {
-            return false;
-        }
-        if ((macAddress != null && !macAddress.equals(vm.macAddress))
-                || (macAddress == null && vm.macAddress != null)) {
-            return false;
-        }
         if ((powerState != null && !powerState.equals(vm.powerState))
                 || (powerState == null && vm.powerState != null)) {
             return false;
@@ -413,12 +378,6 @@ public class VirtualMachineInfo extends VCenterObject {
         }
         if (newVmInfo.vrouterIpAddress != null) {
             vrouterIpAddress = newVmInfo.vrouterIpAddress;
-        }
-        if (newVmInfo.macAddress != null) {
-            macAddress = newVmInfo.macAddress;
-        }
-        if (newVmInfo.ipAddress != null) {
-            ipAddress = newVmInfo.ipAddress;
         }
         if (newVmInfo.name != null) {
             name = newVmInfo.name;

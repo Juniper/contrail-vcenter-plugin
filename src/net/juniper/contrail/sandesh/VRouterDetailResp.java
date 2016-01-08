@@ -2,6 +2,9 @@ package net.juniper.contrail.sandesh;
 
 import java.util.Map;
 import java.util.SortedMap;
+
+import com.vmware.vim25.VirtualMachineToolsRunningStatus;
+
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 import net.juniper.contrail.vcenter.MainDB;
 import net.juniper.contrail.vcenter.VCenterNotify;
@@ -34,36 +37,36 @@ public class VRouterDetailResp {
             }
         }
         
-        populateVNetworks(vrouter.getVNetworks());
+        SortedMap<String, VirtualNetworkInfo> vnInfoMap = MainDB.getVNs();
+        populateVNetworks(vrouter.getVNetworks(), vnInfoMap);
     }
     
-    private void populateVNetworks(SandeshObjectList<VirtualNetworkSandesh> vNetworks) {
-        SortedMap<String, VirtualNetworkInfo> entries = 
-                MainDB.getVNs();
+    private void populateVNetworks(SandeshObjectList<VirtualNetworkSandesh> vNetworks,
+            SortedMap<String, VirtualNetworkInfo> vnInfoMap) {
         
-        if (entries == null) {
+        if (vnInfoMap == null) {
             return;
         }
         
-        for (Map.Entry<String, VirtualNetworkInfo> entry: entries.entrySet()) {
-            VirtualNetworkInfo vmwareVN = entry.getValue(); 
+        for (Map.Entry<String, VirtualNetworkInfo> entry: vnInfoMap.entrySet()) {
+            VirtualNetworkInfo vnInfo = entry.getValue(); 
             VirtualNetworkSandesh vn = new VirtualNetworkSandesh();
-            populateVMIs(vn, vmwareVN);
-            if (vn.getVMachines().size() > 0) {
-                vn.setName(vmwareVN.getName());
+            populateVMIs(vn, vnInfo);
+            if (vn.getVInterfaces().size() > 0) {
+                vn.setName(vnInfo.getName());
                 vNetworks.add(vn);
             }
         }
     }
     
-    private void populateVMIs(VirtualNetworkSandesh vn, VirtualNetworkInfo vmwareVN) {
-        SandeshObjectList<VirtualMachineSandesh> vMachines = vn.getVMachines();
+    private void populateVMIs(VirtualNetworkSandesh vn, VirtualNetworkInfo vnInfo) {
+        SandeshObjectList<VirtualMachineInterfaceSandesh> vInterfaces = vn.getVInterfaces();
         
-        if (vMachines == null) {
+        if (vInterfaces == null) {
             return;
         }
         SortedMap<String, VirtualMachineInterfaceInfo> map 
-                    = vmwareVN.getVmiInfo();
+                    = vnInfo.getVmiInfo();
         
         if (map == null) {
             return;
@@ -75,16 +78,25 @@ public class VRouterDetailResp {
             if (!vrouter.getIpAddr().trim().equals(vmInfo.getVrouterIpAddress().trim())) {
                 continue;
             }
-
-            VirtualMachineSandesh vm = new VirtualMachineSandesh();
-            vm.setName(vmInfo.getName());
-            vm.setIpAddr(vmiInfo.getIpAddress());
-            vm.setMacAddr(vmiInfo.getMacAddress());
-            vm.setEsxiHost(vmInfo.getHostName());
-            vm.setPowerState(vmInfo.getPowerState().name());
-            vm.setNetwork(vn.getName());
+            VirtualNetworkInfo vnInfo1 = vmiInfo.getVnInfo();
             
-            vMachines.add(vm);
+            VirtualMachineInterfaceSandesh vmi = new VirtualMachineInterfaceSandesh();
+            vmi.setMacAddress(vmiInfo.getMacAddress());
+            vmi.setNetwork(vnInfo1.getName());
+            vmi.setVirtualMachine(vmInfo.getName());
+            String ipAddress = vmiInfo.getIpAddress();
+            if (ipAddress == null && vnInfo.getExternalIpam()
+                 && vmInfo.getToolsRunningStatus().equals(
+                         VirtualMachineToolsRunningStatus.guestToolsNotRunning)) {
+                vmi.setIpAddress("unknown");
+            } else {
+                vmi.setIpAddress(ipAddress);
+            }
+            
+            vmi.setPoweredOn(vmInfo.isPoweredOnState());
+            vmi.setAddPort(vmiInfo.getAddPort());
+            
+            vInterfaces.add(vmi);
         }
     }
     

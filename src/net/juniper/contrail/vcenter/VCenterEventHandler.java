@@ -96,9 +96,6 @@ public class VCenterEventHandler {
             oldVmInfo.update(newVmInfo, vncDB);
         } else {
             newVmInfo.create(vncDB);
-            // add a watch on this Vm guest OS to be notified of guest OS changes,
-            // for instance IP address changes
-            VCenterNotify.watchVm(newVmInfo);
         }
     }
 

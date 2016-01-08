@@ -21,7 +21,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
     VirtualNetworkInfo vnInfo;
     private String ipAddress;
     private String macAddress;
-    private boolean up;
+    private boolean addPort;
     
     //API server objects
     net.juniper.contrail.api.types.VirtualMachineInterface apiVmi;
@@ -73,6 +73,14 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         this.ipAddress = ipAddress;
     }
 
+    public boolean getAddPort() {
+        return addPort;
+    }
+    
+    public void setAddPort(boolean addPort) {
+        this.addPort = addPort;
+    }
+
     public void updatedGuestNic(GuestNicInfo nic, VncDB vncDB) 
                 throws Exception {
         if (nic == null) {
@@ -93,26 +101,25 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         
         // ip address has changed
         if (ipAddress != null) {
-            if (up) {
+            if (addPort) {
+                addPort = false;
                 VRouterNotifier.deleted(this);
-                up = false;
             }
-                   
             vncDB.deleteInstanceIp(this);
         }
-        
+
         ipAddress = newIpAddress;
         
         if ((vnInfo.getExternalIpam() == false || (ipAddress != null))) {
             vncDB.createInstanceIp(this);
         }
     
-        if (!up && (vmInfo.isPoweredOnState() && ipAddress != null)) {
-            up = true;
+        if (!addPort && (vmInfo.isPoweredOnState() && ipAddress != null)) {
+            addPort = true;
             VRouterNotifier.created(this);
-        } else if (up && (!vmInfo.isPoweredOnState() || ipAddress == null)) {
+        } else if (addPort && (!vmInfo.isPoweredOnState() || ipAddress == null)) {
+            addPort = false;
             VRouterNotifier.deleted(this);
-            up = false;
         }        
     }
 
@@ -154,7 +161,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         }
         
         if (vmInfo.isPoweredOnState() && ipAddress != null) {
-            up = true;
+            addPort = true;
             VRouterNotifier.created(this);
         }
         
@@ -179,11 +186,11 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         if ((newVmiInfo.ipAddress != null && !newVmiInfo.ipAddress.equals(ipAddress))
                 || (newVmiInfo.macAddress != null && !newVmiInfo.macAddress.equals(macAddress))
                 || vnInfo != newVmiInfo.vnInfo) {
-            if (up) {
+            if (addPort) {
+                addPort = false;
                 VRouterNotifier.deleted(this);
-                up = false;
             }
-                   
+
             vncDB.deleteInstanceIp(this);
             
             if (vnInfo != newVmiInfo.vnInfo) {
@@ -208,12 +215,12 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             }
         }
         
-        if (!up && (vmInfo.isPoweredOnState() && ipAddress != null)) {
-            up = true;
+        if (!addPort && (vmInfo.isPoweredOnState() && ipAddress != null)) {
+            addPort = true;
             VRouterNotifier.created(this);
-        } else if (up && (!vmInfo.isPoweredOnState() || ipAddress == null)) {
+        } else if (addPort && (!vmInfo.isPoweredOnState() || ipAddress == null)) {
+            addPort = false;
             VRouterNotifier.deleted(this);
-            up = false;
         }
     }
 
@@ -250,6 +257,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         if ((oldVmiInfo.ipAddress != null && !oldVmiInfo.ipAddress.equals(ipAddress))
                 || (oldVmiInfo.macAddress != null && !oldVmiInfo.macAddress.equals(macAddress))
                 || (vnInfo != oldVmiInfo.vnInfo)) {
+            addPort = false;
             VRouterNotifier.deleted(oldVmiInfo);
             vncDB.deleteInstanceIp(oldVmiInfo);
             oldVmiInfo.vnInfo.deleted(oldVmiInfo);
@@ -261,17 +269,20 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         }
  
         if (vmInfo.isPoweredOnState() && ipAddress != null) {
-            up = true;
+            addPort = true;
+            VRouterNotifier.created(this);
         }
         
-        VRouterNotifier.created(this);
         vnInfo.created(this);
     }
 
     @Override
     void delete(VncDB vncDB) 
             throws IOException {
-        VRouterNotifier.deleted(this);
+        if (addPort) {
+            VRouterNotifier.deleted(this);
+            addPort = false;
+        }
        
         vncDB.deleteInstanceIp(this);
  
