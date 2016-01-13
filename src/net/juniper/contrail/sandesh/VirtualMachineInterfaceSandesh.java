@@ -90,23 +90,23 @@ public class VirtualMachineInterfaceSandesh implements SandeshObject
          .append("</poweredOn>");
     }
 
-    boolean addPort;
+    boolean portAdded;
     
-    public boolean getAddPort() {
-        return addPort;
+    public boolean getPortAdded() {
+        return portAdded;
     }
 
-    public void setAddPort(boolean addPort) {
-        this.addPort = addPort;
+    public void setPortAdded(boolean portAdded) {
+        this.portAdded = portAdded;
     }
  
-    private void writeFieldAddPort(StringBuilder s, int identifier)
+    private void writeFieldPortAdded(StringBuilder s, int identifier)
     {
-        s.append("<addPort type=\"string\" identifier=\"")
+        s.append("<portAdded type=\"string\" identifier=\"")
          .append(identifier)
          .append("\">")
-         .append(addPort)
-         .append("</addPort>");
+         .append(portAdded)
+         .append("</portAdded>");
     }
   
     public VirtualMachineInterfaceSandesh() {
@@ -124,7 +124,7 @@ public class VirtualMachineInterfaceSandesh implements SandeshObject
         writeFieldMacAddress(s, inner_id++);
         writeFieldIpAddress(s, inner_id++);
         writeFieldPoweredOn(s, inner_id++);
-        writeFieldAddPort(s, inner_id++);
+        writeFieldPortAdded(s, inner_id++);
         s.append("</VirtualMachineInterfaceSandesh>");
     }
 }

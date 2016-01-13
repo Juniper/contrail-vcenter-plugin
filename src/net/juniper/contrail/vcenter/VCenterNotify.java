@@ -14,7 +14,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import com.vmware.vim25.mo.Datacenter;
-import com.vmware.vim.cf.ManagedObjectWatcher;
 import com.vmware.vim25.ArrayOfEvent;
 import com.vmware.vim25.ArrayOfGuestNicInfo;
 import com.vmware.vim25.Event;
@@ -77,7 +76,6 @@ public class VCenterNotify implements Runnable
     static VCenterMonitorTask monitorTask = null;
     static volatile VCenterDB vcenterDB;
     static volatile VncDB vncDB;
-    private static ManagedObjectWatcher mom = null;
     private boolean AddPortSyncAtPluginStart = true;
     private boolean VncDBInitComplete = false;
     private boolean VcenterDBInitComplete = false;

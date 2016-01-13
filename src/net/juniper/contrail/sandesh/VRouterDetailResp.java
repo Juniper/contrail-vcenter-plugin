@@ -94,7 +94,7 @@ public class VRouterDetailResp {
             }
             
             vmi.setPoweredOn(vmInfo.isPoweredOnState());
-            vmi.setAddPort(vmiInfo.getAddPort());
+            vmi.setPortAdded(vmiInfo.getPortAdded());
             
             vInterfaces.add(vmi);
         }

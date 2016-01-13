@@ -28,35 +28,42 @@ public class VRouterNotifier {
     
     public static void created(VirtualMachineInterfaceInfo vmiInfo) {
         if (vmiInfo == null) {       
-            s_logger.error("Null vmiInfo argument, cannot perform addPort");
+            s_logger.error("Null vmiInfo argument, cannot perform AddPort");
             return;
         }
 
         if (vmiInfo.vmInfo == null)  {               
-            s_logger.error("Null vmInfo, cannot perform addPort");
+            s_logger.error("Null vmInfo, cannot perform AddPort for " + vmiInfo);
             return;
         }
         if (vmiInfo.vnInfo == null)  {               
-            s_logger.error("Null vnInfo, cannot perform addPort");
+            s_logger.error("Null vnInfo, cannot perform AddPort for " + vmiInfo);
             return;
         }
+        
+        if (vmiInfo.getUuid() == null)  {               
+            s_logger.error("Null uuid, cannot perform DeletePort for " + vmiInfo);
+            return;
+        }
+        
         String vrouterIpAddress = vmiInfo.getVmInfo().getVrouterIpAddress();
         String ipAddress = vmiInfo.getIpAddress();
         VirtualMachineInfo vmInfo = vmiInfo.vmInfo;
         VirtualNetworkInfo vnInfo = vmiInfo.vnInfo;
         
         if (vrouterIpAddress == null) {
-            s_logger.error(vmiInfo +
-                " addPort notification NOT sent as vRouterIp Address not known");
+            s_logger.error(
+                "AddPort notification NOT sent as vRouterIp Address not known for " + vmiInfo);
             return;
         }
         if (ipAddress == null) {
-            s_logger.warn(vmiInfo +
-                " addPort notification NOT sent as IPAM external and IP Address not set or vmware Tools not installed");
+            s_logger.error(
+                "AddPort notification NOT sent as IP Address not known for "
+                    + vmiInfo);
             return;
         }
         if (!vmInfo.isPoweredOnState()) {
-            s_logger.info(vmInfo + " is PoweredOff. Skip AddPort now.");
+            s_logger.info(vmInfo + " is PoweredOff. Skip AddPort now for " + vmiInfo);
             return;
         }
         try {
@@ -67,8 +74,7 @@ public class VRouterNotifier {
                         vrouterApiPort, false, 1000);
                 vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
-            
-               
+       
             boolean ret = vrouterApi.AddPort(UUID.fromString(vmiInfo.getUuid()),
                     UUID.fromString(vmInfo.getUuid()), vmiInfo.getUuid(),
                     InetAddress.getByName(ipAddress),
@@ -77,11 +83,11 @@ public class VRouterNotifier {
                     vnInfo.getIsolatedVlanId(),
                     vnInfo.getPrimaryVlanId(), vmInfo.getName());
             if (ret) {
-                s_logger.info("VRouterAPi Add Port success for " + vmiInfo);
+                s_logger.info("VRouterAPi AddPort success for " + vmiInfo);
             } else {
                 // log failure but don't worry. Periodic KeepAlive task will
                 // attempt to connect to vRouter Agent and replay AddPorts.
-                s_logger.error("VRouterAPI Add Port failed for " + vmiInfo);
+                s_logger.error("VRouterAPI AddPort failed for " + vmiInfo);
             }
         } catch(Throwable e) {
             s_logger.error("Exception in addPort for " + vmiInfo + ": " + e.getMessage());
@@ -91,16 +97,20 @@ public class VRouterNotifier {
 
     public static void deleted(VirtualMachineInterfaceInfo vmiInfo) {
         if (vmiInfo == null) {       
-            s_logger.error("Null vmiInfo argument, cannot perform deletePort");
+            s_logger.error("Null vmiInfo argument, cannot perform DeletePort");
             return;
         }
 
         if (vmiInfo.vmInfo == null)  {               
-            s_logger.error("Null vmInfo, cannot perform deletePort");
+            s_logger.error("Null vmInfo, cannot perform DeletePort for " + vmiInfo);
             return;
         }
         if (vmiInfo.vnInfo == null)  {               
-            s_logger.error("Null vnInfo, cannot perform deletePort");
+            s_logger.error("Null vnInfo, cannot perform DeletePort for " + vmiInfo);
+            return;
+        }
+        if (vmiInfo.getUuid() == null)  {               
+            s_logger.error("Null uuid, cannot perform DeletePort for " + vmiInfo);
             return;
         }
         String vrouterIpAddress = vmiInfo.getVmInfo().getVrouterIpAddress();
@@ -109,16 +119,17 @@ public class VRouterNotifier {
         VirtualNetworkInfo vnInfo = vmiInfo.vnInfo;
         
         if (vrouterIpAddress == null) {
-            s_logger.error(vmiInfo +
-                " deletePort notification NOT sent as vRouterIp Address not known");
+            s_logger.error(
+                "DeletePort notification NOT sent as vRouterIp Address not known for " + vmiInfo);
             return;
         }
         if (ipAddress == null) {
-            s_logger.error(vmiInfo +
-                " deletePort notification NOT sent as IPAM external and IP Address not set or vmware Tools not installed");
+            s_logger.error(
+                "DeletePort notification NOT sent as ipAddress not known for "
+                    + vmiInfo);
             return;
         }
-        
+
         ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
         if (vrouterApi == null) {
             try {
@@ -127,7 +138,7 @@ public class VRouterNotifier {
                     vrouterApiPort, false, 1000);
             } catch (UnknownHostException e) {
                 // log error ("Incorrect vrouter address");
-                s_logger.error("deletePort failed due to unknown vrouter " + vrouterIpAddress);
+                s_logger.error("DeletePort failed due to unknown vrouter " + vrouterIpAddress);
                 return;
             }
             vrouterApiMap.put(vrouterIpAddress, vrouterApi);
@@ -135,11 +146,11 @@ public class VRouterNotifier {
         boolean ret = vrouterApi.DeletePort(UUID.fromString(vmiInfo.getUuid()));
         
         if (ret) {
-            s_logger.info("VRouterAPi Delete Port success for " + vmiInfo);
+            s_logger.info("VRouterAPi DeletePort success for " + vmiInfo);
         } else {
             // log failure but don't worry. Periodic KeepAlive task will
             // attempt to connect to vRouter Agent and replay DeletePorts.
-            s_logger.error("VRouterAPI Delete Port failed for " + vmiInfo);
+            s_logger.error("VRouterAPI DeletePort failed for " + vmiInfo);
         }
     }
     
