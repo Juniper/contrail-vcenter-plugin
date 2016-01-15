@@ -1108,7 +1108,8 @@ public class VCenterDB {
                     && prevIpAddress != null) {
                     // We have a problem here. Maybe the MOB is messed up
                     // VM had an IP before,but not now.
-                    s_logger.error("Please restart vmware tools to ensure IP address is reported to vcenter");
+                    s_logger.error("Please restart vmware tools to ensure IP address is reported to vcenter on VM "
+                            + vmName);
                 }
                 if (prevIpAddress != null) {
                     ipAddress = prevIpAddress;
@@ -1350,5 +1351,33 @@ public class VCenterDB {
     
     public String getVcenterUrl() { 
         return vcenterUrl; 
+    }
+    
+    public HostSystem getVmwareHost(String name,
+            Datacenter dc, String dcName)
+        throws RemoteException {
+        String description = "<host " + name 
+                + ", datacenter " + dcName + ", vCenter " + vcenterUrl +">.";
+        // narrow the search to the dc level
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(dc);
+
+        HostSystem host = null;
+        try {
+            host = (HostSystem)inventoryNavigator.searchManagedEntity(
+                    "HostSystem", name);
+        } catch (RemoteException e ) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg, e);
+        }
+
+        if (host == null) {
+            String msg = "Failed to retrieve " + description;
+            s_logger.error(msg);
+            throw new RemoteException(msg);
+        }
+
+        s_logger.info("Found " + description);
+        return host;
     }
 }
