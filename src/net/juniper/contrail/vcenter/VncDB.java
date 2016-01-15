@@ -128,7 +128,7 @@ public class VncDB {
                 alive = false;
                 return false;
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             alive = false;
             return false;
         }

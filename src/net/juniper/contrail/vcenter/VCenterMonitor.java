@@ -15,7 +15,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
-
 import net.juniper.contrail.sandesh.VCenterHttpProvider;
 import net.juniper.contrail.sandesh.VCenterHttpServices;
 import net.juniper.contrail.watchdog.TaskWatchDog;
@@ -171,7 +170,7 @@ public class VCenterMonitor {
         s_logger.info("Starting event monitor Task.. ");
         _eventMonitor = new VCenterNotify(_monitorTask, _vcenterURL,
                                           _vcenterUsername, _vcenterPassword,
-                                          _vcenterDcName);
+                                          _vcenterDcName, _vcenterDvsName);
         _eventMonitor.start();
     }
 
