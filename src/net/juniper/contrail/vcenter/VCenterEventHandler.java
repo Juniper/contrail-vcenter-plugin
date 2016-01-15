@@ -82,8 +82,16 @@ public class VCenterEventHandler {
     }
 
     private void handleVmUpdateEvent() throws Exception {
-        VirtualMachineInfo newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
-         
+        VirtualMachineInfo newVmInfo = null;
+        
+        try {
+            newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
+        } catch (Exception e) {
+            s_logger.info("Skipping update event for deleted VM" 
+                    + event.getClass().getName());
+            return;
+        }
+
         // Ignore virtual machine?
         if (newVmInfo.ignore()) {
             s_logger.debug(" Ignoring update vm: " + newVmInfo.getName());
@@ -111,9 +119,16 @@ public class VCenterEventHandler {
     }
 
     private void handleNetworkUpdateEvent() throws Exception {
-        VirtualNetworkInfo newVnInfo = 
-                new VirtualNetworkInfo(event, vcenterDB);
+        VirtualNetworkInfo newVnInfo = null;
         
+        try {
+            newVnInfo = new VirtualNetworkInfo(event, vcenterDB);
+        } catch (Exception e) {
+            s_logger.info("Skipping update event for deleted network" 
+                    + event.getClass().getName());
+            return;
+        }
+
         VirtualNetworkInfo oldVnInfo = MainDB.getVnByName(newVnInfo.getName());
         
         if (oldVnInfo != null) {
