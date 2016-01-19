@@ -61,7 +61,11 @@ import com.vmware.vim25.HostConnectionLostEvent;
 import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.RuntimeFault;
+import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
+import com.vmware.vim25.mo.HostSystem;
 import com.google.common.base.Throwables;
+import com.vmware.vim25.InvalidState;
+import com.vmware.vim25.RuntimeFault;
 import org.apache.log4j.Logger;
 
 /**
@@ -84,8 +88,6 @@ public class VCenterNotify implements Runnable
 
     private final static String[] guestProps = { "guest.toolsRunningStatus", "guest.net" };
     private final static String[] ipPoolProps = { "summary.ipPoolId" };
-    private static PropertyFilter propFilter;
-    private static PropertyCollector propColl;
     private static Map<String, VirtualMachineInfo> watchedVMs 
                 = new HashMap<String, VirtualMachineInfo>();
     private static Map<String, VirtualNetworkInfo> watchedVNs 
@@ -95,47 +97,6 @@ public class VCenterNotify implements Runnable
     
     private static Boolean shouldRun;
     private static Thread watchUpdates = null;
-
-    private static final String[] handledEvents = {
-            // Host events
-            "HostConnectionLostEvent",
-            "HostConnectedEvent",
-            "EnteredMaintenanceModeEvent",
-            "ExitMaintenanceModeEvent",
-
-            // VM events
-            // VM create events
-            "VmBeingCreated",
-            "VmCreatedEvent",
-            "VmClonedEvent",
-            "VmCloneEvent",
-            "VmDeployedEvent",
-            // VM modify events
-            "VmPoweredOnEvent",
-            "VmPoweredOffEvent",
-            "VmRenamedEvent",
-            "VmMacChangedEvent",
-            "VmMacAssignedEvent",
-            "VmReconfiguredEvent",
-            "VmEmigratingEvent",
-            "VmMigratedEvent",
-            "VmBeingMigratedEvent",
-            "VmBeingHotMigratedEvent",
-            // VM delete events
-            "VmRemovedEvent",
-
-            // DV Port group events
-            // DV port create
-            "DVPortgroupCreatedEvent",
-            // DV port modify
-            "DVPortgroupReconfiguredEvent",
-            "DVPortgroupRenamedEvent",
-            // DV port delete
-            "DVPortgroupDestroyedEvent",
-
-            // General
-            "MigrationEvent"
-    };
 
     public VCenterNotify(
             String vcenterUrl, String vcenterUsername,
@@ -193,7 +154,7 @@ public class VCenterNotify implements Runnable
             pf.destroyPropertyFilter();
         } catch (RemoteException e) 
         {
-            e.printStackTrace();
+            // it is ok, we can receive exception if vcenter was restarted
         }
         watchedFilters.clear();
         watchedVMs.clear();
@@ -252,6 +213,7 @@ public class VCenterNotify implements Runnable
 
         try
         {
+            PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
             PropertyFilter pf = propColl.createFilter(pfs, true); //report only nesting properties, not enclosing ones.
             watchedFilters.put(mos, pf);
         } catch(RemoteException re)
@@ -275,12 +237,13 @@ public class VCenterNotify implements Runnable
         }
     }
 
-    private EventHistoryCollector createEventHistoryCollector() throws Exception
+    private EventHistoryCollector createEventHistoryCollector(ManagedObject mo, 
+            String[] events) throws InvalidState, RuntimeFault, RemoteException
     {
         // Create an Entity Event Filter Spec to
         // specify the MoRef of the VM to be get events filtered for
         EventFilterSpecByEntity entitySpec = new EventFilterSpecByEntity();
-        entitySpec.setEntity(vcenterDB.getDatacenter().getMOR());
+        entitySpec.setEntity(mo.getMOR());
         entitySpec.setRecursion(EventFilterSpecRecursionOption.children);
 
         // set the entity spec in the EventFilter
@@ -292,25 +255,29 @@ public class VCenterNotify implements Runnable
         // Refer to API Data Object vmEvent and see the extends class list for
         // elaborate list of vmEvents
 
-        eventFilter.setType(handledEvents);
-
+        eventFilter.setType(events);
+ 
         // create the EventHistoryCollector to monitor events for a VM
         // and get the ManagedObjectReference of the EventHistoryCollector
         // returned
-        return vcenterDB.getServiceInstance().getEventManager()
-                .createCollectorForEvents(eventFilter);
+        
+        EventManager eventManager = vcenterDB.getServiceInstance().getEventManager();
+       
+        if (eventManager != null) {
+            return eventManager.createCollectorForEvents(eventFilter);
+        }
+        return null;
     }
 
-    private PropertyFilterSpec createEventFilterSpec() throws Exception
+    private PropertyFilterSpec createEventFilterSpec(EventHistoryCollector collector) 
+            throws Exception
     {
-        EventHistoryCollector eventHistoryCollector = createEventHistoryCollector();
         // Set up a PropertySpec to use the latestPage attribute
         // of the EventHistoryCollector
-
         PropertySpec propSpec = new PropertySpec();
         propSpec.setAll(new Boolean(false));
         propSpec.setPathSet(new String[] { "latestPage" });
-        propSpec.setType(eventHistoryCollector.getMOR().getType());
+        propSpec.setType(collector.getMOR().getType());
 
         // PropertySpecs are wrapped in a PropertySpec array
         PropertySpec[] propSpecAry = new PropertySpec[] { propSpec };
@@ -319,7 +286,7 @@ public class VCenterNotify implements Runnable
         // EventHistoryCollector we just created
         // as the Root or Starting Object to get Attributes for.
         ObjectSpec objSpec = new ObjectSpec();
-        objSpec.setObj(eventHistoryCollector.getMOR());
+        objSpec.setObj(collector.getMOR());
         objSpec.setSkip(new Boolean(false));
 
         // Get Event objects in "latestPage" from "EventHistoryCollector"
@@ -364,7 +331,6 @@ public class VCenterNotify implements Runnable
 
         PropertyChange[] changes = oUpdate.getChangeSet();
         if (changes == null) {
-            s_logger.info("handleChanges received null change array from vCenter");
             return;
         }
 
@@ -373,7 +339,6 @@ public class VCenterNotify implements Runnable
         for (int pci = 0; pci < changes.length; ++pci)
         {
             if (changes[pci] == null) {
-                s_logger.info("handleChanges received null change value from vCenter");
                 continue;
             }
             Object value = changes[pci].getVal();
@@ -401,14 +366,12 @@ public class VCenterNotify implements Runnable
                     ArrayOfEvent aoe = (ArrayOfEvent) value;
                     Event[] evts = aoe.getEvent();
                     if (evts == null) {
-                        s_logger.info("handleChanges received null event array from vCenter");
                         continue;
                     }
                     for (int evtID = 0; evtID < evts.length; ++evtID)
                     {
                         Event anEvent = evts[evtID];
                         if (anEvent == null) {
-                            s_logger.info("handleChanges received null event from vCenter");
                             continue;
                         }
                         s_logger.info("\n----------" + "\n Event ID: "
@@ -490,8 +453,9 @@ public class VCenterNotify implements Runnable
 
     public void terminate() throws Exception {
         shouldRun = false;
+        PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
         propColl.cancelWaitForUpdates();
-        propFilter.destroyPropertyFilter();
+        cleanupEventFilters();
         vcenterDB.getServiceInstance().getServerConnection().logout();
         watchUpdates.stop();
     }
@@ -517,12 +481,7 @@ public class VCenterNotify implements Runnable
                 300000, TimeUnit.MILLISECONDS);
         try {
             if (vcenterDB.connect() == true) {
-                cleanupEventFilters();
-                PropertyFilterSpec eventFilterSpec = createEventFilterSpec();
-                propColl = vcenterDB.getServiceInstance().getPropertyCollector();
-
-                propFilter = propColl.createFilter(eventFilterSpec, true);
-                
+                createEventFilters(); 
                 VcenterDBInitComplete = true;
             }
         } catch (Exception e) {
@@ -570,7 +529,6 @@ public class VCenterNotify implements Runnable
                     // addPort to vrouter agent for existing VMIs.
                     // Clear the flag  on first run of syncVirtualNetworks.
                     try {
-                        cleanupEventFilters();
                         vcenterDB.setReadTimeout(VCenterDB.VCENTER_READ_TIMEOUT);
                         MainDB.sync(vcenterDB, vncDB, VCenterMonitor.mode);
                         vcenterDB.setReadTimeout(0);
@@ -598,6 +556,7 @@ public class VCenterNotify implements Runnable
 
                 try
                 {
+                    PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
                     UpdateSet update = propColl.waitForUpdates(version);
                     if (update != null && update.getFilterSet() != null)
                     {
@@ -662,10 +621,128 @@ public class VCenterNotify implements Runnable
     }
 
     public static void stopUpdates() {
+        PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
         propColl.stopUpdates();
     }
     
     public static VncDB getVncDB() {
         return vncDB;
-    }    
+    }
+    
+    private void createEventFilters() throws RemoteException  {
+        cleanupEventFilters();
+
+        createDvsEventFilter(vcenterDB.getContrailDvs());
+
+        for (String hostName : vcenterDB.esxiToVRouterIpMap.keySet()) {
+            createHostEventFilter(hostName);
+        }
+    }
+
+    private void createDvsEventFilter(VmwareDistributedVirtualSwitch dvs) 
+            throws RemoteException {
+        String[] dvsEventNames = {
+            // DV Port group events
+            // DV port create
+            "DVPortgroupCreatedEvent",
+            // DV port modify
+            "DVPortgroupReconfiguredEvent",
+            "DVPortgroupRenamedEvent",
+            // DV port delete
+            "DVPortgroupDestroyedEvent"
+        };
+
+        watchManagedObjectEvents(dvs, dvsEventNames);
+    }
+
+    private void createHostEventFilter(String hostName) throws RemoteException {
+        HostSystem host = vcenterDB.getVmwareHost(hostName, 
+                    vcenterDB.contrailDC, vcenterDB.contrailDataCenterName);
+
+        if (host == null) {
+            s_logger.error("Cannot register for events for host " + hostName + ", not found.");
+            return;
+        }
+        s_logger.info("Register for events on host " + hostName);
+
+        String[] hostEventNames = {
+            // Host events
+            "HostConnectionLostEvent",
+            "HostConnectedEvent",
+            "EnteredMaintenanceModeEvent",
+            "ExitMaintenanceModeEvent",
+    
+            // VM events
+            // VM create events
+            "VmBeingCreated",
+            "VmCreatedEvent",
+            "VmClonedEvent",
+            "VmCloneEvent",
+            "VmDeployedEvent",
+            // VM modify events
+            "VmPoweredOnEvent",
+            "VmPoweredOffEvent",
+            "VmRenamedEvent",
+            "VmMacChangedEvent",
+            "VmMacAssignedEvent",
+            "VmReconfiguredEvent",
+            "VmEmigratingEvent",
+            "VmMigratedEvent",
+            "VmBeingMigratedEvent",
+            "VmBeingHotMigratedEvent",
+            // VM delete events
+            "VmRemovedEvent"
+        };
+        
+        watchManagedObjectEvents(host, hostEventNames);
+    }
+
+    private void watchManagedObjectEvents(ManagedObject mos, String[] events)
+    {
+        if (mos == null || events == null) {
+            s_logger.error("Null arguments in watchManagedObjectEvents");
+            return;
+        }
+        try
+        {
+            EventHistoryCollector collector = 
+                    createEventHistoryCollector(mos, events);
+
+            PropertyFilterSpec eventFilterSpec = createEventFilterSpec(collector);
+            PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
+
+            PropertyFilter propFilter = propColl.createFilter(eventFilterSpec, true); 
+                                //report only nesting properties, not enclosing ones.
+            if (propFilter != null) {
+                watchedFilters.put(mos, propFilter);
+            } else {
+                s_logger.error("Cannot create event filter for managed object ");
+            }
+        } catch(Exception e)
+        {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+    
+    private void unwatchManagedObjectEvents(ManagedObject mos)
+    {
+        if (mos == null) {
+            s_logger.error("Null arguments in unwatchManagedObjectEvents");
+            return;
+        }
+
+        if (watchedFilters.containsKey(mos)) {
+            try 
+            {
+                PropertyFilter pf = watchedFilters.remove(mos);
+                if (pf != null) {
+                    pf.destroyPropertyFilter();
+                }
+            } catch (RemoteException e) 
+            {
+                e.printStackTrace();
+            }
+        }
+    }
 }

@@ -64,7 +64,7 @@ public class VCenterDB {
     private static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
     static final int VCENTER_READ_TIMEOUT = 30000; //30 sec
     protected final String contrailDvSwitchName;
-    private final String contrailDataCenterName;
+    public final String contrailDataCenterName;
     private final String vcenterUrl;
     private final String vcenterUsername;
     private final String vcenterPassword;
@@ -1007,5 +1007,9 @@ public class VCenterDB {
             return false;
         }
         return true;
+    }
+    
+    public VmwareDistributedVirtualSwitch getContrailDvs() {
+        return contrailDVS;
     }
 }
