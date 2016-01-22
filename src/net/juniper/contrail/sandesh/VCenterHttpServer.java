@@ -38,6 +38,17 @@ public class VCenterHttpServer implements HttpService {
             }
         }
 
+        // register shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (server != null) {
+                    s_logger.info("Stopping HTTP server on port " + port + " ...");
+                    server.stop(0);
+                }
+            }
+        }, "shutdownHook"));
+
         try {
             server = HttpServer.create(new InetSocketAddress(port), 0);
             server.setExecutor(null); // creates a default executor
@@ -54,6 +65,7 @@ public class VCenterHttpServer implements HttpService {
         }
     }
     
+    @Override
     public void registerHandler(String path, HttpHandler h) {
         if (server != null) {
             server.createContext(path, h);
