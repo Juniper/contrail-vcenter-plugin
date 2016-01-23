@@ -115,9 +115,7 @@ public class VRouterNotifier {
         }
         String vrouterIpAddress = vmiInfo.getVmInfo().getVrouterIpAddress();
         String ipAddress = vmiInfo.getIpAddress();
-        VirtualMachineInfo vmInfo = vmiInfo.vmInfo;
-        VirtualNetworkInfo vnInfo = vmiInfo.vnInfo;
-        
+
         if (vrouterIpAddress == null) {
             s_logger.error(
                 "DeletePort notification NOT sent as vRouterIp Address not known for " + vmiInfo);

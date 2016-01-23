@@ -92,14 +92,8 @@ public class VCenterEventHandler {
             return;
         }
 
-        // Ignore virtual machine?
-        if (newVmInfo.ignore()) {
-            s_logger.debug(" Ignoring update vm: " + newVmInfo.getName());
-            return;
-        }
-        
         VirtualMachineInfo oldVmInfo = MainDB.getVmById(newVmInfo.getUuid());
-        
+
         if (oldVmInfo != null) {
             oldVmInfo.update(newVmInfo, vncDB);
         } else {

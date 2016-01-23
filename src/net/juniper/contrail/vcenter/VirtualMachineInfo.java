@@ -110,6 +110,7 @@ public class VirtualMachineInfo extends VCenterObject {
         
         apiVm = vm;
         uuid = vm.getUuid();
+        name = vm.getName();
     }
 
     public VirtualMachineInfo(VCenterDB vcenterDB,
@@ -369,9 +370,6 @@ public class VirtualMachineInfo extends VCenterObject {
             VncDB vncDB) throws Exception {
         
         VirtualMachineInfo newVmInfo = (VirtualMachineInfo)obj;
-        if (newVmInfo.ignore()) {
-            return;
-        } 
         
         if (newVmInfo.hostName != null) {
             hostName = newVmInfo.hostName;
@@ -412,17 +410,18 @@ public class VirtualMachineInfo extends VCenterObject {
         if (apiVm != null) {
             newVmInfo.apiVm = apiVm;
         }
-        
-        // in what cases do we really update
-        //vncDB.updateVirtualMachine(this);
-        
+                
         for (Map.Entry<String, VirtualMachineInterfaceInfo> entry: 
             newVmInfo.vmiInfoMap.entrySet()) {
            VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
            vmiInfo.setVmInfo(this);
         }
-        
+
         MainDB.update(vmiInfoMap, newVmInfo.vmiInfoMap);
+
+        if (vmiInfoMap.size() == 0) {
+            delete(vncDB);
+        }
     }
 
     @Override
@@ -435,14 +434,18 @@ public class VirtualMachineInfo extends VCenterObject {
         if (apiVm == null && oldVmInfo.apiVm != null) {
             apiVm = oldVmInfo.apiVm;
         }
-        
+
         if (vrouterIpAddress != null && oldVmInfo.vrouterIpAddress == null) {
             oldVmInfo.vrouterIpAddress = vrouterIpAddress;
         }
         // in what cases do we really update the VM
         //vncDB.updateVirtualMachine(this);
-        
+
         MainDB.sync(oldVmInfo.vmiInfoMap, this.vmiInfoMap);
+
+        if (vmiInfoMap.size() == 0) {
+            delete(vncDB);
+        }
     }
 
     @Override

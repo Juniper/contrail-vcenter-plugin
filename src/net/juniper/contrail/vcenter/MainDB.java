@@ -101,10 +101,10 @@ public class MainDB {
     
     public static void deleted(VirtualMachineInfo vmInfo) {
         if (vmwareVMs.containsKey(vmInfo.getUuid())) {
-            vmwareVNs.remove(vmInfo.getUuid());
+            vmwareVMs.remove(vmInfo.getUuid());
         }
     }
-    
+
     public static <K extends Comparable<K>, V extends VCenterObject> 
     void sync(SortedMap<K, V> oldMap, SortedMap<K, V> newMap) {
         
