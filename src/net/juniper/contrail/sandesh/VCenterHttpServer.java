@@ -20,6 +20,17 @@ public enum VCenterHttpServer implements HttpService {
     }
     
     private VCenterHttpServer() {
+        // register shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (server != null) {
+                    s_logger.info("Stopping HTTP server ...");
+                    server.stop(0);
+                }
+            }
+        }, "shutdownHook"));
+
         try {
             server = HttpServer.create(new InetSocketAddress(8777), 0);
             server.setExecutor(null); // creates a default executor
@@ -32,7 +43,8 @@ public enum VCenterHttpServer implements HttpService {
 
         s_logger.info("HTTP server for introspection started");
     }
-    
+
+    @Override
     public void registerHandler(String path, HttpHandler h) {
         if (server != null) {
             server.createContext(path, h);
