@@ -5,19 +5,11 @@
 package net.juniper.contrail.vcenter;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.Set;
 import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.UUID;
 import org.apache.log4j.Logger;
 import org.apache.commons.net.util.SubnetUtils;
@@ -38,8 +30,6 @@ import net.juniper.contrail.api.types.VirtualNetwork;
 import net.juniper.contrail.api.types.VnSubnetsType;
 import net.juniper.contrail.api.types.Project;
 import net.juniper.contrail.api.types.IdPermsType;
-import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
-
 import com.google.common.base.Throwables;
 
 public class VncDB {
@@ -157,6 +147,7 @@ public class VncDB {
         s_logger.info(" Checking if api-server is alive and kicking..");
 
         try {
+            @SuppressWarnings("unchecked")
             List<Project> projects = (List<Project>) apiConnector.list(Project.class, null);
             if (projects == null) {
                 s_logger.error(" ApiServer not fully awake yet.. retry again..");
@@ -673,7 +664,6 @@ public class VncDB {
             vnInfo.apiVn = network;
         }
 
-        VirtualMachineInterface vmi = vmiInfo.apiVmi;
         if (vmiInfo.apiVmi != null) {
             return;
         }
@@ -831,6 +821,7 @@ public class VncDB {
                 instanceIp.getAddress());
     }
 
+    @SuppressWarnings("unchecked")
     SortedMap<String, VirtualNetworkInfo> readVirtualNetworks() {
         SortedMap<String, VirtualNetworkInfo>  map = 
                 new ConcurrentSkipListMap<String, VirtualNetworkInfo>();
@@ -872,6 +863,7 @@ public class VncDB {
     }
 
  
+    @SuppressWarnings("unchecked")
     SortedMap<String, VirtualMachineInfo> readVirtualMachines() {
         
         List<VirtualMachine> apiVms = null;
@@ -1012,7 +1004,7 @@ public class VncDB {
                 return null;
             }
         }
-        // find VMI matching vmUuid & vnUuid
+        // find VMI matching vmUuid & vnUuid & macAddress
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
                 vmiInfo.vmInfo.apiVm.getVirtualMachineInterfaceBackRefs();
         for (ObjectReference<ApiPropertyBase> vmInterfaceRef :
@@ -1021,13 +1013,24 @@ public class VncDB {
             VirtualMachineInterface vmInterface = (VirtualMachineInterface)
                     apiConnector.findById(VirtualMachineInterface.class,
                             vmInterfaceUuid);
+            
+            List<String> macAddresses = vmInterface.getMacAddresses().getMacAddress();
+            if (macAddresses.size() <= 0) {
+                continue;
+            }
+            if (vmiInfo.getMacAddress() != null
+                        && !macAddresses.get(0).equals(vmiInfo.getMacAddress())) {
+                continue;
+            }
             List<ObjectReference<ApiPropertyBase>> vnRefs =
                                             vmInterface.getVirtualNetwork();
             for (ObjectReference<ApiPropertyBase> vnRef : vnRefs) {
                 if (vnRef.getUuid().equals(vmiInfo.vnInfo.getUuid())) {
                     vmiInfo.apiVmi = vmInterface;
                     vmiInfo.setUuid(vmInterface.getUuid());
-                    readMacAddress(vmiInfo);
+                    if (vmiInfo.getMacAddress() == null) {
+                        vmiInfo.setMacAddress(macAddresses.get(0));
+                    }
                     readInstanceIp(vmiInfo);
                     return vmInterface;
                }
@@ -1036,6 +1039,7 @@ public class VncDB {
         return null;
     }
     
+    @SuppressWarnings("unchecked")
     public void deleteInstanceIps()
             throws IOException {
             
@@ -1121,6 +1125,7 @@ public class VncDB {
         }
     }
     
+    @SuppressWarnings("unchecked")
     public void deleteVirtualMachineInterfaces()
             throws IOException {
             
@@ -1196,6 +1201,7 @@ public class VncDB {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public void deleteVirtualMachines()
             throws IOException {
             
@@ -1214,6 +1220,7 @@ public class VncDB {
         }
     }
     
+    @SuppressWarnings("unchecked")
     public void deleteVirtualNetworks()
             throws IOException {
             

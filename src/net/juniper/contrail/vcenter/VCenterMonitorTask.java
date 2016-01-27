@@ -4,24 +4,9 @@
 
 package net.juniper.contrail.vcenter;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.SortedMap;
-import java.util.Iterator;
-import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.UUID;
 import com.google.common.base.Throwables;
-import com.vmware.vim25.PropertyFilterSpec;
-import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
-import org.apache.log4j.Level;
-import net.juniper.contrail.api.types.VirtualMachine;
-import net.juniper.contrail.api.types.VirtualMachineInterface;
 import net.juniper.contrail.watchdog.TaskWatchDog;
 
 class VCenterMonitorTask implements Runnable {
