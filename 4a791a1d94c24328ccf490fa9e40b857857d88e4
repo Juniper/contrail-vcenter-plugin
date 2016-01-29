@@ -1,0 +1,9 @@
+Approved+1: opencontrail-admin <ci-admin@opencontrail.org>
+Code-Review+2: opencontrail-admin <ci-admin@opencontrail.org>
+Verified+2: opencontrail-admin <ci-admin@opencontrail.org>
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Thu, 28 Jan 2016 23:07:00 -0800
+Reviewed-on: https://review.opencontrail.org/16655
+Project: Juniper/contrail-vcenter-plugin
+Branch: refs/heads/R2.22.x
