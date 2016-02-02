@@ -31,6 +31,7 @@ override_dh_auto_build:
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/pacesys/openstack4j-core/2.0.1/openstack4j-core-2.0.1.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/pacesys/openstack4j/connectors/openstack4j-jersey2/2.0.1/openstack4j-jersey2-2.0.1.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/pacesys/openstack4j/2.0.1/openstack4j-2.0.1-withdeps.jar
+	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/apache/zookeeper/zookeeper/3.4.5/zookeeper-3.4.5.jar
 
 override_dh_auto_clean:
 	rm -f debian/manpages/*.1

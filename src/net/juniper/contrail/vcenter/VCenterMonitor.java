@@ -78,6 +78,9 @@ public class VCenterMonitor {
     
     private static volatile MasterSelection zk_ms;
     public static boolean isZookeeperLeader() {
+        if (mode.equals(Mode.VCENTER_AS_COMPUTE))
+            return true;
+
         return zk_ms.isLeader();
     }
         
@@ -160,12 +163,17 @@ public class VCenterMonitor {
         launchWatchDogs();
 
         VCenterHttpServices.init(configProps);
-                
-        // Zookeeper mastership logic
-        zk_ms = new MasterSelection(_zookeeperAddrPort, _zookeeperLatchPath, _zookeeperId);
-        s_logger.info("Waiting for zookeeper Mastership .. ");
-        zk_ms.waitForLeadership();
-        s_logger.info("Acquired zookeeper Mastership .. ");
+
+        // Connect to zookeeper only if VCenterOnly mode of operation.
+        // Since in vCenterOnly mode, we can run vcenter-plugin in active-standby mode.
+        // For vcenter-as-compute mode, there is only active instance of vcenter-plugin.
+        if (mode.equals(Mode.VCENTER_ONLY)) {
+            // Zookeeper mastership logic
+            zk_ms = new MasterSelection(_zookeeperAddrPort, _zookeeperLatchPath, _zookeeperId);
+            s_logger.info("Waiting for zookeeper Mastership .. ");
+            zk_ms.waitForLeadership();
+            s_logger.info("Acquired zookeeper Mastership .. ");
+        }
         
         // Launch the periodic VCenterMonitorTask
         VCenterMonitorTask _monitorTask = new VCenterMonitorTask(_eventMonitor,

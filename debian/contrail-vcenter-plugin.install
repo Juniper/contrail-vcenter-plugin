@@ -18,3 +18,4 @@ target/slf4j-simple-1.5.8.jar usr/share/contrail-vcenter-plugin/lib
 target/openstack4j-jersey2-2.0.1.jar usr/share/contrail-vcenter-plugin/lib
 target/openstack4j-2.0.1-withdeps.jar usr/share/contrail-vcenter-plugin/lib
 target/openstack4j-core-2.0.1.jar /usr/share/contrail-vcenter-plugin/lib
+target/zookeeper-3.4.5.jar /usr/share/contrail-vcenter-plugin/lib
