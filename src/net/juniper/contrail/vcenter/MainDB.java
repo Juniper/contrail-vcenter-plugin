@@ -5,15 +5,11 @@
  */
 package net.juniper.contrail.vcenter;
 
-import java.io.IOException;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.SortedMap;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
 import org.apache.log4j.Logger;
-import net.juniper.contrail.api.types.VirtualMachine;
-import net.juniper.contrail.api.types.VirtualNetwork;
 
 public class MainDB {
     private static volatile SortedMap<String, VirtualNetworkInfo> vmwareVNs =
@@ -21,7 +17,7 @@ public class MainDB {
     private static volatile SortedMap<String, VirtualMachineInfo> vmwareVMs =
             new ConcurrentSkipListMap<String, VirtualMachineInfo>();
     
-    private static volatile VncDB vncDB;
+    static volatile VncDB vncDB;
     private static volatile VCenterDB vcenterDB;
     private static volatile Mode mode;
     private final static Logger s_logger =

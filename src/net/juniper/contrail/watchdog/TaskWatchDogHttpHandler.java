@@ -9,6 +9,7 @@ import com.sun.net.httpserver.HttpHandler;
 import net.juniper.contrail.sandesh.ContentType;
 import net.juniper.contrail.sandesh.VCenterHttpServices;
 
+@SuppressWarnings("restriction")
 public class TaskWatchDogHttpHandler implements HttpHandler {
 
     public final String styleSheet = "/universal_parse.xsl";

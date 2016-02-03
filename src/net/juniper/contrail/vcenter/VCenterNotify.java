@@ -725,6 +725,7 @@ public class VCenterNotify implements Runnable
         }
     }
     
+    @SuppressWarnings("unused")
     private void unwatchManagedObjectEvents(ManagedObject mos)
     {
         if (mos == null) {

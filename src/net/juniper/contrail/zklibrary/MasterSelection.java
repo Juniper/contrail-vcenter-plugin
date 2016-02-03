@@ -2,31 +2,11 @@ package net.juniper.contrail.zklibrary;
 
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.apache.curator.framework.recipes.leader.Participant;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map.Entry;
-import java.io.Closeable;
 import java.io.IOException;
-
-import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.framework.api.GetDataBuilder;
 import org.apache.curator.retry.ExponentialBackoffRetry;
-import org.apache.curator.framework.recipes.leader.LeaderSelector;
-import org.apache.curator.framework.recipes.leader.LeaderSelectorListener;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs.Perms;
-import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.Id;
-import org.apache.zookeeper.data.Stat;
-import org.apache.curator.framework.state.ConnectionState;
-
-import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
-import org.apache.log4j.Level;
 
 
 

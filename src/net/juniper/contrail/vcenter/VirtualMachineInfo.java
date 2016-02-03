@@ -2,39 +2,29 @@ package net.juniper.contrail.vcenter;
 
 import com.vmware.vim25.VirtualMachinePowerState;
 import com.vmware.vim25.VirtualMachineRuntimeInfo;
-import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import com.vmware.vim25.mo.HostSystem;
-import com.vmware.vim25.mo.Network;
 import java.io.IOException;
-import java.rmi.RemoteException;
 import java.util.Hashtable;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
 import com.vmware.vim25.Event;
 import com.vmware.vim25.GuestNicInfo;
-import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.ManagedObjectReference;
-import com.vmware.vim25.NetIpConfigInfo;
-import com.vmware.vim25.NetIpConfigInfoIpAddress;
-import com.vmware.vim25.RuntimeFault;
-import net.juniper.contrail.api.ApiPropertyBase;
-import net.juniper.contrail.api.ObjectReference;
-import net.juniper.contrail.api.types.VirtualMachine;
 
 public class VirtualMachineInfo extends VCenterObject {
     private String uuid; // required attribute, key for this object
     private String name;
-    ManagedObjectReference hmor;
     private String hostName;
     private String vrouterIpAddress;
     private VirtualMachinePowerState powerState;
     private String toolsRunningStatus;
-    private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap; // keyed by MAC address
+    private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap; 
+        /* keyed by MAC address, contains only interfaces
+         * belonging to managed networks
+         */
     protected static final String contrailVRouterVmNamePrefix = "contrailVM";
 
     // Vmware objects
@@ -49,9 +39,31 @@ public class VirtualMachineInfo extends VCenterObject {
     net.juniper.contrail.api.types.VirtualMachine apiVm;
 
     public VirtualMachineInfo(String uuid) {
-        this.uuid             = uuid;
+        this.uuid = uuid;
 
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
+    }
+
+    public VirtualMachineInfo(String uuid, String name, String hostName, String vrouterIpAddress,
+            VirtualMachinePowerState powerState) 
+    {
+        this.uuid = uuid;
+        this.name = name;
+        this.hostName = hostName;
+        this.vrouterIpAddress = vrouterIpAddress;
+        this.powerState = powerState;
+        
+        vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
+    }
+
+    public VirtualMachineInfo(VirtualMachineInfo vmInfo) 
+    {
+        this.uuid = vmInfo.uuid;
+        this.name = vmInfo.name;
+        this.hostName = vmInfo.hostName;
+        this.vrouterIpAddress = vmInfo.vrouterIpAddress;
+        this.powerState = vmInfo.powerState;
+        this.vmiInfoMap = vmInfo.vmiInfoMap;
     }
 
     public VirtualMachineInfo(Event event,  VCenterDB vcenterDB, VncDB vncDB) throws Exception {
@@ -159,14 +171,6 @@ public class VirtualMachineInfo extends VCenterObject {
         this.hostName = hostName;
     }
 
-    public ManagedObjectReference getHmor() {
-        return hmor;
-    }
-
-    public void setHmor(ManagedObjectReference hmor) {
-        this.hmor = hmor;
-    }
-
     public String getVrouterIpAddress() {
         return vrouterIpAddress;
     }
@@ -263,6 +267,10 @@ public class VirtualMachineInfo extends VCenterObject {
         }
     }
 
+    public boolean contains(VirtualMachineInterfaceInfo vmiInfo) {
+        return vmiInfoMap.containsKey(vmiInfo.getMacAddress());
+    }
+
     public boolean equals(VirtualMachineInfo vm) {
         if (vm == null) {
             return false;
@@ -273,10 +281,6 @@ public class VirtualMachineInfo extends VCenterObject {
         }
         if ((name != null && !name.equals(vm.name))
                 || (name == null && vm.name != null)) {
-            return false;
-        }
-        if ((hmor != null && !hmor.equals(vm.hmor))
-                || (hmor == null && vm.hmor != null)) {
             return false;
         }
         if ((vrouterIpAddress != null && !vrouterIpAddress.equals(vm.vrouterIpAddress))

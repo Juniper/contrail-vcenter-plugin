@@ -10,10 +10,6 @@ import com.vmware.vim25.GuestNicInfo;
 import com.vmware.vim25.NetIpConfigInfo;
 import com.vmware.vim25.NetIpConfigInfoIpAddress;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
-import net.juniper.contrail.api.types.InstanceIp;
-import net.juniper.contrail.api.types.VirtualNetwork;
-import net.juniper.contrail.api.types.VirtualMachine;
-import net.juniper.contrail.api.types.VirtualMachineInterface;
 
 public class VirtualMachineInterfaceInfo extends VCenterObject {
     private String uuid;
@@ -31,6 +27,19 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             VirtualNetworkInfo vnInfo) {
         this.vmInfo = vmInfo;
         this.vnInfo = vnInfo;
+    }
+
+    VirtualMachineInterfaceInfo(String macAddress)
+    {
+        this.macAddress = macAddress;
+    }
+
+    VirtualMachineInterfaceInfo(VirtualMachineInterfaceInfo vmiInfo)
+    {
+        this.vmInfo = vmiInfo.vmInfo;
+        this.vnInfo = vmiInfo.vnInfo;
+        this.macAddress = vmiInfo.macAddress;
+        this.uuid = vmiInfo.uuid;
     }
 
     public String getUuid() {
@@ -91,7 +100,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             return;
         }
         NetIpConfigInfoIpAddress[] ipAddrs = nic.getIpConfig().getIpAddress();
-        if (ipAddrs == null && ipAddrs.length <= 0) {
+        if (ipAddrs == null || ipAddrs.length <= 0) {
             return;
         }
         String newIpAddress = ipAddrs[0].getIpAddress();

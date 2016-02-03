@@ -1,14 +1,11 @@
 package net.juniper.contrail.vcenter;
 
-import java.io.IOException;
 import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.UUID;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
 import com.vmware.vim25.DVPortSetting;
 import com.vmware.vim25.DVSConfigInfo;
@@ -18,24 +15,16 @@ import com.vmware.vim25.IpPool;
 import com.vmware.vim25.IpPoolIpPoolConfigInfo;
 import com.vmware.vim25.RuntimeFault;
 import com.vmware.vim25.VMwareDVSConfigInfo;
-import com.vmware.vim25.VMwareDVSPortSetting;
 import com.vmware.vim25.VMwareDVSPvlanMapEntry;
-import com.vmware.vim25.VmwareDistributedVirtualSwitchPvlanSpec;
-import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanIdSpec;
-import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanSpec;
-import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim25.mo.DistributedVirtualPortgroup;
 import com.vmware.vim25.mo.ManagedObject;
-import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
 import com.vmware.vim25.mo.util.PropertyCollectorUtil;
-import net.juniper.contrail.api.types.VirtualNetwork;
 
 public class VirtualNetworkInfo extends VCenterObject {
     private String uuid; // required attribute, key for this object
     private String name;
     private short isolatedVlanId;
     private short primaryVlanId;
-    private SortedMap<String, VirtualMachineInfo> vmInfo;
     private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap; // key is MAC address
     private Integer ipPoolId;
     private String subnetAddress;
@@ -48,7 +37,6 @@ public class VirtualNetworkInfo extends VCenterObject {
     // Vmware
     com.vmware.vim25.mo.Network net;
     DistributedVirtualPortgroup dpg;
-    DVPortSetting portSetting;
     com.vmware.vim25.mo.VmwareDistributedVirtualSwitch dvs;
     String dvsName;
     com.vmware.vim25.mo.Datacenter dc;
@@ -59,19 +47,53 @@ public class VirtualNetworkInfo extends VCenterObject {
 
     public VirtualNetworkInfo(String uuid) {
         this.uuid = uuid;
+        vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
     }
 
+    public VirtualNetworkInfo(String uuid, String name, 
+            boolean externalIpam, boolean ipPoolEnabled, 
+            String subnetAddress,String subnetMask, String range, String gatewayAddress,
+            short primaryVlanId, short isolatedVlanId)
+    {
+        this.uuid = uuid;
+        this.name = name;
+        this.externalIpam = externalIpam;
+        this.ipPoolEnabled = ipPoolEnabled;
+        this.subnetAddress = subnetAddress;
+        this.subnetMask = subnetMask;
+        this.range = range;
+        this.gatewayAddress = gatewayAddress;
+        this.primaryVlanId = primaryVlanId;
+        this.isolatedVlanId = isolatedVlanId;
+        
+        vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
+    }
+
+    public VirtualNetworkInfo(VirtualNetworkInfo vnInfo)
+    {
+        this.uuid = vnInfo.uuid;
+        this.name = vnInfo.name;
+        this.subnetAddress = vnInfo.subnetAddress;
+        this.subnetMask = vnInfo.subnetMask;
+        this.gatewayAddress = vnInfo.gatewayAddress;
+        this.primaryVlanId = vnInfo.primaryVlanId;
+        this.isolatedVlanId = vnInfo.isolatedVlanId;
+        this.ipPoolEnabled = vnInfo.ipPoolEnabled;
+        this.range = vnInfo.range;
+        this.externalIpam = vnInfo.externalIpam;
+        
+        this.vmiInfoMap = vnInfo.vmiInfoMap;
+    }
+    
     public VirtualNetworkInfo(net.juniper.contrail.api.types.VirtualNetwork vn) {
         this.apiVn = vn;
         this.uuid = vn.getUuid();
         name = vn.getName();
-        this.vmInfo = new ConcurrentSkipListMap<String, VirtualMachineInfo>();
         this.vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
         this.externalIpam = vn.getExternalIpam();
     }
     
     public VirtualNetworkInfo(Event event,  VCenterDB vcenterDB) throws Exception {
-        vmInfo = new ConcurrentSkipListMap<String, VirtualMachineInfo>();
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
         
         if (event.getDatacenter() != null) {
@@ -127,7 +149,6 @@ public class VirtualNetworkInfo extends VCenterObject {
                 || pvlanMapArray == null) {
             throw new IllegalArgumentException();
         }
-        vmInfo = new ConcurrentSkipListMap<String, VirtualMachineInfo>();
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
         this.dc = dc;
         this.dcName = dcName;
@@ -138,16 +159,8 @@ public class VirtualNetworkInfo extends VCenterObject {
         populateInfo(vcenterDB, pTable);
     }
     
-    void populateInfo(VCenterDB vcenterDB, Hashtable pTable) throws Exception {
-        
-        vmInfo = new ConcurrentSkipListMap<String, VirtualMachineInfo>();
-        
-        // Extract dvPg configuration info and port setting
-        portSetting = (DVPortSetting) pTable.get("config.defaultPortConfig");
-
-        if (ignore()) {
-            return;
-        }
+    void populateInfo(VCenterDB vcenterDB, Hashtable pTable) throws Exception {        
+        populateVlans(vcenterDB, pTable);
 
         name = (String) pTable.get("name");
 
@@ -166,8 +179,6 @@ public class VirtualNetworkInfo extends VCenterObject {
             throw new Exception("Unhandled mode " + vcenterDB.mode.name());
         }
 
-        populateVlans(vcenterDB);
-        
         populateAddressManagement(vcenterDB, pTable);
     }
 
@@ -186,7 +197,7 @@ public class VirtualNetworkInfo extends VCenterObject {
         externalIpam = vcenterDB.getExternalIpamInfo(opaqueBlobs, name);
     }
 
-    private void populateVlans(VCenterDB vcenterDB) throws Exception {
+    private void populateVlans(VCenterDB vcenterDB, Hashtable pTable) throws Exception {
         // get pvlan/vlan info for the portgroup.
         // Extract private vlan entries for the virtual switch
         DVSConfigInfo dvsConf = dvs.getConfig();
@@ -211,6 +222,8 @@ public class VirtualNetworkInfo extends VCenterObject {
                     "configured");
         }
         
+        // Extract dvPg configuration info and port setting
+        DVPortSetting portSetting = (DVPortSetting) pTable.get("config.defaultPortConfig");
         HashMap<String, Short> vlan = vcenterDB.getVlanInfo(dpg, portSetting, pvlanMapArray);
         if (vlan == null) {
             return;
@@ -262,14 +275,6 @@ public class VirtualNetworkInfo extends VCenterObject {
 
     public SortedMap<String, VirtualMachineInterfaceInfo> getVmiInfo() {
         return vmiInfoMap;
-    }
-
-    public SortedMap<String, VirtualMachineInfo> getVmInfo() {
-        return vmInfo;
-    }
-
-    public void setVmInfo(SortedMap<String, VirtualMachineInfo> vmInfo) {
-        this.vmInfo = vmInfo;
     }
 
     private IpPool getIpPool(Integer poolid, IpPool[] ipPools) {
@@ -400,6 +405,10 @@ public class VirtualNetworkInfo extends VCenterObject {
         }
     }
 
+    public boolean contains(VirtualMachineInterfaceInfo vmiInfo) {
+        return vmiInfoMap.containsKey(vmiInfo.getMacAddress());
+    }
+
     public boolean equals(VirtualNetworkInfo vn) {
         if (vn == null) {
             return false;
@@ -456,22 +465,10 @@ public class VirtualNetworkInfo extends VCenterObject {
     }
 
     boolean ignore() {
-        // Ignore dvPgs that do not have PVLAN/VLAN configured
-        if (portSetting instanceof VMwareDVSPortSetting) {
-            VMwareDVSPortSetting vPortSetting = 
-                    (VMwareDVSPortSetting) portSetting;
-            VmwareDistributedVirtualSwitchVlanSpec vlanSpec = 
-                    vPortSetting.getVlan();
-            if (vlanSpec instanceof VmwareDistributedVirtualSwitchPvlanSpec) {
-                return false;
-            }
-            if (vlanSpec instanceof VmwareDistributedVirtualSwitchVlanIdSpec) {
-                return false;
-            }
-        }
-        return true;
+        // Ignore networks that do not have PVLAN/VLAN configured
+        return (primaryVlanId == 0 && isolatedVlanId == 0);
     }
-    
+
     // change the method below to use Observer pattern and get rid of the Vnc param
     @Override
     void create(VncDB vncDB) throws Exception {
@@ -483,7 +480,7 @@ public class VirtualNetworkInfo extends VCenterObject {
         vncDB.createVirtualNetwork(this);
         MainDB.created(this);
     }
-    
+
     @Override
     void update(VCenterObject obj, VncDB vncDB) 
                     throws Exception {
@@ -532,9 +529,6 @@ public class VirtualNetworkInfo extends VCenterObject {
         }
         if (newVnInfo.dpg != null) {
             dpg = newVnInfo.dpg;
-        }
-        if (newVnInfo.portSetting != null) {
-            portSetting = newVnInfo.portSetting;
         }
         if (newVnInfo.dvs != null) {
             dvs = newVnInfo.dvs;
