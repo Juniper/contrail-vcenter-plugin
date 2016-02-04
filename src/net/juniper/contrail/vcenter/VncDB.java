@@ -31,6 +31,7 @@ import net.juniper.contrail.api.types.VnSubnetsType;
 import net.juniper.contrail.api.types.Project;
 import net.juniper.contrail.api.types.IdPermsType;
 import com.google.common.base.Throwables;
+import com.google.common.net.InetAddresses;
 
 public class VncDB {
     private static final Logger s_logger = 
@@ -513,8 +514,9 @@ public class VncDB {
                 String start = (pools[0]).replace(" ","");
                 String num   = (pools[1]).replace(" ","");
                 String[] bytes = start.split("\\.");
-                String end   = bytes[0] + "." + bytes[1] + "." + bytes[2] + "."
-                               + Integer.toString(Integer.parseInt(bytes[3]) +  Integer.parseInt(num) - 1);
+                int start_ip = InetAddresses.coerceToInteger(InetAddresses.forString(start));
+                int end_ip = start_ip + Integer.parseInt(num) - 1;
+                String end = InetAddresses.toAddrString(InetAddresses.fromInteger(end_ip));
                 s_logger.info("Subnet IP Range :  Start:"  + start + " End:" + end);
                 VnSubnetsType.IpamSubnetType.AllocationPoolType pool1 = new
                         VnSubnetsType.IpamSubnetType.AllocationPoolType(start, end);

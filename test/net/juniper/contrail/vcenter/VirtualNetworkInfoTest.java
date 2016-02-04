@@ -34,10 +34,10 @@ public class VirtualNetworkInfoTest extends TestCase {
 
     private final static String vnUuid1         = UUID.randomUUID().toString();
     private final static String vnName1         = "BLUE";
-    private final static String subnetAddr1     = "192.168.1.0";
-    private final static String subnetMask1     = "255.255.255.0";
-    private final static String gatewayAddr1    = "192.168.1.1";
-    private final static String range1          = "192.18.1.2#230";
+    private final static String subnetAddr1     = "192.168.0.0";
+    private final static String subnetMask1     = "255.255.0.0";
+    private final static String gatewayAddr1    = "192.168.0.1";
+    private final static String range1          = "192.168.0.2#430";
     private final static short primaryVlanId1   = 100;
     private final static short isolatedVlanId1  = 101;
     private final static boolean externalIpam1  = false;
@@ -53,7 +53,7 @@ public class VirtualNetworkInfoTest extends TestCase {
     private final static String subnetAddr2     = "192.168.2.0";
     private final static String subnetMask2     = "255.255.255.0";
     private final static String gatewayAddr2    = "192.168.2.1";
-    private final static String range2          = "192.18.2.2#230";
+    private final static String range2          = "192.168.2.2#230";
     private final static short primaryVlanId2   = 200;
     private final static short isolatedVlanId2  = 201;
     private final static boolean externalIpam2  = false;
