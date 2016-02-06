@@ -2,6 +2,7 @@ package net.juniper.contrail.vcenter;
 
 import com.vmware.vim25.VirtualMachinePowerState;
 import com.vmware.vim25.VirtualMachineRuntimeInfo;
+import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import com.vmware.vim25.mo.HostSystem;
 import java.io.IOException;
 import java.util.Hashtable;
@@ -11,6 +12,7 @@ import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import com.vmware.vim25.Event;
+import com.vmware.vim25.GuestInfo;
 import com.vmware.vim25.GuestNicInfo;
 import com.vmware.vim25.ManagedObjectReference;
 
@@ -20,8 +22,8 @@ public class VirtualMachineInfo extends VCenterObject {
     private String hostName;
     private String vrouterIpAddress;
     private VirtualMachinePowerState powerState;
-    private String toolsRunningStatus;
-    private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap; 
+    private String toolsRunningStatus = VirtualMachineToolsRunningStatus.guestToolsNotRunning.toString();
+    private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap;
         /* keyed by MAC address, contains only interfaces
          * belonging to managed networks
          */
@@ -33,8 +35,8 @@ public class VirtualMachineInfo extends VCenterObject {
     com.vmware.vim25.mo.VmwareDistributedVirtualSwitch dvs;
     String dvsName;
     com.vmware.vim25.mo.Datacenter dc;
-    String dcName; 
-    
+    String dcName;
+
     //API server objects
     net.juniper.contrail.api.types.VirtualMachine apiVm;
 
@@ -45,18 +47,18 @@ public class VirtualMachineInfo extends VCenterObject {
     }
 
     public VirtualMachineInfo(String uuid, String name, String hostName, String vrouterIpAddress,
-            VirtualMachinePowerState powerState) 
+            VirtualMachinePowerState powerState)
     {
         this.uuid = uuid;
         this.name = name;
         this.hostName = hostName;
         this.vrouterIpAddress = vrouterIpAddress;
         this.powerState = powerState;
-        
+
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
     }
 
-    public VirtualMachineInfo(VirtualMachineInfo vmInfo) 
+    public VirtualMachineInfo(VirtualMachineInfo vmInfo)
     {
         this.uuid = vmInfo.uuid;
         this.name = vmInfo.name;
@@ -86,14 +88,14 @@ public class VirtualMachineInfo extends VCenterObject {
 
             if (event.getVm() != null) {
                 name = event.getVm().getName();
-  
+
                 vm = vcenterDB.getVmwareVirtualMachine(name, host, hostName, dcName);
              }
         }
-        
+
         vrouterIpAddress = vcenterDB.getVRouterVMIpFabricAddress(
                 hostName, host, contrailVRouterVmNamePrefix);
-        
+
         uuid = vm.getConfig().getInstanceUuid();
 
         VirtualMachineRuntimeInfo vmRuntimeInfo = vm.getRuntime();
@@ -102,10 +104,10 @@ public class VirtualMachineInfo extends VCenterObject {
 
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
         vcenterDB.readVirtualMachineInterfaces(this);
-        
+
         if (vcenterDB.mode == Mode.VCENTER_AS_COMPUTE) {
             // ipAddress and UUID must be read from Vnc
-            for (Map.Entry<String, VirtualMachineInterfaceInfo> entry: 
+            for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
                 vmiInfoMap.entrySet()) {
                 VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
                 vncDB.readVirtualMachineInterface(vmiInfo);
@@ -115,11 +117,11 @@ public class VirtualMachineInfo extends VCenterObject {
 
     public VirtualMachineInfo(net.juniper.contrail.api.types.VirtualMachine vm) {
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
-        
+
         if (vm == null) {
             return;
         }
-        
+
         apiVm = vm;
         uuid = vm.getUuid();
         name = vm.getName();
@@ -127,20 +129,20 @@ public class VirtualMachineInfo extends VCenterObject {
 
     public VirtualMachineInfo(VCenterDB vcenterDB,
             com.vmware.vim25.mo.Datacenter dc, String dcName,
-            com.vmware.vim25.mo.VirtualMachine vm, Hashtable pTable, 
+            com.vmware.vim25.mo.VirtualMachine vm, Hashtable pTable,
             com.vmware.vim25.mo.HostSystem host,
-            String vrouterIpAddress) 
+            String vrouterIpAddress)
                     throws Exception {
 
         if (vcenterDB == null || dc == null || dcName == null
                 || vm == null || pTable == null) {
             throw new IllegalArgumentException();
         }
-        
+
         this.dc = dc;
         this.dcName = dcName;
         this.vm = vm;
-        
+
         // Name
         uuid  = (String)  pTable.get("config.instanceUuid");
         name = (String) pTable.get("name");
@@ -162,7 +164,7 @@ public class VirtualMachineInfo extends VCenterObject {
 
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
     }
-    
+
     public String getHostName() {
         return hostName;
     }
@@ -231,30 +233,36 @@ public class VirtualMachineInfo extends VCenterObject {
     public void setVmiInfo(SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap) {
         this.vmiInfoMap = vmiInfoMap;
     }
-    
-    public void updatedGuestNics(GuestNicInfo[] nics, VncDB vncDB) 
+
+    public void updatedGuestNics(VncDB vncDB)
             throws Exception {
+        GuestInfo guestInfo = vm.getGuest();
+        if (guestInfo == null) {
+            return;
+        }
+        GuestNicInfo[] nics = guestInfo.getNet();
+
         if (nics == null) {
             return;
         }
-        
+
         for (GuestNicInfo nic: nics) {
             if (nic == null) {
                 continue;
             }
             String mac = nic.getMacAddress();
-            
+
             if (vmiInfoMap.containsKey(mac)) {
                 VirtualMachineInterfaceInfo oldVmi = vmiInfoMap.get(mac);
                 oldVmi.updatedGuestNic(nic, vncDB);
             }
         }
     }
-    
+
     public void created(VirtualMachineInterfaceInfo vmiInfo) {
         vmiInfoMap.put(vmiInfo.getMacAddress(), vmiInfo);
     }
-    
+
     public void updated(VirtualMachineInterfaceInfo vmiInfo) {
         if (!vmiInfoMap.containsKey(vmiInfo.getMacAddress())) {
             vmiInfoMap.put(vmiInfo.getMacAddress(), vmiInfo);
@@ -302,11 +310,11 @@ public class VirtualMachineInfo extends VCenterObject {
         if (vm == null) {
             return false;
         }
-        
+
         if (vmiInfoMap.size() != vm.vmiInfoMap.size()) {
             return false;
         }
-        
+
         Iterator<Entry<String, VirtualMachineInterfaceInfo>> iter1 =
                 vmiInfoMap.entrySet().iterator();
         Iterator<Entry<String, VirtualMachineInterfaceInfo>> iter2 =
@@ -326,13 +334,13 @@ public class VirtualMachineInfo extends VCenterObject {
     public String toString() {
         return "VM <" + name + ", host " + hostName + ", " + uuid + ">";
     }
-    
+
     public StringBuffer toStringBuffer() {
         StringBuffer s = new StringBuffer(
                 "VM <" + name + ", host " + hostName + ", " + uuid + ">\n\n");
         for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
             vmiInfoMap.entrySet()) {
-        
+
             VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
             s.append("\t")
              .append(vmiInfo).append("\n");
@@ -349,32 +357,32 @@ public class VirtualMachineInfo extends VCenterObject {
 
         return false;
     }
-    
+
     @Override
     void create(VncDB vncDB) throws Exception {
         if (ignore()) {
             return;
         }
-        
+
         vncDB.createVirtualMachine(this);
-        
-        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry: 
+
+        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
             vmiInfoMap.entrySet()) {
            VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
            vmiInfo.create(vncDB);
-           
+
        }
-       
-       MainDB.created(this); 
+
+       MainDB.created(this);
     }
-    
+
     @Override
     void update(
             VCenterObject obj,
             VncDB vncDB) throws Exception {
-        
+
         VirtualMachineInfo newVmInfo = (VirtualMachineInfo)obj;
-        
+
         if (newVmInfo.hostName != null) {
             hostName = newVmInfo.hostName;
         }
@@ -414,8 +422,8 @@ public class VirtualMachineInfo extends VCenterObject {
         if (apiVm != null) {
             newVmInfo.apiVm = apiVm;
         }
-                
-        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry: 
+
+        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
             newVmInfo.vmiInfoMap.entrySet()) {
            VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
            vmiInfo.setVmInfo(this);
@@ -432,9 +440,9 @@ public class VirtualMachineInfo extends VCenterObject {
     void sync(
             VCenterObject obj,
             VncDB vncDB) throws Exception {
-        
+
         VirtualMachineInfo oldVmInfo = (VirtualMachineInfo)obj;
-        
+
         if (apiVm == null && oldVmInfo.apiVm != null) {
             apiVm = oldVmInfo.apiVm;
         }
@@ -455,19 +463,19 @@ public class VirtualMachineInfo extends VCenterObject {
     @Override
     void delete(VncDB vncDB)
             throws IOException {
-        
-        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry: 
+
+        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
                  vmiInfoMap.entrySet()) {
             VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
             vmiInfo.delete(vncDB);
-            
+
         }
-        
+
         vncDB.deleteVirtualMachine(this);
-        
+
         MainDB.deleted(this);
     }
-    
+
     public boolean ignore(String vmName) {
         // Ignore contrailVRouterVMs since those should not be reflected in
         // Contrail VNC
