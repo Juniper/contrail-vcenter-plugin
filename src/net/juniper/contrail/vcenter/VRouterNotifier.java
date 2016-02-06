@@ -15,56 +15,53 @@ import org.apache.log4j.Logger;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
 public class VRouterNotifier {
-    static volatile HashMap<String, ContrailVRouterApi> vrouterApiMap = 
+    static volatile HashMap<String, ContrailVRouterApi> vrouterApiMap =
             new HashMap<String, ContrailVRouterApi>();
     static final int vrouterApiPort = 9090;
-    
+
     private final static Logger s_logger =
             Logger.getLogger(VRouterNotifier.class);
 
     public static Map<String, ContrailVRouterApi> getVrouterApiMap() {
         return vrouterApiMap;
     }
-    
+
     public static void created(VirtualMachineInterfaceInfo vmiInfo) {
-        if (vmiInfo == null) {       
+        if (vmiInfo == null) {
             s_logger.error("Null vmiInfo argument, cannot perform AddPort");
             return;
         }
 
-        if (vmiInfo.vmInfo == null)  {               
+        if (vmiInfo.vmInfo == null)  {
             s_logger.error("Null vmInfo, cannot perform AddPort for " + vmiInfo);
             return;
         }
-        if (vmiInfo.vnInfo == null)  {               
+        if (vmiInfo.vnInfo == null)  {
             s_logger.error("Null vnInfo, cannot perform AddPort for " + vmiInfo);
             return;
         }
-        
-        if (vmiInfo.getUuid() == null)  {               
+
+        if (vmiInfo.getUuid() == null)  {
             s_logger.error("Null uuid, cannot perform DeletePort for " + vmiInfo);
             return;
         }
-        
+
         String vrouterIpAddress = vmiInfo.getVmInfo().getVrouterIpAddress();
         String ipAddress = vmiInfo.getIpAddress();
         VirtualMachineInfo vmInfo = vmiInfo.vmInfo;
         VirtualNetworkInfo vnInfo = vmiInfo.vnInfo;
-        
+
         if (vrouterIpAddress == null) {
             s_logger.error(
                 "AddPort notification NOT sent as vRouterIp Address not known for " + vmiInfo);
             return;
         }
-        if (ipAddress == null) {
-            s_logger.error(
-                "AddPort notification NOT sent as IP Address not known for "
-                    + vmiInfo);
-            return;
-        }
         if (!vmInfo.isPoweredOnState()) {
             s_logger.info(vmInfo + " is PoweredOff. Skip AddPort now for " + vmiInfo);
             return;
+        }
+        if (ipAddress == null) {
+            ipAddress = "0.0.0.0";
         }
         try {
             ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
@@ -74,7 +71,7 @@ public class VRouterNotifier {
                         vrouterApiPort, false, 1000);
                 vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
-       
+
             boolean ret = vrouterApi.AddPort(UUID.fromString(vmiInfo.getUuid()),
                     UUID.fromString(vmInfo.getUuid()), vmiInfo.getUuid(),
                     InetAddress.getByName(ipAddress),
@@ -96,20 +93,20 @@ public class VRouterNotifier {
     }
 
     public static void deleted(VirtualMachineInterfaceInfo vmiInfo) {
-        if (vmiInfo == null) {       
+        if (vmiInfo == null) {
             s_logger.error("Null vmiInfo argument, cannot perform DeletePort");
             return;
         }
 
-        if (vmiInfo.vmInfo == null)  {               
+        if (vmiInfo.vmInfo == null)  {
             s_logger.error("Null vmInfo, cannot perform DeletePort for " + vmiInfo);
             return;
         }
-        if (vmiInfo.vnInfo == null)  {               
+        if (vmiInfo.vnInfo == null)  {
             s_logger.error("Null vnInfo, cannot perform DeletePort for " + vmiInfo);
             return;
         }
-        if (vmiInfo.getUuid() == null)  {               
+        if (vmiInfo.getUuid() == null)  {
             s_logger.error("Null uuid, cannot perform DeletePort for " + vmiInfo);
             return;
         }
@@ -122,17 +119,14 @@ public class VRouterNotifier {
             return;
         }
         if (ipAddress == null) {
-            s_logger.error(
-                "DeletePort notification NOT sent as ipAddress not known for "
-                    + vmiInfo);
-            return;
+            ipAddress = "0.0.0.0";
         }
 
         ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
         if (vrouterApi == null) {
             try {
             vrouterApi = new ContrailVRouterApi(
-                    InetAddress.getByName(vrouterIpAddress), 
+                    InetAddress.getByName(vrouterIpAddress),
                     vrouterApiPort, false, 1000);
             } catch (UnknownHostException e) {
                 // log error ("Incorrect vrouter address");
@@ -142,7 +136,7 @@ public class VRouterNotifier {
             vrouterApiMap.put(vrouterIpAddress, vrouterApi);
         }
         boolean ret = vrouterApi.DeletePort(UUID.fromString(vmiInfo.getUuid()));
-        
+
         if (ret) {
             s_logger.info("VRouterAPi DeletePort success for " + vmiInfo);
         } else {
@@ -151,12 +145,12 @@ public class VRouterNotifier {
             s_logger.error("VRouterAPI DeletePort failed for " + vmiInfo);
         }
     }
-    
+
     // KeepAlive with all active vRouter Agent Connections.
     public static void vrouterAgentPeriodicConnectionCheck() {
-        
+
         Map<String, Boolean> vRouterActiveMap = VCenterDB.vRouterActiveMap;
-        
+
         for (Map.Entry<String, Boolean> entry: vRouterActiveMap.entrySet()) {
             if (entry.getValue() == Boolean.FALSE) {
                 // host is in maintenance mode
@@ -168,9 +162,9 @@ public class VRouterNotifier {
             if (vrouterApi == null) {
                 try {
                     vrouterApi = new ContrailVRouterApi(
-                          InetAddress.getByName(vrouterIpAddress), 
+                          InetAddress.getByName(vrouterIpAddress),
                           vrouterApiPort, false, 1000);
-                } catch (UnknownHostException e) { 
+                } catch (UnknownHostException e) {
                 }
                 if (vrouterApi == null) {
                     continue;

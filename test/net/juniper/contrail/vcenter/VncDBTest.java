@@ -25,7 +25,7 @@ public class VncDBTest extends TestCase {
         Logger.getLogger(VncDBTest.class);
     private static VncDB vncDB;
     private static ApiConnector _api;
-    
+
     @Before
     public void globalSetUp() throws IOException {
         _api   = new ApiConnectorMock(null, 0);
@@ -40,7 +40,7 @@ public class VncDBTest extends TestCase {
                 fail("default-project creation failed");
                 return;
             }
-        } catch (IOException e) { 
+        } catch (IOException e) {
             s_logger.error("Exception : " + e);
             e.printStackTrace();
             fail("default-project creation failed");
@@ -53,7 +53,7 @@ public class VncDBTest extends TestCase {
         assertNotNull(vncDB.getApiConnector());
         assertTrue(vncDB.isVncApiServerAlive());
         assertTrue(vncDB.Initialize());
-        
+
         MainDB.vncDB = vncDB;
         VirtualNetworkInfoTest.vncDB = vncDB;
         VirtualNetworkInfoTest.api = _api;
@@ -65,11 +65,11 @@ public class VncDBTest extends TestCase {
 
     @Test
     public void testVirtualNetworkAddDelete() throws IOException {
-        VirtualNetworkInfo vnInfo = VirtualNetworkInfoTest.newInstance(1);
-        
+        VirtualNetworkInfo vnInfo = new VirtualNetworkInfo(VirtualNetworkInfoTest.BLUE);
+
         // Create virtual-network on api-server
         vncDB.createVirtualNetwork(vnInfo);
-        
+
         // Verify virtual-network creation
         VirtualNetworkInfoTest.verifyVirtualNetworkPresent(vnInfo);
 
@@ -83,32 +83,32 @@ public class VncDBTest extends TestCase {
 
     @Test
     public void testAddDeleteOneByOne() throws IOException {
-        VirtualNetworkInfo vnInfo = VirtualNetworkInfoTest.newInstance(1);
-        
+        VirtualNetworkInfo vnInfo = new VirtualNetworkInfo(VirtualNetworkInfoTest.BLUE);
+
         // Create virtual-network on api-server
         vncDB.createVirtualNetwork(vnInfo);
-        
+
         // Verify virtual-network creation
         VirtualNetworkInfoTest.verifyVirtualNetworkPresent(vnInfo);
-        
-        // Create Virtual Machine 
-        VirtualMachineInfo vmInfo = VirtualMachineInfoTest.newInstance(1);
-        
+
+        // Create Virtual Machine
+        VirtualMachineInfo vmInfo = new VirtualMachineInfo(VirtualMachineInfoTest.VM1);
+
         vncDB.createVirtualMachine(vmInfo);
 
         // Verify virtual-machine is created on api-server
         VirtualMachineInfoTest.verifyVirtualMachinePresent(vmInfo);
 
-        VirtualMachineInterfaceInfo vmiInfo = VirtualMachineInterfaceInfoTest.newInstance(1);
+        VirtualMachineInterfaceInfo vmiInfo = new VirtualMachineInterfaceInfo(VirtualMachineInterfaceInfoTest.VMI1);
         vmiInfo.setVnInfo(vnInfo);
         vmiInfo.setVmInfo(vmInfo);
         vncDB.createVirtualMachineInterface(vmiInfo);
-  
-        // Verify virtual-machine-interface is created on api-server      
+
+        // Verify virtual-machine-interface is created on api-server
         VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfacePresent(vmiInfo);
-       
+
         vncDB.createInstanceIp(vmiInfo);
-        
+
         InstanceIp instanceIp = VirtualMachineInterfaceInfoTest.verifyInstanceIpPresent(vmiInfo);
 
         // Delete
@@ -122,7 +122,7 @@ public class VncDBTest extends TestCase {
         VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfaceAbsent(vmiInfo);
 
         vncDB.deleteVirtualMachine(vmInfo);
-        
+
         // Verify virtual-machine is deleted from  api-server
         VirtualMachineInfoTest.verifyVirtualMachineAbsent(vmInfo);
 
@@ -132,42 +132,42 @@ public class VncDBTest extends TestCase {
         // Verify virtual-network is deleted
         VirtualNetworkInfoTest.verifyVirtualNetworkAbsent(vnInfo);
     }
- 
+
     @Test
     public void testAddHierarchicalDelete() throws IOException {
-        VirtualNetworkInfo vnInfo = VirtualNetworkInfoTest.newInstance(1);
-        
+        VirtualNetworkInfo vnInfo = new VirtualNetworkInfo(VirtualNetworkInfoTest.BLUE);
+
         // Create virtual-network on api-server
         vncDB.createVirtualNetwork(vnInfo);
-        
+
         // Verify virtual-network creation
         VirtualNetworkInfoTest.verifyVirtualNetworkPresent(vnInfo);
-        
-        // Create Virtual Machine 
-        VirtualMachineInfo vmInfo = VirtualMachineInfoTest.newInstance(1);
-        
+
+        // Create Virtual Machine
+        VirtualMachineInfo vmInfo = new VirtualMachineInfo(VirtualMachineInfoTest.VM1);
+
         vncDB.createVirtualMachine(vmInfo);
 
         // Verify virtual-machine is created on api-server
         VirtualMachineInfoTest.verifyVirtualMachinePresent(vmInfo);
 
-        VirtualMachineInterfaceInfo vmiInfo = VirtualMachineInterfaceInfoTest.newInstance(1);
+        VirtualMachineInterfaceInfo vmiInfo = new VirtualMachineInterfaceInfo(VirtualMachineInterfaceInfoTest.VMI1);
         vmiInfo.setVnInfo(vnInfo);
         vmiInfo.setVmInfo(vmInfo);
         vncDB.createVirtualMachineInterface(vmiInfo);
-  
-        // Verify virtual-machine-interface is created on api-server      
+
+        // Verify virtual-machine-interface is created on api-server
         VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfacePresent(vmiInfo);
-       
+
         vncDB.createInstanceIp(vmiInfo);
-        
+
         InstanceIp instanceIp = VirtualMachineInterfaceInfoTest.verifyInstanceIpPresent(vmiInfo);
 
         // Delete virtual-network from api-server
         // This should in turn delete thr virtual-machine,
         // virtual-machine-interfce, instance-ip etc
         vncDB.deleteVirtualNetwork(vnInfo);
- 
+
         // Verify instance-ip is deleted from  api-server
         VirtualMachineInterfaceInfoTest.verifyInstanceIpAbsent(instanceIp);
 
@@ -175,46 +175,46 @@ public class VncDBTest extends TestCase {
 
         // Verify virtual-network is deleted
         VirtualNetworkInfoTest.verifyVirtualNetworkAbsent(vnInfo);
-        
+
         // verify VM is still there
         VirtualMachineInfoTest.verifyVirtualMachinePresent(vmInfo);
     }
 
     @Test
     public void testAddHierarchicalDeleteVM() throws IOException {
-        VirtualNetworkInfo vnInfo = VirtualNetworkInfoTest.newInstance(1);
-        
+        VirtualNetworkInfo vnInfo = new VirtualNetworkInfo(VirtualNetworkInfoTest.BLUE);
+
         // Create virtual-network on api-server
         vncDB.createVirtualNetwork(vnInfo);
-        
+
         // Verify virtual-network creation
         VirtualNetworkInfoTest.verifyVirtualNetworkPresent(vnInfo);
-        
-        // Create Virtual Machine 
-        VirtualMachineInfo vmInfo = VirtualMachineInfoTest.newInstance(1);
-        
+
+        // Create Virtual Machine
+        VirtualMachineInfo vmInfo = new VirtualMachineInfo(VirtualMachineInfoTest.VM1);
+
         vncDB.createVirtualMachine(vmInfo);
 
         // Verify virtual-machine is created on api-server
         VirtualMachineInfoTest.verifyVirtualMachinePresent(vmInfo);
 
-        VirtualMachineInterfaceInfo vmiInfo = VirtualMachineInterfaceInfoTest.newInstance(1);
+        VirtualMachineInterfaceInfo vmiInfo = new VirtualMachineInterfaceInfo(VirtualMachineInterfaceInfoTest.VMI1);
         vmiInfo.setVnInfo(vnInfo);
         vmiInfo.setVmInfo(vmInfo);
         vncDB.createVirtualMachineInterface(vmiInfo);
-  
-        // Verify virtual-machine-interface is created on api-server      
+
+        // Verify virtual-machine-interface is created on api-server
         VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfacePresent(vmiInfo);
-       
+
         vncDB.createInstanceIp(vmiInfo);
-        
+
         InstanceIp instanceIp = VirtualMachineInterfaceInfoTest.verifyInstanceIpPresent(vmiInfo);
-        
+
         // Delete virtual machine from api-server
         // This should in turn delete the virtual-machine,
         // virtual-machine-interface, instance-ip etc
         vncDB.deleteVirtualMachine(vmInfo);
- 
+
         // Verify instance-ip is deleted from  api-server
         VirtualMachineInterfaceInfoTest.verifyInstanceIpAbsent(instanceIp);
 
@@ -222,7 +222,7 @@ public class VncDBTest extends TestCase {
 
         // Verify virtual-network is still there
         VirtualNetworkInfoTest.verifyVirtualNetworkPresent(vnInfo);
-        
+
         // verify VM is still there
         VirtualMachineInfoTest.verifyVirtualMachineAbsent(vmInfo);    }
 

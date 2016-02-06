@@ -13,43 +13,43 @@ import net.juniper.contrail.vcenter.VirtualMachineInfo;
 import net.juniper.contrail.vcenter.VirtualMachineInterfaceInfo;
 import net.juniper.contrail.vcenter.VirtualNetworkInfo;
 
-public class VRouterDetailResp {    
+public class VRouterDetailResp {
     private VRouterInfo vrouter;
-    
+
     public VRouterDetailResp(VRouterDetailReq req) {
         vrouter = new VRouterInfo();
-        
+
         //populate here the info
         Map<String, ContrailVRouterApi> vRouters = VRouterNotifier.getVrouterApiMap();
-        
+
         if (!vRouters.containsKey(req.ipAddr)) {
             return;
         }
         vrouter.setIpAddr(req.ipAddr);
         ContrailVRouterApi api = vRouters.get(req.ipAddr);
         vrouter.setState(api!= null);
-        
+
         Map<String, String> host2VrouterMap = VCenterNotify.getVcenterDB().getEsxiToVRouterIpMap();
-        
+
         for (Map.Entry<String, String> map_entry : host2VrouterMap.entrySet()) {
             if (map_entry.getValue().equals(req.ipAddr)) {
                 vrouter.setEsxiHost(map_entry.getKey());
             }
         }
-        
+
         SortedMap<String, VirtualNetworkInfo> vnInfoMap = MainDB.getVNs();
         populateVNetworks(vrouter.getVNetworks(), vnInfoMap);
     }
-    
+
     private void populateVNetworks(SandeshObjectList<VirtualNetworkSandesh> vNetworks,
             SortedMap<String, VirtualNetworkInfo> vnInfoMap) {
-        
+
         if (vnInfoMap == null) {
             return;
         }
-        
+
         for (Map.Entry<String, VirtualNetworkInfo> entry: vnInfoMap.entrySet()) {
-            VirtualNetworkInfo vnInfo = entry.getValue(); 
+            VirtualNetworkInfo vnInfo = entry.getValue();
             VirtualNetworkSandesh vn = new VirtualNetworkSandesh();
             populateVMIs(vn, vnInfo);
             if (vn.getVInterfaces().size() > 0) {
@@ -58,28 +58,28 @@ public class VRouterDetailResp {
             }
         }
     }
-    
+
     private void populateVMIs(VirtualNetworkSandesh vn, VirtualNetworkInfo vnInfo) {
         SandeshObjectList<VirtualMachineInterfaceSandesh> vInterfaces = vn.getVInterfaces();
-        
+
         if (vInterfaces == null) {
             return;
         }
-        SortedMap<String, VirtualMachineInterfaceInfo> map 
+        SortedMap<String, VirtualMachineInterfaceInfo> map
                     = vnInfo.getVmiInfo();
-        
+
         if (map == null) {
             return;
         }
         for (Map.Entry<String, VirtualMachineInterfaceInfo> entry : map.entrySet()) {
             VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
             VirtualMachineInfo vmInfo = vmiInfo.getVmInfo();
-            
+
             if (!vrouter.getIpAddr().trim().equals(vmInfo.getVrouterIpAddress().trim())) {
                 continue;
             }
             VirtualNetworkInfo vnInfo1 = vmiInfo.getVnInfo();
-            
+
             VirtualMachineInterfaceSandesh vmi = new VirtualMachineInterfaceSandesh();
             vmi.setMacAddress(vmiInfo.getMacAddress());
             vmi.setNetwork(vnInfo1.getName());
@@ -87,19 +87,19 @@ public class VRouterDetailResp {
             String ipAddress = vmiInfo.getIpAddress();
             if (ipAddress == null && vnInfo.getExternalIpam()
                  && vmInfo.getToolsRunningStatus().equals(
-                         VirtualMachineToolsRunningStatus.guestToolsNotRunning)) {
+                         VirtualMachineToolsRunningStatus.guestToolsNotRunning.toString())) {
                 vmi.setIpAddress("unknown");
             } else {
                 vmi.setIpAddress(ipAddress);
             }
-            
+
             vmi.setPoweredOn(vmInfo.isPoweredOnState());
             vmi.setPortAdded(vmiInfo.getPortAdded());
-            
+
             vInterfaces.add(vmi);
         }
     }
-    
+
     public void writeObject(StringBuilder s) {
         if (s == null) {
             // log error
@@ -107,6 +107,6 @@ public class VRouterDetailResp {
         }
         s.append("<vRouterDetailResp type=\"sandesh\">");
         vrouter.writeObject(s, DetailLevel.FULL, 1);
-        s.append("</vRouterDetailResp>");          
+        s.append("</vRouterDetailResp>");
     }
 }
