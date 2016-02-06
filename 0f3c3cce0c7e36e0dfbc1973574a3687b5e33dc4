@@ -1,0 +1,8 @@
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Approved+1: Ashish Ranjan <aranjan@juniper.net>
+Code-Review+2: Andra Cismaru <andrac@juniper.net>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Sat, 06 Feb 2016 13:15:00 -0800
+Reviewed-on: https://review.opencontrail.org/16885
+Project: Juniper/contrail-vcenter-plugin
+Branch: refs/heads/master
