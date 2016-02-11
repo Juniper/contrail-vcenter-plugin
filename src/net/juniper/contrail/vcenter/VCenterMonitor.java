@@ -27,7 +27,7 @@ class ExecutorServiceShutdownThread extends Thread {
     public ExecutorServiceShutdownThread(ExecutorService es) {
         this.es = es;
     }
-    
+
     @Override
     public void run() {
         es.shutdown();
@@ -35,21 +35,21 @@ class ExecutorServiceShutdownThread extends Thread {
             if (!es.awaitTermination(timeoutValue, timeoutUnit)) {
                 es.shutdownNow();
                 if (!es.awaitTermination(timeoutValue, timeoutUnit)) {
-                    s_logger.error("ExecutorSevice: " + es + 
+                    s_logger.error("ExecutorSevice: " + es +
                             " did NOT terminate");
                 }
             }
         } catch (InterruptedException e) {
-            s_logger.error("ExecutorServiceShutdownThread: " + 
-                Thread.currentThread() + " ExecutorService: " + e + 
+            s_logger.error("ExecutorServiceShutdownThread: " +
+                Thread.currentThread() + " ExecutorService: " + e +
                 " interrupted : " + e);
         }
-        
+
     }
 }
 
 public class VCenterMonitor {
-    private static ScheduledExecutorService scheduledTaskExecutor = 
+    private static ScheduledExecutorService scheduledTaskExecutor =
             Executors.newScheduledThreadPool(1);
     private static Logger s_logger = Logger.getLogger(VCenterMonitor.class);
     private static String _configurationFile = "/etc/contrail/contrail-vcenter-plugin.conf";
@@ -59,9 +59,9 @@ public class VCenterMonitor {
     private static String _vcenterPassword   = "Contrail123!";
     private static String _vcenterDcName     = "Datacenter";
     private static String _vcenterDvsName    = "dvSwitch";
-    private static String _vcenterIpFabricPg = "contrail-fab-pg";    
-   
-    static VCenterNotify _eventMonitor;    
+    private static String _vcenterIpFabricPg = "contrail-fab-pg";
+
+    static VCenterNotify _eventMonitor;
     private static String _apiServerAddress  = "10.84.13.23";
     private static int _apiServerPort        = 8082;
     private static String _username          = "admin";
@@ -75,7 +75,7 @@ public class VCenterMonitor {
     private static String _zookeeperId        = "node-vcenter-plugin";
 
     static volatile Mode mode  = Mode.VCENTER_ONLY;
-    
+
     private static volatile MasterSelection zk_ms;
     public static boolean isZookeeperLeader() {
         if (mode.equals(Mode.VCENTER_AS_COMPUTE))
@@ -83,7 +83,7 @@ public class VCenterMonitor {
 
         return zk_ms.isLeader();
     }
-        
+
     private static Properties readVcenterPluginConfigFile() {
         final Properties configProps = new Properties();
         File configFile = new File(_configurationFile);
@@ -115,7 +115,7 @@ public class VCenterMonitor {
                 }
 
                 String _mode = configProps.getProperty("mode");
-                
+
                 if (_mode != null && _mode.equals("vcenter-as-compute")) {
                     mode = Mode.VCENTER_AS_COMPUTE;
                     String authurl  = configProps.getProperty("auth_url");
@@ -157,7 +157,7 @@ public class VCenterMonitor {
 
         //Read contrail-vcenter-plugin.conf file
         Properties configProps = readVcenterPluginConfigFile();
-        s_logger.info("Config params vcenter url: " + _vcenterURL + ", _vcenterUsername: " 
+        s_logger.info("Config params vcenter url: " + _vcenterURL + ", _vcenterUsername: "
                        + _vcenterUsername + ", api server: " + _apiServerAddress);
 
         launchWatchDogs();
@@ -174,26 +174,29 @@ public class VCenterMonitor {
             zk_ms.waitForLeadership();
             s_logger.info("Acquired zookeeper Mastership .. ");
         }
-        
-        // Launch the periodic VCenterMonitorTask
+
+        _eventMonitor = new VCenterNotify(_vcenterURL, _vcenterUsername, _vcenterPassword,
+                _vcenterDcName, _vcenterDvsName, _vcenterIpFabricPg,
+                _apiServerAddress, _apiServerPort, _username, _password,
+                _tenant,
+                _authtype, _authurl, mode);
         VCenterMonitorTask _monitorTask = new VCenterMonitorTask(_eventMonitor,
-                 _vcenterURL, _vcenterUsername, _vcenterPassword,
-                               _vcenterDcName, _vcenterDvsName, _vcenterIpFabricPg);
-        
+                _vcenterURL, _vcenterUsername, _vcenterPassword,
+                              _vcenterDcName, _vcenterDvsName, _vcenterIpFabricPg);
+
+        s_logger.info("Starting the notify task.. ");
+        _eventMonitor.start();
+        s_logger.info("Notify task started.");
+
+        // Launch the periodic VCenterMonitorTask
+        s_logger.info("Starting periodic monitor task.. ");
         scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 8, //8 second periodic
                 TimeUnit.SECONDS);
+        s_logger.info("Periodic monitor task started.");
+
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));
-        
-        s_logger.info("Starting periodic monitor Task.. ");
-        _eventMonitor = new VCenterNotify(_vcenterURL, _vcenterUsername, _vcenterPassword,
-                            _vcenterDcName, _vcenterDvsName, _vcenterIpFabricPg,
-                            _apiServerAddress, _apiServerPort, _username, _password,
-                            _tenant,
-                            _authtype, _authurl, mode);
-        _eventMonitor.start();
-        
-        s_logger.info("Periodic monitor Task started.");
+        s_logger.info("All aboard.");
     }
 
     private static void launchWatchDogs() {

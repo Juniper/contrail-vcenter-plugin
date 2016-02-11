@@ -80,14 +80,15 @@ public class VRouterNotifier {
                     vnInfo.getIsolatedVlanId(),
                     vnInfo.getPrimaryVlanId(), vmInfo.getName());
             if (ret) {
-                s_logger.info("VRouterAPi AddPort success for " + vmiInfo);
+                s_logger.info("vRouter " + vrouterIpAddress + " AddPort success for " + vmiInfo);
             } else {
                 // log failure but don't worry. Periodic KeepAlive task will
                 // attempt to connect to vRouter Agent and replay AddPorts.
-                s_logger.error("VRouterAPI AddPort failed for " + vmiInfo);
+                s_logger.error("vRouter " + vrouterIpAddress + " AddPort failed for " + vmiInfo);
             }
         } catch(Throwable e) {
-            s_logger.error("Exception in addPort for " + vmiInfo + ": " + e.getMessage());
+            s_logger.error("vRouter " + vrouterIpAddress + " Exception in AddPort for "
+                    + vmiInfo + ": " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -138,11 +139,12 @@ public class VRouterNotifier {
         boolean ret = vrouterApi.DeletePort(UUID.fromString(vmiInfo.getUuid()));
 
         if (ret) {
-            s_logger.info("VRouterAPi DeletePort success for " + vmiInfo);
+            s_logger.info("vRouter " + vrouterIpAddress +
+                    " DeletePort success for " + vmiInfo);
         } else {
             // log failure but don't worry. Periodic KeepAlive task will
             // attempt to connect to vRouter Agent and replay DeletePorts.
-            s_logger.error("VRouterAPI DeletePort failed for " + vmiInfo);
+            s_logger.error("vRouter " + vrouterIpAddress + " DeletePort failed for " + vmiInfo);
         }
     }
 
