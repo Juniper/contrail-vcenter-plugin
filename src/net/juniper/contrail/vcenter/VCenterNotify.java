@@ -3,17 +3,10 @@
  */
 package net.juniper.contrail.vcenter;
 
-import java.net.URL;
-import java.net.MalformedURLException;
 import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import com.vmware.vim25.mo.Datacenter;
 import com.vmware.vim25.ArrayOfEvent;
 import com.vmware.vim25.ArrayOfGuestNicInfo;
 import com.vmware.vim25.Event;
@@ -22,7 +15,6 @@ import com.vmware.vim25.EventFilterSpecByEntity;
 import com.vmware.vim25.EventFilterSpecRecursionOption;
 import com.vmware.vim25.ObjectSpec;
 import com.vmware.vim25.ObjectUpdate;
-import com.vmware.vim25.ObjectUpdateKind;
 import com.vmware.vim25.PropertyChange;
 import com.vmware.vim25.PropertyChangeOp;
 import com.vmware.vim25.PropertyFilterSpec;
@@ -33,39 +25,23 @@ import com.vmware.vim25.SelectionSpec;
 import com.vmware.vim25.UpdateSet;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import com.vmware.vim25.VmEvent;
-import com.vmware.vim25.VmMacChangedEvent;
-import com.vmware.vim25.VmPoweredOnEvent;
-import com.vmware.vim25.VmReconfiguredEvent;
-import com.vmware.vim25.VmPoweredOffEvent;
-import com.vmware.vim25.DvsEvent;
-import com.vmware.vim25.DVPortgroupEvent;
-import com.vmware.vim25.DVPortgroupCreatedEvent;
-import com.vmware.vim25.DVPortgroupDestroyedEvent;
-import com.vmware.vim25.DVPortgroupReconfiguredEvent;
 import com.vmware.vim25.mo.EventHistoryCollector;
 import com.vmware.vim25.mo.EventManager;
-import com.vmware.vim25.mo.Folder;
-import com.vmware.vim25.mo.InventoryNavigator;
-import com.vmware.vim25.mo.ManagedEntity;
 import com.vmware.vim25.mo.ManagedObject;
 import com.vmware.vim25.mo.PropertyCollector;
 import com.vmware.vim25.mo.PropertyFilter;
-import com.vmware.vim25.mo.ServiceInstance;
 import net.juniper.contrail.watchdog.TaskWatchDog;
-import com.vmware.vim25.VmMigratedEvent;
 import com.vmware.vim25.EnteredMaintenanceModeEvent;
 import com.vmware.vim25.ExitMaintenanceModeEvent;
 import com.vmware.vim25.GuestNicInfo;
 import com.vmware.vim25.HostConnectedEvent;
 import com.vmware.vim25.HostConnectionLostEvent;
-import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.RuntimeFault;
 import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
 import com.vmware.vim25.mo.HostSystem;
 import com.google.common.base.Throwables;
 import com.vmware.vim25.InvalidState;
-import com.vmware.vim25.RuntimeFault;
 import org.apache.log4j.Logger;
 
 /**
@@ -78,7 +54,7 @@ public class VCenterNotify implements Runnable
     private static final Logger s_logger =
             Logger.getLogger(VCenterNotify.class);
     static VCenterMonitorTask monitorTask = null;
-    static volatile VCenterDB vcenterDB;
+    static volatile VCenterDB vcenterDB = null;
     static volatile VncDB vncDB;
     private boolean AddPortSyncAtPluginStart = true;
     private boolean VncDBInitComplete = false;
@@ -463,6 +439,7 @@ public class VCenterNotify implements Runnable
         }
     }
 
+    @SuppressWarnings("deprecation")
     public void terminate() throws Exception {
         shouldRun = false;
         PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
@@ -511,7 +488,7 @@ public class VCenterNotify implements Runnable
         String version = "";
         try
         {
-            do
+            for ( ; shouldRun; )
             {
                 //check if you are the master from time to time
                 //sometimes things dont go as planned
@@ -562,6 +539,8 @@ public class VCenterNotify implements Runnable
                                 connect2vcenter();
                                 version = "";
                         }
+                        TaskWatchDog.stopMonitoring(this);
+                        continue;
                     }
                     TaskWatchDog.stopMonitoring(this);
                 }
@@ -569,6 +548,7 @@ public class VCenterNotify implements Runnable
                 try
                 {
                     PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
+                    @SuppressWarnings("deprecation")
                     UpdateSet update = propColl.waitForUpdates(version);
                     if (update != null && update.getFilterSet() != null)
                     {
@@ -600,7 +580,7 @@ public class VCenterNotify implements Runnable
                             version = "";
                     }
                 }
-            } while (shouldRun);
+            }
         } catch (Exception e)
         {
             if (e instanceof RequestCanceled)
@@ -633,8 +613,13 @@ public class VCenterNotify implements Runnable
     }
 
     public static void stopUpdates() {
+        if (vcenterDB == null ||  vcenterDB.getServiceInstance() == null) {
+            return;
+        }
         PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
-        propColl.stopUpdates();
+        if (propColl != null) {
+            propColl.stopUpdates();
+        }
     }
 
     public static VncDB getVncDB() {
@@ -686,10 +671,8 @@ public class VCenterNotify implements Runnable
 
             // VM events
             // VM create events
-            "VmBeingCreated",
-            "VmCreatedEvent",
+             "VmCreatedEvent",
             "VmClonedEvent",
-            "VmCloneEvent",
             "VmDeployedEvent",
             // VM modify events
             "VmPoweredOnEvent",
@@ -698,10 +681,9 @@ public class VCenterNotify implements Runnable
             "VmMacChangedEvent",
             "VmMacAssignedEvent",
             "VmReconfiguredEvent",
-            "VmEmigratingEvent",
+            // VM Migration events
+            "DrsVmMigratedEvent",
             "VmMigratedEvent",
-            "VmBeingMigratedEvent",
-            "VmBeingHotMigratedEvent",
             // VM delete events
             "VmRemovedEvent"
         };

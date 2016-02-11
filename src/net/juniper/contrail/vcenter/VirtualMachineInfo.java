@@ -380,9 +380,6 @@ public class VirtualMachineInfo extends VCenterObject {
         if (newVmInfo.hostName != null) {
             hostName = newVmInfo.hostName;
         }
-        if (newVmInfo.vrouterIpAddress != null) {
-            vrouterIpAddress = newVmInfo.vrouterIpAddress;
-        }
         if (newVmInfo.name != null) {
             name = newVmInfo.name;
         }
@@ -417,14 +414,30 @@ public class VirtualMachineInfo extends VCenterObject {
             newVmInfo.apiVm = apiVm;
         }
 
-        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
-            newVmInfo.vmiInfoMap.entrySet()) {
-           VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
-           vmiInfo.setVmInfo(this);
+        if (newVmInfo.vrouterIpAddress != null
+                && newVmInfo.vrouterIpAddress.equals(vrouterIpAddress)) {
+            for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
+                newVmInfo.vmiInfoMap.entrySet()) {
+               VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
+               vmiInfo.setVmInfo(this);
+            }
+            MainDB.update(vmiInfoMap, newVmInfo.vmiInfoMap);
+        } else {
+            // VM has been migrated to new host
+            // delete ports on the old vrouter and create ports on the new vrouter
+
+            for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
+                vmiInfoMap.entrySet()) {
+               VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
+               vmiInfo.deletePort();
+            }
+            vrouterIpAddress = newVmInfo.vrouterIpAddress;
+            for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
+                vmiInfoMap.entrySet()) {
+               VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
+               vmiInfo.addPort();
+            }
         }
-
-        MainDB.update(vmiInfoMap, newVmInfo.vmiInfoMap);
-
         if (vmiInfoMap.size() == 0) {
             delete(vncDB);
         }

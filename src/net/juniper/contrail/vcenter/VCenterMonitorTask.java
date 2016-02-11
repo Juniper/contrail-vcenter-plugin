@@ -11,21 +11,21 @@ import net.juniper.contrail.watchdog.TaskWatchDog;
 
 class VCenterMonitorTask implements Runnable {
     private static Logger s_logger = Logger.getLogger(VCenterMonitorTask.class);
-    private static VCenterDB vcenterDB;
+    private VCenterDB vcenterDB;
     VCenterNotify eventTask;
     private boolean VcenterDBInitComplete = false;
-    
+
     public VCenterMonitorTask(VCenterNotify eventTask,
             String vcenterUrl, String vcenterUsername,
             String vcenterPassword, String dcName,
             String dvsName, String ipFabricPgName) {
-        this.eventTask = eventTask;        
+        this.eventTask = eventTask;
         vcenterDB = new VCenterDB(vcenterUrl, vcenterUsername, vcenterPassword,
                 dcName, dvsName, ipFabricPgName, VCenterMonitor.mode);
     }
 
-    private void connect2vcenter() {       
-        TaskWatchDog.startMonitoring(this, "Init VCenter", 
+    private void connect2vcenter() {
+        TaskWatchDog.startMonitoring(this, "Init VCenter",
                 300000, TimeUnit.MILLISECONDS);
         try {
             if (vcenterDB.connect() == true) {
@@ -34,8 +34,8 @@ class VCenterMonitorTask implements Runnable {
             }
         } catch (Exception e) {
             String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error("Error while initializing VCenter connection: " + e); 
-            s_logger.error(stackTrace); 
+            s_logger.error("Error while initializing VCenter connection: " + e);
+            s_logger.error(stackTrace);
             e.printStackTrace();
         }
         TaskWatchDog.stopMonitoring(this);
@@ -44,16 +44,16 @@ class VCenterMonitorTask implements Runnable {
 
     @Override
     public void run() {
-        
+
         //check if you are the master from time to time
         //sometimes things dont go as planned
         if (VCenterMonitor.isZookeeperLeader() == false) {
             s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
             System.exit(0);
         }
-        
+
         checkVroutersConnection();
-        
+
         // When syncVirtualNetworks is run the first time, it also does
         // addPort to vrouter agent for existing VMIs.
         // Clear the flag  on first run of syncVirtualNetworks.
@@ -78,8 +78,8 @@ class VCenterMonitorTask implements Runnable {
             VRouterNotifier.vrouterAgentPeriodicConnectionCheck();
         } catch (Exception e) {
             String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error("Error while vrouterAgentPeriodicConnectionCheck: " + e); 
-            s_logger.error(stackTrace); 
+            s_logger.error("Error while vrouterAgentPeriodicConnectionCheck: " + e);
+            s_logger.error(stackTrace);
             e.printStackTrace();
         }
 

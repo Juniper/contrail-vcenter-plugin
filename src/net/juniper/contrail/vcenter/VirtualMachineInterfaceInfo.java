@@ -113,10 +113,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             vncDB.deleteInstanceIp(this);
         }
 
-        if (portAdded) {
-            portAdded = false;
-            VRouterNotifier.deleted(this);
-        }
+        deletePort();
 
         ipAddress = newIpAddress;
 
@@ -124,10 +121,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             vncDB.createInstanceIp(this);
         }
 
-        if (vmInfo.isPoweredOnState()) {
-            portAdded = true;
-            VRouterNotifier.created(this);
-        }
+        addPort();
     }
 
     public boolean equals(VirtualMachineInterfaceInfo vmi) {
@@ -155,8 +149,11 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
     }
 
     public String toString() {
-        return "VMI <" + vmInfo.getName() + ", " + vnInfo.getName()
-            + ", " + uuid + ", " + ipAddress + ", " + macAddress + ">";
+        return "VMI <" + vmInfo.getName() + ", " + vnInfo.getName() +
+            ", " + uuid + ", " + ipAddress + ", " + macAddress +
+            ", primary vlan = " + vnInfo.getPrimaryVlanId() +
+            ", isolated vlan = " + vnInfo.getIsolatedVlanId() +
+            ">";
     }
 
     @Override
@@ -176,9 +173,8 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             vncDB.createInstanceIp(this);
         }
 
-        if (vmInfo.isPoweredOnState() && !portAdded) {
-            portAdded = true;
-            VRouterNotifier.created(this);
+        if (!portAdded) {
+            addPort();
         }
 
         vnInfo.created(this);
@@ -195,10 +191,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         if ((newVmiInfo.ipAddress != null && !newVmiInfo.ipAddress.equals(ipAddress))
                 || (newVmiInfo.macAddress != null && !newVmiInfo.macAddress.equals(macAddress))
                 || vnInfo != newVmiInfo.vnInfo) {
-            if (portAdded) {
-                portAdded = false;
-                VRouterNotifier.deleted(this);
-            }
+            deletePort();
 
             vncDB.deleteInstanceIp(this);
 
@@ -227,16 +220,13 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         if (newVmiInfo.uuid != null && !newVmiInfo.uuid.equals(uuid)) {
             uuid = newVmiInfo.uuid;
         }
+
         if (vmInfo.isPoweredOnState()) {
             if (!portAdded) {
-                portAdded = true;
-                VRouterNotifier.created(this);
+                addPort();
             }
         } else {
-            if (portAdded) {
-                portAdded = false;
-                VRouterNotifier.deleted(this);
-            }
+            deletePort();
         }
     }
 
@@ -292,21 +282,29 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             vncDB.createInstanceIp(this);
         }
 
+        addPort();
+
+        vnInfo.created(this);
+    }
+
+    public void addPort() {
         if (vmInfo.isPoweredOnState()) {
             portAdded = true;
             VRouterNotifier.created(this);
         }
+    }
 
-        vnInfo.created(this);
+    public void deletePort() {
+        if (portAdded) {
+            VRouterNotifier.deleted(this);
+            portAdded = false;
+        }
     }
 
     @Override
     void delete(VncDB vncDB)
             throws IOException {
-        if (portAdded) {
-            VRouterNotifier.deleted(this);
-            portAdded = false;
-        }
+        deletePort();
 
         vncDB.deleteInstanceIp(this);
 

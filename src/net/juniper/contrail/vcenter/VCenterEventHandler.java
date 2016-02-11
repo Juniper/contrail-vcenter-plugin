@@ -2,7 +2,7 @@
  * Copyright (c) 2015 Juniper Networks, Inc. All rights reserved.
  *
  * @author Andra Cismaru
- * 
+ *
  * Handles functionality related to events received from VCenter
  */
 package net.juniper.contrail.vcenter;
@@ -13,13 +13,12 @@ import com.vmware.vim25.DVPortgroupDestroyedEvent;
 import com.vmware.vim25.DVPortgroupReconfiguredEvent;
 import com.vmware.vim25.DVPortgroupRenamedEvent;
 import com.vmware.vim25.Event;
-import com.vmware.vim25.VmBeingCreatedEvent;
-import com.vmware.vim25.VmCloneEvent;
 import com.vmware.vim25.VmClonedEvent;
 import com.vmware.vim25.VmCreatedEvent;
 import com.vmware.vim25.VmDeployedEvent;
 import com.vmware.vim25.VmMacAssignedEvent;
 import com.vmware.vim25.VmMacChangedEvent;
+import com.vmware.vim25.DrsVmMigratedEvent;
 import com.vmware.vim25.VmMigratedEvent;
 import com.vmware.vim25.VmPoweredOffEvent;
 import com.vmware.vim25.VmPoweredOnEvent;
@@ -54,16 +53,15 @@ public class VCenterEventHandler {
 
     public void handle() throws Exception {
         printEvent();
-       
-        if (event instanceof VmBeingCreatedEvent
-            || event instanceof VmCreatedEvent
+
+        if (event instanceof VmCreatedEvent
             || event instanceof VmClonedEvent
-            || event instanceof VmCloneEvent
             || event instanceof VmDeployedEvent
             || event instanceof VmReconfiguredEvent
             || event instanceof  VmRenamedEvent
             || event instanceof VmMacChangedEvent
             || event instanceof VmMacAssignedEvent
+            || event instanceof DrsVmMigratedEvent
             || event instanceof VmMigratedEvent
             || event instanceof VmPoweredOnEvent
             || event instanceof VmPoweredOffEvent) {
@@ -83,11 +81,11 @@ public class VCenterEventHandler {
 
     private void handleVmUpdateEvent() throws Exception {
         VirtualMachineInfo newVmInfo = null;
-        
+
         try {
             newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
         } catch (Exception e) {
-            s_logger.info("Skipping update event for deleted VM" 
+            s_logger.info("Skipping update event for deleted VM"
                     + event.getClass().getName());
             return;
         }
@@ -103,28 +101,28 @@ public class VCenterEventHandler {
 
     private void handleVmDeleteEvent() throws Exception {
         VirtualMachineInfo vmInfo = MainDB.getVmByName(event.getVm().getName());
-        
+
         if (vmInfo == null) {
             return;
         }
 
-        VCenterNotify.unwatchVm(vmInfo);  
+        VCenterNotify.unwatchVm(vmInfo);
         vmInfo.delete(vncDB);
     }
 
     private void handleNetworkUpdateEvent() throws Exception {
         VirtualNetworkInfo newVnInfo = null;
-        
+
         try {
             newVnInfo = new VirtualNetworkInfo(event, vcenterDB);
         } catch (Exception e) {
-            s_logger.info("Skipping update event for deleted network" 
+            s_logger.info("Skipping update event for deleted network"
                     + event.getClass().getName());
             return;
         }
 
         VirtualNetworkInfo oldVnInfo = MainDB.getVnByName(newVnInfo.getName());
-        
+
         if (oldVnInfo != null) {
             oldVnInfo.update(newVnInfo, vncDB);
         } else {
@@ -134,13 +132,13 @@ public class VCenterEventHandler {
     }
 
     private void handleNetworkDeleteEvent() throws Exception {
-        
+
         VirtualNetworkInfo vnInfo = MainDB.getVnByName(event.getNet().getName());
-        
+
         if (vnInfo == null) {
             return;
         }
-        VCenterNotify.unwatchVn(vnInfo);  
+        VCenterNotify.unwatchVn(vnInfo);
         vnInfo.delete(vncDB);
     }
 
