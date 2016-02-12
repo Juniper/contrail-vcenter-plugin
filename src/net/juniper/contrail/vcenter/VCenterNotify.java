@@ -88,13 +88,13 @@ public class VCenterNotify implements Runnable
 
     private final static String[] guestProps = { "guest.toolsRunningStatus", "guest.net" };
     private final static String[] ipPoolProps = { "summary.ipPoolId" };
-    private static Map<String, VirtualMachineInfo> watchedVMs 
+    private static Map<String, VirtualMachineInfo> watchedVMs
                 = new HashMap<String, VirtualMachineInfo>();
-    private static Map<String, VirtualNetworkInfo> watchedVNs 
+    private static Map<String, VirtualNetworkInfo> watchedVNs
                 = new HashMap<String, VirtualNetworkInfo>();
     private static Map<ManagedObject, PropertyFilter> watchedFilters
                 = new HashMap<ManagedObject, PropertyFilter>();
-    
+
     private static Boolean shouldRun;
     private static Thread watchUpdates = null;
 
@@ -102,14 +102,14 @@ public class VCenterNotify implements Runnable
             String vcenterUrl, String vcenterUsername,
             String vcenterPassword, String dcName,
             String dvsName, String ipFabricPgName,
-            String _apiServerAddress, int _apiServerPort, 
+            String _apiServerAddress, int _apiServerPort,
             String _username, String _password,
             String _tenant,
             String _authtype, String _authurl, Mode mode)
-    {        
+    {
         vcenterDB = new VCenterDB(vcenterUrl, vcenterUsername, vcenterPassword,
                 dcName, dvsName, ipFabricPgName, mode);
-        
+
         switch (mode) {
         case VCENTER_ONLY:
             vncDB = new VncDB(_apiServerAddress, _apiServerPort, mode);
@@ -127,7 +127,7 @@ public class VCenterNotify implements Runnable
     public static VCenterDB getVcenterDB() {
         return vcenterDB;
     }
-    
+
     public boolean getVCenterNotifyForceRefresh() {
         return VCenterNotifyForceRefresh;
     }
@@ -148,11 +148,11 @@ public class VCenterNotify implements Runnable
 
     private void cleanupEventFilters() {
         for (Map.Entry<ManagedObject, PropertyFilter> entry: watchedFilters.entrySet())
-        try 
+        try
         {
             PropertyFilter pf = entry.getValue();
             pf.destroyPropertyFilter();
-        } catch (RemoteException e) 
+        } catch (RemoteException e)
         {
             // it is ok, we can receive exception if vcenter was restarted
         }
@@ -162,6 +162,9 @@ public class VCenterNotify implements Runnable
     }
 
     public static void watchVm(VirtualMachineInfo vmInfo) {
+        if (vmInfo.vm == null) {
+            return;
+        }
         if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE
             || watchedVMs.containsKey(vmInfo.vm.getMOR().getVal())) {
             return;
@@ -171,6 +174,9 @@ public class VCenterNotify implements Runnable
     }
 
     public static void unwatchVm(VirtualMachineInfo vmInfo) {
+        if (vmInfo.vm == null) {
+            return;
+        }
         if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE
             || !watchedVMs.containsKey(vmInfo.vm.getMOR().getVal())) {
             return;
@@ -180,6 +186,9 @@ public class VCenterNotify implements Runnable
     }
 
     public static void watchVn(VirtualNetworkInfo vnInfo) {
+        if (vnInfo.dpg == null) {
+            return;
+        }
         if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE
                 || watchedVNs.containsKey(vnInfo.dpg.getMOR().getVal())) {
             return;
@@ -189,6 +198,9 @@ public class VCenterNotify implements Runnable
     }
 
     public static void unwatchVn(VirtualNetworkInfo vnInfo) {
+        if (vnInfo.dpg == null) {
+            return;
+        }
         if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE
             || !watchedVNs.containsKey(vnInfo.dpg.getMOR().getVal())) {
             return;
@@ -200,12 +212,12 @@ public class VCenterNotify implements Runnable
     private static void watchManagedObject(ManagedObject mos, String[] propNames)
     {
         PropertyFilterSpec pfs = new PropertyFilterSpec();
-        
+
         ObjectSpec[] oss = new ObjectSpec[1];
         oss[0] = new ObjectSpec();
         oss[0].setObj(mos.getMOR());
         pfs.setObjectSet(oss);
-        
+
         PropertySpec ps = new PropertySpec();
         ps.setType(mos.getMOR().getType());
         ps.setPathSet(propNames);
@@ -222,22 +234,22 @@ public class VCenterNotify implements Runnable
         }
 
     }
-    
+
     private static void unwatchManagedObject(ManagedObject mos)
     {
         if (watchedFilters.containsKey(mos)) {
-            try 
+            try
             {
                 PropertyFilter pf = watchedFilters.remove(mos);
                 pf.destroyPropertyFilter();
-            } catch (RemoteException e) 
+            } catch (RemoteException e)
             {
                 e.printStackTrace();
             }
         }
     }
 
-    private EventHistoryCollector createEventHistoryCollector(ManagedObject mo, 
+    private EventHistoryCollector createEventHistoryCollector(ManagedObject mo,
             String[] events) throws InvalidState, RuntimeFault, RemoteException
     {
         // Create an Entity Event Filter Spec to
@@ -256,20 +268,20 @@ public class VCenterNotify implements Runnable
         // elaborate list of vmEvents
 
         eventFilter.setType(events);
- 
+
         // create the EventHistoryCollector to monitor events for a VM
         // and get the ManagedObjectReference of the EventHistoryCollector
         // returned
-        
+
         EventManager eventManager = vcenterDB.getServiceInstance().getEventManager();
-       
+
         if (eventManager != null) {
             return eventManager.createCollectorForEvents(eventFilter);
         }
         return null;
     }
 
-    private PropertyFilterSpec createEventFilterSpec(EventHistoryCollector collector) 
+    private PropertyFilterSpec createEventFilterSpec(EventHistoryCollector collector)
             throws Exception
     {
         // Set up a PropertySpec to use the latestPage attribute
@@ -306,14 +318,14 @@ public class VCenterNotify implements Runnable
     {
         ObjectUpdate[] vmUpdates;
         PropertyFilterUpdate[] pfus = update.getFilterSet();
-        
+
         if (pfus == null) {
             return;
         }
         for (int pfui = 0; pfui < pfus.length; pfui++)
         {
             vmUpdates = pfus[pfui].getObjectSet();
-            
+
             if (vmUpdates == null) {
                 continue;
             }
@@ -335,7 +347,7 @@ public class VCenterNotify implements Runnable
         }
 
         String toolsRunningStatus = null;
-        GuestNicInfo[] nics = null;        
+        GuestNicInfo[] nics = null;
         for (int pci = 0; pci < changes.length; ++pci)
         {
             if (changes[pci] == null) {
@@ -352,7 +364,7 @@ public class VCenterNotify implements Runnable
                         VirtualNetworkInfo vnInfo = watchedVNs.get(mor.getVal());
                         Integer oldPoolId = vnInfo.getIpPoolId();
                         if ((oldPoolId == null && newPoolId == null)
-                                || (oldPoolId != null && newPoolId != null 
+                                || (oldPoolId != null && newPoolId != null
                                         && oldPoolId.equals(newPoolId))) {
                             continue;
                         }
@@ -403,7 +415,7 @@ public class VCenterNotify implements Runnable
                     s_logger.info("Received update array of GuestNics");
                     ArrayOfGuestNicInfo aog = (ArrayOfGuestNicInfo) value;
                     nics = aog.getGuestNicInfo();
-                    
+
                 } else if (value instanceof Event) {
                     VCenterEventHandler handler = new VCenterEventHandler(
                             (Event) value, vcenterDB, vncDB);
@@ -427,9 +439,9 @@ public class VCenterNotify implements Runnable
                 if (toolsRunningStatus != null) {
                     vmInfo.setToolsRunningStatus(toolsRunningStatus);
                 }
-                if (vmInfo.getToolsRunningStatus().equals(VirtualMachineToolsRunningStatus.guestToolsRunning.toString())
-                        && nics != null) {
-                    vmInfo.updatedGuestNics(nics,vncDB);
+                if (vmInfo.getToolsRunningStatus().equals(
+                        VirtualMachineToolsRunningStatus.guestToolsRunning.toString())) {
+                    vmInfo.updatedGuestNics(nics, vncDB);
                 }
             }
         }
@@ -461,33 +473,33 @@ public class VCenterNotify implements Runnable
     }
 
     private void connect2vnc() {
-        TaskWatchDog.startMonitoring(this, "Init Vnc", 
-                300000, TimeUnit.MILLISECONDS);   
+        TaskWatchDog.startMonitoring(this, "Init Vnc",
+                300000, TimeUnit.MILLISECONDS);
         try {
             if (vncDB.Initialize() == true) {
                 VncDBInitComplete = true;
             }
         } catch (Exception e) {
             String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error("Error while initializing Vnc connection: " + e); 
-            s_logger.error(stackTrace); 
+            s_logger.error("Error while initializing Vnc connection: " + e);
+            s_logger.error(stackTrace);
             e.printStackTrace();
         }
         TaskWatchDog.stopMonitoring(this);
     }
 
-    private void connect2vcenter() {       
-        TaskWatchDog.startMonitoring(this, "Init VCenter", 
+    private void connect2vcenter() {
+        TaskWatchDog.startMonitoring(this, "Init VCenter",
                 300000, TimeUnit.MILLISECONDS);
         try {
             if (vcenterDB.connect() == true) {
-                createEventFilters(); 
+                createEventFilters();
                 VcenterDBInitComplete = true;
             }
         } catch (Exception e) {
             String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error("Error while initializing VCenter connection: " + e); 
-            s_logger.error(stackTrace); 
+            s_logger.error("Error while initializing VCenter connection: " + e);
+            s_logger.error(stackTrace);
             e.printStackTrace();
         }
         TaskWatchDog.stopMonitoring(this);
@@ -521,10 +533,10 @@ public class VCenterNotify implements Runnable
                         s_logger.error("Waiting for API server before starting sync");
                         Thread.sleep(5000);
                     }
-                    
+
                     TaskWatchDog.startMonitoring(this, "Sync",
                             300000, TimeUnit.MILLISECONDS);
-                    
+
                     // When syncVirtualNetworks is run the first time, it also does
                     // addPort to vrouter agent for existing VMIs.
                     // Clear the flag  on first run of syncVirtualNetworks.
@@ -536,7 +548,7 @@ public class VCenterNotify implements Runnable
                         setAddPortSyncAtPluginStart(false);
                     } catch (Exception e) {
                         String stackTrace = Throwables.getStackTraceAsString(e);
-                        s_logger.error("Error in sync: " + e); 
+                        s_logger.error("Error in sync: " + e);
                         s_logger.error(stackTrace);
                         e.printStackTrace();
                         if (stackTrace.contains("java.net.ConnectException: Connection refused") ||
@@ -624,11 +636,11 @@ public class VCenterNotify implements Runnable
         PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
         propColl.stopUpdates();
     }
-    
+
     public static VncDB getVncDB() {
         return vncDB;
     }
-    
+
     private void createEventFilters() throws RemoteException  {
         cleanupEventFilters();
 
@@ -639,7 +651,7 @@ public class VCenterNotify implements Runnable
         }
     }
 
-    private void createDvsEventFilter(VmwareDistributedVirtualSwitch dvs) 
+    private void createDvsEventFilter(VmwareDistributedVirtualSwitch dvs)
             throws RemoteException {
         String[] dvsEventNames = {
             // DV Port group events
@@ -656,7 +668,7 @@ public class VCenterNotify implements Runnable
     }
 
     private void createHostEventFilter(String hostName) throws RemoteException {
-        HostSystem host = vcenterDB.getVmwareHost(hostName, 
+        HostSystem host = vcenterDB.getVmwareHost(hostName,
                     vcenterDB.contrailDC, vcenterDB.contrailDataCenterName);
 
         if (host == null) {
@@ -671,7 +683,7 @@ public class VCenterNotify implements Runnable
             "HostConnectedEvent",
             "EnteredMaintenanceModeEvent",
             "ExitMaintenanceModeEvent",
-    
+
             // VM events
             // VM create events
             "VmBeingCreated",
@@ -693,7 +705,7 @@ public class VCenterNotify implements Runnable
             // VM delete events
             "VmRemovedEvent"
         };
-        
+
         watchManagedObjectEvents(host, hostEventNames);
     }
 
@@ -705,13 +717,13 @@ public class VCenterNotify implements Runnable
         }
         try
         {
-            EventHistoryCollector collector = 
+            EventHistoryCollector collector =
                     createEventHistoryCollector(mos, events);
 
             PropertyFilterSpec eventFilterSpec = createEventFilterSpec(collector);
             PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
 
-            PropertyFilter propFilter = propColl.createFilter(eventFilterSpec, true); 
+            PropertyFilter propFilter = propColl.createFilter(eventFilterSpec, true);
                                 //report only nesting properties, not enclosing ones.
             if (propFilter != null) {
                 watchedFilters.put(mos, propFilter);
@@ -724,7 +736,7 @@ public class VCenterNotify implements Runnable
             throw new RuntimeException(e);
         }
     }
-    
+
     @SuppressWarnings("unused")
     private void unwatchManagedObjectEvents(ManagedObject mos)
     {
@@ -734,13 +746,13 @@ public class VCenterNotify implements Runnable
         }
 
         if (watchedFilters.containsKey(mos)) {
-            try 
+            try
             {
                 PropertyFilter pf = watchedFilters.remove(mos);
                 if (pf != null) {
                     pf.destroyPropertyFilter();
                 }
-            } catch (RemoteException e) 
+            } catch (RemoteException e)
             {
                 e.printStackTrace();
             }

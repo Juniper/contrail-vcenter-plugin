@@ -17,6 +17,8 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.anyShort;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import junit.framework.TestCase;
 import org.junit.Test;
 import org.junit.Before;
@@ -50,31 +52,19 @@ public class VirtualMachineInfoTest extends TestCase {
 
     public static VirtualMachineInfo VM1 = new VirtualMachineInfo(vmUuid1, vmName1,
             hostName1, vrouterIpAddress1, powerState1);
-    
+
     private final static String vmUuid2            = UUID.randomUUID().toString();
     private final static String vmName2            = "VM2";
     private final static String vrouterIpAddress2  = "10.84.24.45";
     private final static String hostName2          = "10.20.30.40";
     private final static VirtualMachinePowerState powerState2 = VirtualMachinePowerState.poweredOn;
-    
+
     public static VirtualMachineInfo VM2 = new VirtualMachineInfo(vmUuid2, vmName2,
             hostName2, vrouterIpAddress2, powerState2);
-    
-    public static VirtualMachineInfo newInstance(int selection) {
-        switch (selection) {
-        case 1:
-            return new VirtualMachineInfo(VM1);
-        case 2:
-            return new VirtualMachineInfo(VM2);
-        default:
-            ;
-        }
-        return new VirtualMachineInfo(VM1);
-    }
-    
-    public static VirtualMachine verifyVirtualMachinePresent(VirtualMachineInfo vmInfo) 
+
+    public static VirtualMachine verifyVirtualMachinePresent(VirtualMachineInfo vmInfo)
             throws IOException {
-        
+
         VirtualMachine vm = (VirtualMachine) api.findById(VirtualMachine.class, vmInfo.getUuid());
         assertNotNull(vm);
         assertEquals(vm.getUuid(), vmInfo.getUuid());
@@ -88,7 +78,7 @@ public class VirtualMachineInfoTest extends TestCase {
         VirtualMachine vm = (VirtualMachine)  api.findById(VirtualMachine.class, vmInfo.getUuid());
         assertNull(vm);
     }
-    
+
     @Before
     public void globalSetUp() throws IOException {
         api   = new ApiConnectorMock(null, 0);
@@ -103,7 +93,7 @@ public class VirtualMachineInfoTest extends TestCase {
                 fail("default-project creation failed");
                 return;
             }
-        } catch (IOException e) { 
+        } catch (IOException e) {
             s_logger.error("Exception : " + e);
             e.printStackTrace();
             fail("default-project creation failed");
@@ -116,7 +106,7 @@ public class VirtualMachineInfoTest extends TestCase {
         assertNotNull(vncDB.getApiConnector());
         assertTrue(vncDB.isVncApiServerAlive());
         assertTrue(vncDB.Initialize());
-        
+
         VirtualNetworkInfoTest.api = api;
         VirtualNetworkInfoTest.vncDB = vncDB;
         VirtualMachineInterfaceInfoTest.api = api;
@@ -132,8 +122,8 @@ public class VirtualMachineInfoTest extends TestCase {
         when(vrouterApi.DeletePort(any(UUID.class))).thenReturn(true);
         vrouterApiMap.put("10.84.24.45", vrouterApi);
 
-        vnInfo = VirtualNetworkInfoTest.newInstance(1);
-        
+        vnInfo = VirtualNetworkInfoTest.BLUE;
+
         try {
             vnInfo.create(vncDB);
         } catch (Exception e) {
@@ -142,18 +132,10 @@ public class VirtualMachineInfoTest extends TestCase {
 
         VirtualNetworkInfoTest.verifyVirtualNetworkPresent(vnInfo);
     }
-    
-    @Test
-    public void testInstances() throws IOException {
-        VirtualMachineInfo vmInfo1 = newInstance(1);
-        assertNotNull(vmInfo1);
-        VirtualMachineInfo vmInfo2 = newInstance(2);
-        assertNotNull(vmInfo2);
-    }
-    
+
     @Test
     public void testVirtualMachineCreateIgnore() throws IOException {
-        VirtualMachineInfo vmInfo = newInstance(1);
+        VirtualMachineInfo vmInfo = VirtualMachineInfoTest.VM1;
         try {
             vmInfo.create(vncDB);
         } catch (Exception e) {
@@ -161,34 +143,36 @@ public class VirtualMachineInfoTest extends TestCase {
         }
         // VM will be ignored since there are no VMIs in managed networks
         verifyVirtualMachineAbsent(vmInfo);
+        verifyNoMoreInteractions(vrouterApi);
     }
 
     @Test
-    public void testVirtualMachineCreateDelete() throws IOException {       
+    public void testVirtualMachineCreateDelete() throws IOException {
         // Create Virtual Machine and VMIs
-        VirtualMachineInfo vmInfo = newInstance(1);
-        
-        VirtualMachineInterfaceInfo vmiInfo = VirtualMachineInterfaceInfoTest.newInstance(2);
+        VirtualMachineInfo vmInfo = VirtualMachineInfoTest.VM1;
+
+        VirtualMachineInterfaceInfo vmiInfo =
+                new VirtualMachineInterfaceInfo(VirtualMachineInterfaceInfoTest.VMI2);
         vmiInfo.setVnInfo(vnInfo);
         vmiInfo.setVmInfo(vmInfo);
-        
+
         // add this interface to the VM
         vmInfo.created(vmiInfo);
         // verify VMI has been added in the VMI map of this VM
         assertTrue(vmInfo.contains(vmiInfo));
-        
+
         // create VM and VMI
         try {
             vmInfo.create(vncDB);
         } catch (Exception e) {
             fail("Cannot create VM " + vmInfo);
         }
-        
+
         assertTrue(vnInfo.contains(vmiInfo));
         assertTrue(MainDB.getVMs().containsKey(vmInfo.getUuid()));
-        
-        verifyVirtualMachinePresent(vmInfo);     
-        VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfacePresent(vmiInfo);        
+
+        verifyVirtualMachinePresent(vmInfo);
+        VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfacePresent(vmiInfo);
         InstanceIp instanceIp = VirtualMachineInterfaceInfoTest.verifyInstanceIpPresent(vmiInfo);
         verify(vrouterApi).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
                 any(byte[].class), any(UUID.class), anyShort(), anyShort(),
@@ -202,47 +186,55 @@ public class VirtualMachineInfoTest extends TestCase {
         }
 
         assertFalse(MainDB.getVMs().containsKey(vmInfo.getUuid()));
-        
+
         VirtualMachineInterfaceInfoTest.verifyInstanceIpAbsent(instanceIp);
         VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfaceAbsent(vmiInfo);
         verifyVirtualMachineAbsent(vmInfo);
 
         verify(vrouterApi).DeletePort(any(UUID.class));
     }
-    
+
     @Test
     public void testSyncVirtualMachine() throws IOException {
-        
+
         SortedMap<String, VirtualMachineInfo> oldVMs =
                 new ConcurrentSkipListMap<String, VirtualMachineInfo>();
-        
-        VirtualMachineInfo newVmInfo = newInstance(1);       
-        VirtualMachineInterfaceInfo newVmiInfo = VirtualMachineInterfaceInfoTest.newInstance(2);
+
+        VirtualMachineInfo newVmInfo = new VirtualMachineInfo(VirtualMachineInfoTest.VM1);
+        VirtualMachineInterfaceInfo newVmiInfo =
+                new VirtualMachineInterfaceInfo(VirtualMachineInterfaceInfoTest.VMI2);
         newVmiInfo.setVnInfo(vnInfo);
         newVmiInfo.setVmInfo(newVmInfo);
         newVmInfo.created(newVmiInfo);
         assertTrue(newVmInfo.contains(newVmiInfo));
- 
+
         SortedMap<String, VirtualMachineInfo> newVMs = new ConcurrentSkipListMap<String, VirtualMachineInfo>();
         newVMs.put(newVmInfo.getUuid(), newVmInfo);
 
         s_logger.info("Sync create VM");
         MainDB.sync(oldVMs, newVMs);
-        
+
         verifyVirtualMachinePresent(newVmInfo);
         VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfacePresent(newVmiInfo);
         InstanceIp instanceIp = VirtualMachineInterfaceInfoTest.verifyInstanceIpPresent(newVmiInfo);
-
         // verify VMI has been added in the VMI map of VN
         assertTrue(vnInfo.contains(newVmiInfo));
-        
+        verify(vrouterApi).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
+                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
+                anyString());
+
+        s_logger.info("Sync again should not produce any change");
+        MainDB.sync(oldVMs, newVMs);
+
+        verifyNoMoreInteractions(vrouterApi);
+
         oldVMs = vncDB.readVirtualMachines();
         newVMs = new ConcurrentSkipListMap<String, VirtualMachineInfo>();
-        
+
         s_logger.info("Sync delete VM");
         MainDB.sync(oldVMs, newVMs);
-        
-        verifyVirtualMachineAbsent(newVmInfo);   
+
+        verifyVirtualMachineAbsent(newVmInfo);
         VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfaceAbsent(newVmiInfo);
         VirtualMachineInterfaceInfoTest.verifyInstanceIpAbsent(instanceIp);
     }
