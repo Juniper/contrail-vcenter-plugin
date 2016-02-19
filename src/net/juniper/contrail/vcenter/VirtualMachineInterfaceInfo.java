@@ -191,18 +191,20 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         if ((newVmiInfo.ipAddress != null && !newVmiInfo.ipAddress.equals(ipAddress))
                 || (newVmiInfo.macAddress != null && !newVmiInfo.macAddress.equals(macAddress))
                 || vnInfo != newVmiInfo.vnInfo) {
-            deletePort();
 
-            vncDB.deleteInstanceIp(this);
-
+            // change of network
             if (vnInfo != newVmiInfo.vnInfo) {
-                // change of network
-                vnInfo.deleted(this);
+                // Delete old VMI and create VMI over new network
+                delete(vncDB);
                 vnInfo = newVmiInfo.vnInfo;
                 ipAddress = newVmiInfo.ipAddress;
                 macAddress = newVmiInfo.macAddress;
-                vnInfo.created(this);
+                create(vncDB);
+                return;
             } else {
+                deletePort();
+
+                vncDB.deleteInstanceIp(this);
                 if (newVmiInfo.ipAddress != null) {
                     ipAddress = newVmiInfo.ipAddress;
                 }
