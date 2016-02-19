@@ -143,6 +143,6 @@ public class VCenterEventHandler {
     }
 
     private void handleEvent(Event event) {
-        s_logger.error("Buddy you need to get a hold off this event");
+        s_logger.error("Need to process "+ event.getClass().getName());
     }
 }
