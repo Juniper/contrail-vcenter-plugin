@@ -12,7 +12,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 import net.juniper.contrail.sandesh.VCenterHttpServices;
 import net.juniper.contrail.watchdog.TaskWatchDog;
@@ -151,9 +150,6 @@ public class VCenterMonitor {
     }
 
     public static void main(String[] args) throws Exception {
-
-       // log4j logger
-        BasicConfigurator.configure();
 
         //Read contrail-vcenter-plugin.conf file
         Properties configProps = readVcenterPluginConfigFile();
