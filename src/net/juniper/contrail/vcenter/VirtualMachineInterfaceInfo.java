@@ -187,40 +187,35 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
 
         VirtualMachineInterfaceInfo newVmiInfo = (VirtualMachineInterfaceInfo)obj;
 
-        // change of Ip Address, MAC address or network triggers a delete / recreate
-        if ((newVmiInfo.ipAddress != null && !newVmiInfo.ipAddress.equals(ipAddress))
-                || (newVmiInfo.macAddress != null && !newVmiInfo.macAddress.equals(macAddress))
-                || vnInfo != newVmiInfo.vnInfo) {
+        if (newVmiInfo.uuid != null && !newVmiInfo.uuid.equals(uuid)) {
+            uuid = newVmiInfo.uuid;
+        }
 
-            // change of network
-            if (vnInfo != newVmiInfo.vnInfo) {
-                // Delete old VMI and create VMI over new network
-                delete(vncDB);
-                vnInfo = newVmiInfo.vnInfo;
+        if (vnInfo != newVmiInfo.vnInfo
+                || (newVmiInfo.macAddress != null && !newVmiInfo.macAddress.equals(macAddress))) {
+            // change of network or MAC address
+            delete(vncDB);
+            vnInfo = newVmiInfo.vnInfo;
+            ipAddress = newVmiInfo.ipAddress;
+            macAddress = newVmiInfo.macAddress;
+            create(vncDB);
+            return;
+        }
+
+        if (newVmiInfo.ipAddress != null && !newVmiInfo.ipAddress.equals(ipAddress)) {
+            // change of IP Address
+            deletePort();
+            vncDB.deleteInstanceIp(this);
+
+            // vmware bug: after vmware tools restart, ip address is incorrectly reset to null
+            // this check for null is a workaround
+            if (newVmiInfo.ipAddress != null) {
                 ipAddress = newVmiInfo.ipAddress;
-                macAddress = newVmiInfo.macAddress;
-                create(vncDB);
-                return;
-            } else {
-                deletePort();
-
-                vncDB.deleteInstanceIp(this);
-                if (newVmiInfo.ipAddress != null) {
-                    ipAddress = newVmiInfo.ipAddress;
-                }
-
-                if (newVmiInfo.macAddress != null) {
-                    macAddress = newVmiInfo.macAddress;
-                }
             }
 
             if (ipAddress != null || vnInfo.getExternalIpam() == false) {
                 vncDB.createInstanceIp(this);
             }
-        }
-
-        if (newVmiInfo.uuid != null && !newVmiInfo.uuid.equals(uuid)) {
-            uuid = newVmiInfo.uuid;
         }
 
         if (vmInfo.isPoweredOnState()) {

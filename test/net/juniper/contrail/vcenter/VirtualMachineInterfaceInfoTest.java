@@ -354,4 +354,35 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
                 any(byte[].class), any(UUID.class), anyShort(), anyShort(),
                 anyString());
     }
+
+    @Test
+    public void testNetworkChange() throws IOException {
+        VirtualNetworkInfo newVnInfo = VirtualNetworkInfoTest.RED;
+        try {
+            newVnInfo.create(vncDB);
+        } catch (Exception e) {
+            fail("Cannot create VN " + newVnInfo);
+        }
+        VirtualNetworkInfoTest.verifyVirtualNetworkPresent(newVnInfo);
+
+        VirtualMachineInterfaceInfo newVmiInfo = new VirtualMachineInterfaceInfo(firstVmiInfo);
+        newVmiInfo.setVnInfo(newVnInfo);
+
+        try {
+            firstVmiInfo.update(newVmiInfo, vncDB);
+        } catch (Exception e) {
+            fail("Cannot update VMIs " + firstVmiInfo);
+        }
+
+        assertTrue(vmInfo.contains(newVmiInfo));
+        assertTrue(newVnInfo.contains(newVmiInfo));
+        verifyVirtualMachineInterfacePresent(newVmiInfo);
+        verifyInstanceIpPresent(newVmiInfo);
+        verify(vrouterApi, times(2)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
+                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
+                anyString());
+
+        verify(vrouterApi).DeletePort(any(UUID.class));
+        verifyInstanceIpAbsent(firstInstanceIp);
+    }
 }

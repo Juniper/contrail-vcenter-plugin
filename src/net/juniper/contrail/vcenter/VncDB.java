@@ -988,11 +988,17 @@ public class VncDB {
                     apiConnector.findById(InstanceIp.class,
                             instanceIpRef.getUuid());
             if (inst != null) {
-                vmiInfo.setIpAddress(inst.getAddress());
-                vmiInfo.apiInstanceIp = inst;
-                //TODO this is in fact a list of IP addresses
-                // but we only support one
-                break;
+                List<ObjectReference<ApiPropertyBase>> vnRefs = inst.getVirtualNetwork();
+                for (ObjectReference<ApiPropertyBase> vnRef :
+                    Utils.safe(vnRefs)) {
+                    if (vnRef.getUuid().equals(vmiInfo.vnInfo.getUuid())) {
+                        vmiInfo.setIpAddress(inst.getAddress());
+                        vmiInfo.apiInstanceIp = inst;
+                        // this is in fact a list of IP addresses
+                        // but we only support one
+                        return;
+                    }
+                }
             }
         }
     }
@@ -1003,13 +1009,11 @@ public class VncDB {
             return null;
         }
 
-        if (vmiInfo.vmInfo.apiVm == null) {
-            vmiInfo.vmInfo.apiVm = (VirtualMachine) apiConnector.findById(
-                    VirtualMachine.class, vmiInfo.vmInfo.getUuid());
+        vmiInfo.vmInfo.apiVm = (VirtualMachine) apiConnector.findById(
+                VirtualMachine.class, vmiInfo.vmInfo.getUuid());
 
-            if (vmiInfo.vmInfo.apiVm == null) {
-                return null;
-            }
+        if (vmiInfo.vmInfo.apiVm == null) {
+            return null;
         }
         // find VMI matching vmUuid & vnUuid & macAddress
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
@@ -1021,6 +1025,10 @@ public class VncDB {
                     apiConnector.findById(VirtualMachineInterface.class,
                             vmInterfaceUuid);
 
+            if (vmInterface == null) {
+                // back refs may be stale
+                continue;
+            }
             List<String> macAddresses = vmInterface.getMacAddresses().getMacAddress();
             if (macAddresses.size() <= 0) {
                 continue;
