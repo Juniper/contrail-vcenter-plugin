@@ -161,6 +161,8 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         assertNotNull(vmiRefs);
         assertEquals(1, vmiRefs.size());
         assertEquals(vmInterface.getUuid(), vmiRefs.get(0).getUuid());
+
+        s_logger.info("Found instanceIP " + instanceIp.getAddress());
         return instanceIp;
     }
 
@@ -216,6 +218,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
 
         vnInfo = VirtualNetworkInfoTest.BLUE;
         try {
+            s_logger.info("Create " + vnInfo);
             vnInfo.create(vncDB);
         } catch (Exception e) {
             fail("Cannot create VN " + VirtualNetworkInfoTest.BLUE);
@@ -236,6 +239,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
 
         // create VM and VMI
         try {
+            s_logger.info("Create " + vmInfo);
             vmInfo.create(vncDB);
         } catch (Exception e) {
             fail("Cannot create VM " + vmInfo);
@@ -262,6 +266,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
 
         // create VM and VMI
         try {
+            s_logger.info("Create second VMI " + secondVmiInfo);
             secondVmiInfo.create(vncDB);
         } catch (Exception e) {
             fail("Cannot create VMI " + secondVmiInfo);
@@ -278,6 +283,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
 
         // update should have no effect
         try {
+            s_logger.info("Update second VMI " + secondVmiInfo);
             secondVmiInfo.update(secondVmiInfo, vncDB);
         } catch (Exception e) {
             fail("Cannot update VMI " + secondVmiInfo);
@@ -285,6 +291,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         verifyNoMoreInteractions(vrouterApi);
 
         try {
+            s_logger.info("Delete second VMI " + secondVmiInfo);
             secondVmiInfo.delete(vncDB);
         } catch (Exception e) {
             fail("Cannot delete VMI " + secondVmiInfo);
@@ -297,6 +304,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
 
 
         try {
+            s_logger.info("Delete first VMI " + firstVmiInfo);
             firstVmiInfo.delete(vncDB);
         } catch (Exception e) {
             fail("Cannot delete VMI " + secondVmiInfo);
@@ -307,6 +315,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         verify(vrouterApi, times(2)).DeletePort(any(UUID.class));
 
         try {
+            s_logger.info("Delete " + vmInfo);
             vmInfo.delete(vncDB);
         } catch (Exception e) {
             fail("Cannot delete VM " + vmInfo);
@@ -320,6 +329,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         VirtualNetworkInfo staticVnInfo = VirtualNetworkInfoTest.STATIC_IP;
         assertEquals(staticVnInfo.getExternalIpam(), true);
         try {
+            s_logger.info("Create " + staticVnInfo);
             staticVnInfo.create(vncDB);
         } catch (Exception e) {
             fail("Cannot create VN " + VirtualNetworkInfoTest.STATIC_IP + " "
@@ -340,6 +350,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
 
         // create VM and VMI
         try {
+            s_logger.info("Create " + vmiInfo);
             vmiInfo.create(vncDB);
         } catch (Exception e) {
             fail("Cannot create VMI " + vmiInfo);
@@ -353,5 +364,129 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         verify(vrouterApi, times(2)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
                 any(byte[].class), any(UUID.class), anyShort(), anyShort(),
                 anyString());
+    }
+
+    @Test
+    public void testNetworkChange() throws IOException {
+        s_logger.info("testNetworkChange");
+        VirtualNetworkInfo redVnInfo = VirtualNetworkInfoTest.RED;
+        try {
+            s_logger.info("Create " + redVnInfo);
+            redVnInfo.create(vncDB);
+        } catch (Exception e) {
+            fail("Cannot create VN " + redVnInfo);
+        }
+        VirtualNetworkInfoTest.verifyVirtualNetworkPresent(redVnInfo);
+
+        s_logger.info("Change VM1 nw adapter from network BLUE (dhcp) to network RED (dhcp)");
+        VirtualMachineInterfaceInfo newVmiInfo = new VirtualMachineInterfaceInfo(firstVmiInfo);
+        newVmiInfo.setVnInfo(redVnInfo);
+
+        try {
+            firstVmiInfo.update(newVmiInfo, vncDB);
+        } catch (Exception e) {
+            fail("Cannot update VMIs " + firstVmiInfo);
+        }
+
+        assertTrue(vmInfo.contains(firstVmiInfo));
+        assertTrue(redVnInfo.contains(firstVmiInfo));
+        verifyVirtualMachineInterfacePresent(firstVmiInfo);
+        InstanceIp redIp = verifyInstanceIpPresent(firstVmiInfo);
+        s_logger.info("New IP Address is " + redIp.getAddress());
+
+        verify(vrouterApi, times(2)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
+                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
+                anyString());
+
+        verify(vrouterApi).DeletePort(any(UUID.class));
+        verifyInstanceIpAbsent(firstInstanceIp);
+
+        VirtualNetworkInfo staticVnInfo = VirtualNetworkInfoTest.STATIC_IP;
+        try {
+            s_logger.info("Create " + staticVnInfo);
+            staticVnInfo.create(vncDB);
+        } catch (Exception e) {
+            fail("Cannot create VN " + staticVnInfo);
+        }
+        VirtualNetworkInfoTest.verifyVirtualNetworkPresent(staticVnInfo);
+
+        s_logger.info("Change VM1 nw adapter from network RED (dhcp) to network STATIC_IP (dhcp)");
+        newVmiInfo = new VirtualMachineInterfaceInfo(firstVmiInfo);
+        newVmiInfo.setVnInfo(staticVnInfo);
+        newVmiInfo.setIpAddress("192.168.3.2");
+
+        try {
+            firstVmiInfo.update(newVmiInfo, vncDB);
+        } catch (Exception e) {
+            fail("Cannot update VMIs " + firstVmiInfo);
+        }
+
+        assertTrue(vmInfo.contains(firstVmiInfo));
+        assertTrue(staticVnInfo.contains(firstVmiInfo));
+        verifyVirtualMachineInterfacePresent(firstVmiInfo);
+        InstanceIp staticIp = verifyInstanceIpPresent(firstVmiInfo);
+        assertEquals("192.168.3.2", staticIp.getAddress());
+
+        verify(vrouterApi, times(3)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
+                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
+                anyString());
+
+        verify(vrouterApi, times(2)).DeletePort(any(UUID.class));
+        verifyInstanceIpAbsent(redIp);
+
+        VirtualNetworkInfo staticVnInfo2 = VirtualNetworkInfoTest.STATIC_IP2;
+        try {
+            s_logger.info("Create " + staticVnInfo2);
+            staticVnInfo2.create(vncDB);
+        } catch (Exception e) {
+            fail("Cannot create VN " + staticVnInfo2);
+        }
+        VirtualNetworkInfoTest.verifyVirtualNetworkPresent(staticVnInfo2);
+
+        s_logger.info("Change VM1 nw adapter from network STATIC_IP (static) to network STATIC_IP2 (static)");
+        newVmiInfo = new VirtualMachineInterfaceInfo(firstVmiInfo);
+        newVmiInfo.setVnInfo(staticVnInfo2);
+        newVmiInfo.setIpAddress("192.168.4.2");
+
+        try {
+            firstVmiInfo.update(newVmiInfo, vncDB);
+        } catch (Exception e) {
+            fail("Cannot update VMIs " + firstVmiInfo);
+        }
+
+        assertTrue(vmInfo.contains(firstVmiInfo));
+        assertTrue(staticVnInfo2.contains(firstVmiInfo));
+        verifyVirtualMachineInterfacePresent(firstVmiInfo);
+        InstanceIp staticIp2 = verifyInstanceIpPresent(firstVmiInfo);
+        assertEquals("192.168.4.2", staticIp2.getAddress());
+        verify(vrouterApi, times(4)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
+                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
+                anyString());
+
+        verify(vrouterApi, times(3)).DeletePort(any(UUID.class));
+        verifyInstanceIpAbsent(staticIp);
+
+        s_logger.info("Change VM1 nw adapter from network STATIC_IP2 (static) to network BLUE (dhcp)");
+        newVmiInfo = new VirtualMachineInterfaceInfo(firstVmiInfo);
+        newVmiInfo.setVnInfo(VirtualNetworkInfoTest.BLUE);
+        newVmiInfo.setIpAddress(null);
+
+        try {
+            firstVmiInfo.update(newVmiInfo, vncDB);
+        } catch (Exception e) {
+            fail("Cannot update VMIs " + firstVmiInfo);
+        }
+
+        assertTrue(vmInfo.contains(firstVmiInfo));
+        assertTrue(VirtualNetworkInfoTest.BLUE.contains(firstVmiInfo));
+        verifyVirtualMachineInterfacePresent(firstVmiInfo);
+        InstanceIp blueIp = verifyInstanceIpPresent(firstVmiInfo);
+        assertNotSame(null, blueIp.getAddress());
+        verify(vrouterApi, times(5)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
+                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
+                anyString());
+
+        verify(vrouterApi, times(4)).DeletePort(any(UUID.class));
+        verifyInstanceIpAbsent(staticIp2);
     }
 }

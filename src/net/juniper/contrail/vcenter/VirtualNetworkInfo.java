@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
+import com.google.common.net.InetAddresses;
 import com.vmware.vim25.DVPortSetting;
 import com.vmware.vim25.DVSConfigInfo;
 import com.vmware.vim25.DistributedVirtualSwitchKeyedOpaqueBlob;
@@ -33,7 +34,7 @@ public class VirtualNetworkInfo extends VCenterObject {
     private boolean ipPoolEnabled;
     private String range;
     private boolean externalIpam;
-    
+
     // Vmware
     com.vmware.vim25.mo.Network net;
     DistributedVirtualPortgroup dpg;
@@ -50,8 +51,8 @@ public class VirtualNetworkInfo extends VCenterObject {
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
     }
 
-    public VirtualNetworkInfo(String uuid, String name, 
-            boolean externalIpam, boolean ipPoolEnabled, 
+    public VirtualNetworkInfo(String uuid, String name,
+            boolean externalIpam, boolean ipPoolEnabled,
             String subnetAddress,String subnetMask, String range, String gatewayAddress,
             short primaryVlanId, short isolatedVlanId)
     {
@@ -65,7 +66,7 @@ public class VirtualNetworkInfo extends VCenterObject {
         this.gatewayAddress = gatewayAddress;
         this.primaryVlanId = primaryVlanId;
         this.isolatedVlanId = isolatedVlanId;
-        
+
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
     }
 
@@ -81,10 +82,10 @@ public class VirtualNetworkInfo extends VCenterObject {
         this.ipPoolEnabled = vnInfo.ipPoolEnabled;
         this.range = vnInfo.range;
         this.externalIpam = vnInfo.externalIpam;
-        
+
         this.vmiInfoMap = vnInfo.vmiInfoMap;
     }
-    
+
     public VirtualNetworkInfo(net.juniper.contrail.api.types.VirtualNetwork vn) {
         this.apiVn = vn;
         this.uuid = vn.getUuid();
@@ -92,10 +93,10 @@ public class VirtualNetworkInfo extends VCenterObject {
         this.vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
         this.externalIpam = vn.getExternalIpam();
     }
-    
+
     public VirtualNetworkInfo(Event event,  VCenterDB vcenterDB) throws Exception {
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
-        
+
         if (event.getDatacenter() != null) {
             dcName = event.getDatacenter().getName();
             dc = vcenterDB.getVmwareDatacenter(dcName);
@@ -116,8 +117,8 @@ public class VirtualNetworkInfo extends VCenterObject {
 
         dpg = vcenterDB.getVmwareDpg(name, dvs, dvsName, dcName);
         ManagedObject mo[] = new ManagedObject[1];
-        mo[0] = dpg; 
- 
+        mo[0] = dpg;
+
         Hashtable[] pTables = PropertyCollectorUtil.retrieveProperties(mo,
                                 "DistributedVirtualPortgroup",
                 new String[] {"name",
@@ -127,11 +128,11 @@ public class VirtualNetworkInfo extends VCenterObject {
                 "summary.ipPoolId",
                 "summary.ipPoolName",
                 });
-    
+
         if (pTables == null || pTables[0] == null) {
             throw new RemoteException("Could not read properties for network " + name);
         }
-        
+
         populateInfo(vcenterDB, pTables[0]);
     }
 
@@ -142,7 +143,7 @@ public class VirtualNetworkInfo extends VCenterObject {
             String dvsName,
             IpPool[] ipPools,
             VMwareDVSPvlanMapEntry[] pvlanMapArray) throws Exception {
-               
+
         if (vcenterDB == null || dpg == null || pTable == null
                 || dvs == null || dvsName == null
                 || dc == null || dcName == null
@@ -155,11 +156,11 @@ public class VirtualNetworkInfo extends VCenterObject {
         this.dpg = dpg;
         this.dvs = dvs;
         this.dvsName = dvsName;
-        
+
         populateInfo(vcenterDB, pTable);
     }
-    
-    void populateInfo(VCenterDB vcenterDB, Hashtable pTable) throws Exception {        
+
+    void populateInfo(VCenterDB vcenterDB, Hashtable pTable) throws Exception {
         populateVlans(vcenterDB, pTable);
 
         name = (String) pTable.get("name");
@@ -185,9 +186,9 @@ public class VirtualNetworkInfo extends VCenterObject {
     private void populateAddressManagement(VCenterDB vcenterDB,
             Hashtable pTable)
             throws RuntimeFault, RemoteException, Exception {
-        
+
         setIpPoolId( (Integer) pTable.get("summary.ipPoolId"), vcenterDB);
-        
+
         // Read externalIpam flag from custom field
         DistributedVirtualSwitchKeyedOpaqueBlob[] opaqueBlobs = null;
         Object obj = pTable.get("config.vendorSpecificConfig");
@@ -201,27 +202,27 @@ public class VirtualNetworkInfo extends VCenterObject {
         // get pvlan/vlan info for the portgroup.
         // Extract private vlan entries for the virtual switch
         DVSConfigInfo dvsConf = dvs.getConfig();
-        
+
         if (dvsConf == null) {
             throw new Exception("dvSwitch: " + dvsName +
                     " Datacenter: " + dcName + " ConfigInfo " +
                     "is empty");
         }
-    
+
         if (!(dvsConf instanceof VMwareDVSConfigInfo)) {
             throw new Exception("dvSwitch: " + dvsName +
                     " Datacenter: " + dcName + " ConfigInfo " +
                     "isn't instanceof VMwareDVSConfigInfo");
         }
         VMwareDVSConfigInfo dvsConfigInfo = (VMwareDVSConfigInfo) dvsConf;
-        
+
         VMwareDVSPvlanMapEntry[] pvlanMapArray = dvsConfigInfo.getPvlanConfig();
         if (pvlanMapArray == null) {
             throw new Exception("dvSwitch: " + dvsName +
                     " Datacenter: " + dcName + " Private VLAN NOT" +
                     "configured");
         }
-        
+
         // Extract dvPg configuration info and port setting
         DVPortSetting portSetting = (DVPortSetting) pTable.get("config.defaultPortConfig");
         HashMap<String, Short> vlan = vcenterDB.getVlanInfo(dpg, portSetting, pvlanMapArray);
@@ -300,12 +301,12 @@ public class VirtualNetworkInfo extends VCenterObject {
 
         return null;
     }
-    
+
     public Integer getIpPoolId() {
         return ipPoolId;
     }
 
-    public void setIpPoolId(Integer poolId, VCenterDB vcenterDB) 
+    public void setIpPoolId(Integer poolId, VCenterDB vcenterDB)
             throws RuntimeFault, RemoteException {
 
 
@@ -379,15 +380,15 @@ public class VirtualNetworkInfo extends VCenterObject {
     public DistributedVirtualPortgroup getDpg() {
         return dpg;
     }
-    
+
     public void setDpg(DistributedVirtualPortgroup dpg) {
         this.dpg = dpg;
     }
-    
+
     public void created(VirtualMachineInterfaceInfo vmiInfo) {
         vmiInfoMap.put(vmiInfo.getMacAddress(), vmiInfo);
     }
-    
+
     public void updated(VirtualMachineInterfaceInfo vmiInfo) {
         if (!vmiInfoMap.containsKey(vmiInfo.getMacAddress())) {
             vmiInfoMap.put(vmiInfo.getMacAddress(), vmiInfo);
@@ -440,16 +441,16 @@ public class VirtualNetworkInfo extends VCenterObject {
         }
         return true;
     }
- 
+
     public String toString() {
         return "VN <" + name + ", " + uuid + ">";
     }
-    
+
     public StringBuffer toStringBuffer() {
         StringBuffer s = new StringBuffer(
                 "VN <" + name + ", " + uuid + ">\n\n");
-        
-        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry: 
+
+        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
             vmiInfoMap.entrySet()) {
             VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
             s.append("\t")
@@ -467,58 +468,58 @@ public class VirtualNetworkInfo extends VCenterObject {
     // change the method below to use Observer pattern and get rid of the Vnc param
     @Override
     void create(VncDB vncDB) throws Exception {
-        
+
         if (ignore()) {
             return;
         }
-       
+
         vncDB.createVirtualNetwork(this);
         MainDB.created(this);
     }
 
     @Override
-    void update(VCenterObject obj, VncDB vncDB) 
+    void update(VCenterObject obj, VncDB vncDB)
                     throws Exception {
-        
+
         if (ignore()) {
             return;
         }
-        
+
         VirtualNetworkInfo newVnInfo = (VirtualNetworkInfo)obj;
-        
+
         if (newVnInfo.name != null) {
             name = newVnInfo.name;
         }
         if (newVnInfo.isolatedVlanId != 0) {
             isolatedVlanId = newVnInfo.isolatedVlanId;
         }
-        
+
         if (newVnInfo.primaryVlanId != 0) {
             primaryVlanId = newVnInfo.primaryVlanId;
         }
-        
+
         if (newVnInfo.subnetAddress != null) {
             subnetAddress = newVnInfo.subnetAddress;
         }
-        
+
         if (newVnInfo.subnetMask != null) {
             subnetAddress = newVnInfo.subnetMask;
         }
-        
+
         if (newVnInfo.gatewayAddress != null) {
             gatewayAddress = newVnInfo.gatewayAddress;
         }
         if (newVnInfo.ipPoolEnabled != false) {
             ipPoolEnabled = newVnInfo.ipPoolEnabled;
         }
-        
+
         if (newVnInfo.range != null) {
             range = newVnInfo.range;
         }
         if (newVnInfo.externalIpam != false) {
             externalIpam = newVnInfo.externalIpam;
         }
-        
+
         if (newVnInfo.net != null) {
             net = newVnInfo.net;
         }
@@ -528,38 +529,68 @@ public class VirtualNetworkInfo extends VCenterObject {
         if (newVnInfo.dvs != null) {
             dvs = newVnInfo.dvs;
         }
-        
+
         if (newVnInfo.dvsName != null) {
             dvsName = newVnInfo.dvsName;
         }
-        
+
         // notify observers
         // for networks we do not update the API server
     }
-    
+
     @Override
-    void sync(VCenterObject obj, VncDB vncDB) 
+    void sync(VCenterObject obj, VncDB vncDB)
                     throws Exception {
-        
+
         VirtualNetworkInfo oldVnInfo = (VirtualNetworkInfo)obj;
-        
+
         if (apiVn == null && oldVnInfo.apiVn != null) {
             apiVn = oldVnInfo.apiVn;
-        } 
+        }
     }
-    
+
     @Override
-    void delete(VncDB vncDB) 
+    void delete(VncDB vncDB)
             throws Exception {
-                      
-        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry: 
+
+        for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
             vmiInfoMap.entrySet()) {
             VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
             vmiInfo.delete(vncDB);
         }
-        
+
         vncDB.deleteVirtualNetwork(this);
-        
+
         MainDB.deleted(this);
+    }
+
+    public boolean isIpAddressInSubnetAndRange(String ipAddress) {
+        if (ipAddress == null) {
+            return true;
+        }
+
+        int addr = InetAddresses.coerceToInteger(InetAddresses.forString(ipAddress));
+        int subnet = InetAddresses.coerceToInteger(InetAddresses.forString(subnetAddress));
+        int mask = InetAddresses.coerceToInteger(InetAddresses.forString(subnetMask));
+
+        if (((addr & mask) != subnet)) {
+            return false;
+        }
+        if (!ipPoolEnabled || range.isEmpty()) {
+            return true;
+        }
+
+        String[] pools = range.split("\\#");
+        if (pools.length == 2) {
+            String start = (pools[0]).replace(" ","");
+            String num   = (pools[1]).replace(" ","");
+            int start_ip = InetAddresses.coerceToInteger(InetAddresses.forString(start));
+            int start_range = start_ip & ~mask;
+            int end_ip = start_ip + Integer.parseInt(num) - 1;
+            int end_range = end_ip & ~mask;
+            int host = addr & ~mask;
+            return (start_range <= host) && (host <= end_range);
+        }
+        return true;
     }
 }
