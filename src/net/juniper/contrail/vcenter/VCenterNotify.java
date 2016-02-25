@@ -345,8 +345,15 @@ public class VCenterNotify implements Runnable
                             continue;
                         }
                         vnInfo.setIpPoolId(newPoolId, vcenterDB);
-                        s_logger.info("IP Pool ID for " + vnInfo + " set to " + newPoolId);
-                        vncDB.updateVirtualNetwork(vnInfo);
+                        // setIpPool() sets the poolId in VnInfo based on
+                        // pool-name string if newPoolId is null.
+                        // If oldPoolId and vnInfo.getIpPoolId() are same,
+                        // skip subnet update on the virtual network.
+                        s_logger.info("IP Pool ID for " + vnInfo + " set to " + vnInfo.getIpPoolId());
+                        if ((vnInfo.getIpPoolId() != null) &&
+                                    !vnInfo.getIpPoolId().equals(oldPoolId)) {
+                            vncDB.updateVirtualNetwork(vnInfo);
+                        }
                     }
                 } else if (propName.equals("guest.toolsRunningStatus")) {
                     toolsRunningStatus = (String)value;

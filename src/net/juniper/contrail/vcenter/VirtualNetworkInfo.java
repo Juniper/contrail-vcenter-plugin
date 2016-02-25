@@ -307,10 +307,7 @@ public class VirtualNetworkInfo extends VCenterObject {
 
     public void setIpPoolId(Integer poolId, VCenterDB vcenterDB) 
             throws RuntimeFault, RemoteException {
-        if ((ipPoolId == null && poolId == null)
-                || (ipPoolId != null && poolId != null && ipPoolId.equals(poolId))) {
-            return;
-        }
+
 
         // Extract IP Pools
         IpPool[] ipPools = vcenterDB.getIpPoolManager().queryIpPools(dc);
@@ -318,26 +315,24 @@ public class VirtualNetworkInfo extends VCenterObject {
             return;
         }
 
-        this.ipPoolId = poolId;
-        
-        if (ipPoolId != null) {
-            IpPool ipPool = getIpPool(ipPoolId, ipPools);
-            if (ipPool != null) {
-                IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
-        
-                // ifconfig setting
-                subnetAddress = ipConfigInfo.getSubnetAddress();
-                subnetMask = ipConfigInfo.getNetmask();
-                gatewayAddress = ipConfigInfo.getGateway();
-                ipPoolEnabled = ipConfigInfo.getIpPoolEnabled();
-                range = ipConfigInfo.getRange();
-            }
+        IpPool ipPool = getIpPool(poolId, ipPools);
+        if (ipPool != null) {
+            IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
+
+            // ifconfig setting
+            subnetAddress = ipConfigInfo.getSubnetAddress();
+            subnetMask = ipConfigInfo.getNetmask();
+            gatewayAddress = ipConfigInfo.getGateway();
+            ipPoolEnabled = ipConfigInfo.getIpPoolEnabled();
+            range = ipConfigInfo.getRange();
+            this.ipPoolId = ipPool.id;
         } else {
             subnetAddress = null;
             subnetMask = null;
             gatewayAddress = null;
             ipPoolEnabled = false;
             range = null;
+            this.ipPoolId = null;
         }
     }
 
