@@ -129,6 +129,9 @@ public class VirtualNetworkInfoTest extends TestCase {
         assertNotNull(vn);
         assertEquals(vn.getUuid(), vnInfo.getUuid());
         assertEquals(vn.getName(), vnInfo.getName());
+        assertNotNull(vn.getParentUuid());
+
+        assertNotNull(vnInfo.getProjectUuid());
 
         return vn;
     }
