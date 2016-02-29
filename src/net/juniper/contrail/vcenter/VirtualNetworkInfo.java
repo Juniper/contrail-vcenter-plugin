@@ -19,6 +19,7 @@ import com.vmware.vim25.VMwareDVSPvlanMapEntry;
 import com.vmware.vim25.mo.DistributedVirtualPortgroup;
 import com.vmware.vim25.mo.ManagedObject;
 import com.vmware.vim25.mo.util.PropertyCollectorUtil;
+import org.apache.log4j.Logger;
 
 public class VirtualNetworkInfo extends VCenterObject {
     private String uuid; // required attribute, key for this object
@@ -45,6 +46,9 @@ public class VirtualNetworkInfo extends VCenterObject {
     // API server
     net.juniper.contrail.api.types.VirtualNetwork apiVn;
 
+    private final static Logger s_logger =
+            Logger.getLogger(VirtualNetworkInfo.class);
+    
     public VirtualNetworkInfo(String uuid) {
         this.uuid = uuid;
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
@@ -255,6 +259,11 @@ public class VirtualNetworkInfo extends VCenterObject {
 
     public void setPrimaryVlanId(short vlanId) {
         this.primaryVlanId = vlanId;
+    }
+
+    // "virtual-network"s parent is "project"
+    public String getProjectUuid() {
+        return apiVn.getParentUuid();
     }
 
     public boolean getIpPoolEnabled() {
@@ -542,9 +551,16 @@ public class VirtualNetworkInfo extends VCenterObject {
                     throws Exception {
         
         VirtualNetworkInfo oldVnInfo = (VirtualNetworkInfo)obj;
+        s_logger.error("Calling sync for VirtualNetwork:" + oldVnInfo.name);
         
-        if (apiVn == null && oldVnInfo.apiVn != null) {
+        if (oldVnInfo.apiVn != null) {
             apiVn = oldVnInfo.apiVn;
+            if (apiVn.getParentUuid() == null) {
+              s_logger.error("ApiVn.getParentUuid() null");
+              return;
+            } else {
+              s_logger.error("ApiVn.getParentUuid():" + apiVn.getParentUuid());
+            }
         } 
     }
     

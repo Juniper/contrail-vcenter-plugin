@@ -118,7 +118,7 @@ public class VirtualMachineInfoTest extends TestCase {
         vrouterApi = mock(ContrailVRouterApi.class);
         when(vrouterApi.AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
                                 any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                                anyString())).thenReturn(true);
+                                anyString(), any(UUID.class))).thenReturn(true);
         when(vrouterApi.DeletePort(any(UUID.class))).thenReturn(true);
         vrouterApiMap.put("10.84.24.45", vrouterApi);
 
@@ -176,7 +176,7 @@ public class VirtualMachineInfoTest extends TestCase {
         InstanceIp instanceIp = VirtualMachineInterfaceInfoTest.verifyInstanceIpPresent(vmiInfo);
         verify(vrouterApi).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
                 any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString());
+                anyString(), any(UUID.class));
 
         // delete the VM
         try {
@@ -221,7 +221,7 @@ public class VirtualMachineInfoTest extends TestCase {
         assertTrue(vnInfo.contains(newVmiInfo));
         verify(vrouterApi).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
                 any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString());
+                anyString(), any(UUID.class));
 
         s_logger.info("Sync again should not produce any change");
         MainDB.sync(oldVMs, newVMs);

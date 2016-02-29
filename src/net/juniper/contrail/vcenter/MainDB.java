@@ -117,7 +117,9 @@ public class MainDB {
                     oldEntry = oldIter.hasNext()? oldIter.next() : null;
                     newEntry = newIter.hasNext()? newIter.next() : null;
                 } else if (cmp < 0) {
-                    newEntry.getValue().create(vncDB);
+                    if (mode != Mode.VCENTER_AS_COMPUTE) {
+                        newEntry.getValue().create(vncDB);
+                    }
                     newEntry = newIter.hasNext()? newIter.next() : null;
                 } else { 
                     if (mode != Mode.VCENTER_AS_COMPUTE) {

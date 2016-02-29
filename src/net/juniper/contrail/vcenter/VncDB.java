@@ -358,6 +358,8 @@ public class VncDB {
                 }
             } catch (IOException e) {
                 s_logger.error("Exception : " + e);
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 e.printStackTrace();
                 return false;
             }
@@ -446,18 +448,20 @@ public class VncDB {
 
     public void createVirtualNetwork(VirtualNetworkInfo vnInfo)
             throws IOException {
-        if (mode == Mode.VCENTER_AS_COMPUTE) {
-            return;
-        }
-
         if (vnInfo == null) {
             s_logger.error("Null pointer argument");
             throw new IllegalArgumentException();
         }
 
+        if (mode == Mode.VCENTER_AS_COMPUTE) {
+            VirtualNetwork    vn = new VirtualNetwork();
+            vn.setUuid(vnInfo.getUuid());
+            apiConnector.read(vn);
+            vnInfo.apiVn = vn;
+            return;
+        }
 
         VirtualNetwork    vn = new VirtualNetwork();
-        vnInfo.apiVn = vn;
 
         vn.setUuid(vnInfo.getUuid());
         vn.setName(vnInfo.getName());
@@ -472,6 +476,8 @@ public class VncDB {
         }
 
         apiConnector.create(vn);
+        apiConnector.read(vn);
+        vnInfo.apiVn = vn;
         s_logger.info("Created " + vnInfo);
     }
 
@@ -839,6 +845,8 @@ public class VncDB {
                     apiConnector.list(VirtualNetwork.class, null);
         } catch (Exception ex) {
             s_logger.error("Exception in api.list(VirtualNetworks): " + ex);
+            String stackTrace = Throwables.getStackTraceAsString(ex);
+            s_logger.error(stackTrace);
             ex.printStackTrace();
             return map;
         }
@@ -857,6 +865,10 @@ public class VncDB {
                     !(vn.getIdPerms().getCreator().equals(VNC_VCENTER_PLUGIN)))) {
                     continue;
                 }
+                if (vn.getParent() == null)
+                    s_logger.error("In readVirtualNetworks:vn.getParent() is NULL");
+                s_logger.error("In readVirtualNetworks:" + vn.getName());
+                s_logger.error("In readVirtualNetworks parent Uuid:" + vn.getParentUuid());
                 VirtualNetworkInfo vnInfo = new VirtualNetworkInfo(vn);
 
                 map.put(vnInfo.getUuid(), vnInfo);
@@ -882,6 +894,8 @@ public class VncDB {
                     apiConnector.list(VirtualMachine.class, null);
         } catch (Exception e) {
             s_logger.error("Exception in api.list(VirtualMachine): " + e);
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
             e.printStackTrace();
             return map;
         }
@@ -1056,6 +1070,8 @@ public class VncDB {
                     apiConnector.list(InstanceIp.class, null);
         } catch (Exception ex) {
             s_logger.error("Exception in api.list: " + ex);
+            String stackTrace = Throwables.getStackTraceAsString(ex);
+            s_logger.error(stackTrace);
             ex.printStackTrace();
             return ;
         }
@@ -1142,6 +1158,8 @@ public class VncDB {
                     apiConnector.list(VirtualMachineInterface.class, null);
         } catch (Exception ex) {
             s_logger.error("Exception in api.list: " + ex);
+            String stackTrace = Throwables.getStackTraceAsString(ex);
+            s_logger.error(stackTrace);
             ex.printStackTrace();
             return ;
         }
@@ -1218,6 +1236,8 @@ public class VncDB {
                     apiConnector.list(VirtualMachine.class, null);
         } catch (Exception ex) {
             s_logger.error("Exception in api.list: " + ex);
+            String stackTrace = Throwables.getStackTraceAsString(ex);
+            s_logger.error(stackTrace);
             ex.printStackTrace();
             return ;
         }
@@ -1237,6 +1257,8 @@ public class VncDB {
                     apiConnector.list(VirtualNetwork.class, null);
         } catch (Exception ex) {
             s_logger.error("Exception in api.list: " + ex);
+            String stackTrace = Throwables.getStackTraceAsString(ex);
+            s_logger.error(stackTrace);
             ex.printStackTrace();
             return ;
         }
@@ -1253,6 +1275,8 @@ public class VncDB {
         deleteVirtualMachines();
         deleteVirtualNetworks();
         } catch (Exception e) {
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
             e.printStackTrace();
         }
     }
