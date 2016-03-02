@@ -498,7 +498,6 @@ public class VncDB {
     }
 
     private VnSubnetsType getSubnet(VirtualNetworkInfo vnInfo, VirtualNetwork vn) {
-        s_logger.info("getSubnet address " + vnInfo.getSubnetAddress() + ", mask " + vnInfo.getSubnetMask());
         if (vnInfo.getSubnetAddress() == null || vnInfo.getSubnetMask() == null) {
             return null;
         }
@@ -517,7 +516,7 @@ public class VncDB {
                 int start_ip = InetAddresses.coerceToInteger(InetAddresses.forString(start));
                 int end_ip = start_ip + Integer.parseInt(num) - 1;
                 String end = InetAddresses.toAddrString(InetAddresses.fromInteger(end_ip));
-                s_logger.info("Subnet IP Range :  Start:"  + start + " End:" + end);
+                s_logger.debug("Subnet IP Range :  Start:"  + start + " End:" + end);
                 VnSubnetsType.IpamSubnetType.AllocationPoolType pool1 = new
                         VnSubnetsType.IpamSubnetType.AllocationPoolType(start, end);
                 allocation_pools.add(pool1);
@@ -811,6 +810,10 @@ public class VncDB {
         InstanceIp instanceIp = new InstanceIp();
         if (vmiInfo.getIpAddress() != null) {
             instanceIp.setAddress(vmiInfo.getIpAddress());
+
+            if (vmiInfo.vnInfo.getExternalIpam() == false) {
+                s_logger.error("Internal error address already set for DHCP");
+            }
         }
         instanceIp.setDisplayName(instanceIpName);
         instanceIp.setUuid(instIpUuid);
@@ -988,11 +991,17 @@ public class VncDB {
                     apiConnector.findById(InstanceIp.class,
                             instanceIpRef.getUuid());
             if (inst != null) {
-                vmiInfo.setIpAddress(inst.getAddress());
-                vmiInfo.apiInstanceIp = inst;
-                //TODO this is in fact a list of IP addresses
-                // but we only support one
-                break;
+                List<ObjectReference<ApiPropertyBase>> vnRefs = inst.getVirtualNetwork();
+                for (ObjectReference<ApiPropertyBase> vnRef :
+                    Utils.safe(vnRefs)) {
+                    if (vnRef.getUuid().equals(vmiInfo.vnInfo.getUuid())) {
+                        vmiInfo.setIpAddress(inst.getAddress());
+                        vmiInfo.apiInstanceIp = inst;
+                        // this is in fact a list of IP addresses
+                        // but we only support one
+                        return;
+                    }
+                }
             }
         }
     }
@@ -1003,13 +1012,11 @@ public class VncDB {
             return null;
         }
 
-        if (vmiInfo.vmInfo.apiVm == null) {
-            vmiInfo.vmInfo.apiVm = (VirtualMachine) apiConnector.findById(
-                    VirtualMachine.class, vmiInfo.vmInfo.getUuid());
+        vmiInfo.vmInfo.apiVm = (VirtualMachine) apiConnector.findById(
+                VirtualMachine.class, vmiInfo.vmInfo.getUuid());
 
-            if (vmiInfo.vmInfo.apiVm == null) {
-                return null;
-            }
+        if (vmiInfo.vmInfo.apiVm == null) {
+            return null;
         }
         // find VMI matching vmUuid & vnUuid & macAddress
         List<ObjectReference<ApiPropertyBase>> vmInterfaceRefs =
@@ -1021,6 +1028,10 @@ public class VncDB {
                     apiConnector.findById(VirtualMachineInterface.class,
                             vmInterfaceUuid);
 
+            if (vmInterface == null) {
+                // back refs may be stale
+                continue;
+            }
             List<String> macAddresses = vmInterface.getMacAddresses().getMacAddress();
             if (macAddresses.size() <= 0) {
                 continue;
@@ -1085,6 +1096,8 @@ public class VncDB {
 
         deleteInstanceIp(apiVmi);
 
+        s_logger.debug("Deleted instanceIP:" + vmiInfo.apiInstanceIp.getName() + ": " +
+                vmiInfo.apiInstanceIp.getAddress());
         vmiInfo.apiInstanceIp = null;
     }
 
