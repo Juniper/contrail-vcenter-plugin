@@ -7,14 +7,14 @@ import net.juniper.contrail.vcenter.VCenterNotify;
 import net.juniper.contrail.vcenter.VRouterNotifier;
 import net.juniper.contrail.vcenter.VncDB;
 
-public class VCenterPluginResp {    
+public class VCenterPluginResp {
     private VCenterPlugin vCenterPluginInfo;
-    
+
     public VCenterPluginResp(VCenterPluginReq req) {
         vCenterPluginInfo = new VCenterPlugin();
-                       
+
         vCenterPluginInfo.setMaster(VCenterMonitor.isZookeeperLeader());
-        
+
         if (VCenterMonitor.isZookeeperLeader()) {
             populateVRouterStats();
             populateApiServerInfo();
@@ -29,8 +29,8 @@ public class VCenterPluginResp {
                 && (vCenterPluginInfo.getVCenterServerInfo().getConnected() == true)
                 && (( vCenterPluginInfo.getVRouterStats().getDown() == 0)));
     }
-    
-    private void populateVRouterStats() {         
+
+    private void populateVRouterStats() {
         int up = 0;
         int down = 0;
 
@@ -52,7 +52,7 @@ public class VCenterPluginResp {
         vCenterPluginInfo.getVRouterStats().setUp(up);
         vCenterPluginInfo.getVRouterStats().setDown(down);
     }
-    
+
     private void populateApiServerInfo() {
         ApiServerInfo apiServerInfo = vCenterPluginInfo.getApiServerInfo();
         VncDB vncDB = VCenterNotify.getVncDB();
@@ -62,15 +62,15 @@ public class VCenterPluginResp {
             apiServerInfo.setConnected(vncDB.isServerAlive());
         }
     }
-    
+
     private void populateVCenterServerInfo() {
         VCenterServerInfo vCenterServerInfo = vCenterPluginInfo.getVCenterServerInfo();
-        
+
         if (VCenterNotify.getVcenterDB() != null) {
             vCenterServerInfo.setUrl(VCenterNotify.getVcenterDB().getVcenterUrl() );
-            
+
             vCenterServerInfo.setConnected(
-                    VCenterNotify.getVcenterDB().isConnected());
+                    VCenterNotify.getVCenterConnected());
         }
     }
 
@@ -81,6 +81,6 @@ public class VCenterPluginResp {
         }
         s.append("<vCenterPluginIntrospect type=\"sandesh\">");
         vCenterPluginInfo.writeObject(s);
-        s.append("</vCenterPluginIntrospect>");          
+        s.append("</vCenterPluginIntrospect>");
     }
 }

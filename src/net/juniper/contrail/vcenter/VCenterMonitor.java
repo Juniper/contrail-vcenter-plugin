@@ -176,16 +176,14 @@ public class VCenterMonitor {
                 _apiServerAddress, _apiServerPort, _username, _password,
                 _tenant,
                 _authtype, _authurl, mode);
-        VCenterMonitorTask _monitorTask = new VCenterMonitorTask(_eventMonitor,
-                _vcenterURL, _vcenterUsername, _vcenterPassword,
-                              _vcenterDcName, _vcenterDvsName, _vcenterIpFabricPg);
 
         s_logger.info("Starting the notify task.. ");
         _eventMonitor.start();
         s_logger.info("Notify task started.");
 
         // Launch the periodic VCenterMonitorTask
-        s_logger.info("Starting periodic monitor task.. ");
+        VRouterMonitorTask _monitorTask = new VRouterMonitorTask();
+        s_logger.info("Starting vrouter periodic monitor task.. ");
         scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 8, //8 second periodic
                 TimeUnit.SECONDS);
         s_logger.info("Periodic monitor task started.");
