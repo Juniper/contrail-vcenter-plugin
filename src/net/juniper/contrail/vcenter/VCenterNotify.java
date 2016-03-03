@@ -25,6 +25,7 @@ import com.vmware.vim25.SelectionSpec;
 import com.vmware.vim25.UpdateSet;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import com.vmware.vim25.VmEvent;
+import com.vmware.vim25.WaitOptions;
 import com.vmware.vim25.mo.EventHistoryCollector;
 import com.vmware.vim25.mo.EventManager;
 import com.vmware.vim25.mo.ManagedObject;
@@ -53,15 +54,9 @@ public class VCenterNotify implements Runnable
 
     private static final Logger s_logger =
             Logger.getLogger(VCenterNotify.class);
-    static VCenterMonitorTask monitorTask = null;
     static volatile VCenterDB vcenterDB = null;
     static volatile VncDB vncDB;
-    private boolean AddPortSyncAtPluginStart = true;
-    private boolean VncDBInitComplete = false;
-    private boolean VcenterDBInitComplete = false;
-    public boolean VCenterNotifyForceRefresh = false;
-    static volatile boolean syncNeeded = true;
-
+    private static boolean vCenterConnected = false;
     private final static String[] guestProps = { "guest.toolsRunningStatus", "guest.net" };
     private final static String[] ipPoolProps = { "summary.ipPoolId" };
     private static Map<String, VirtualMachineInfo> watchedVMs
@@ -104,22 +99,8 @@ public class VCenterNotify implements Runnable
         return vcenterDB;
     }
 
-    public boolean getVCenterNotifyForceRefresh() {
-        return VCenterNotifyForceRefresh;
-    }
-
-    public void setVCenterNotifyForceRefresh(boolean _VCenterNotifyForceRefresh) {
-        VCenterNotifyForceRefresh = _VCenterNotifyForceRefresh;
-    }
-
-    public void setAddPortSyncAtPluginStart(boolean _AddPortSyncAtPluginStart)
-    {
-        AddPortSyncAtPluginStart = _AddPortSyncAtPluginStart;
-    }
-
-    public boolean getAddPortSyncAtPluginStart()
-    {
-        return AddPortSyncAtPluginStart;
+    public static boolean getVCenterConnected() {
+        return vCenterConnected;
     }
 
     private void cleanupEventFilters() {
@@ -456,20 +437,27 @@ public class VCenterNotify implements Runnable
         watchUpdates.stop();
     }
 
-    private void connect2vnc() {
+    private boolean connect2vnc() {
         TaskWatchDog.startMonitoring(this, "Init Vnc",
                 300000, TimeUnit.MILLISECONDS);
         try {
-            if (vncDB.Initialize() == true) {
-                VncDBInitComplete = true;
+            s_logger.info("Connecting to the API server ...");
+            while (vncDB.Initialize() != true) {
+                s_logger.info("Waiting for API server ...");
+                Thread.sleep(1000);
             }
+            s_logger.info("Connected to the API server ...");
+            TaskWatchDog.stopMonitoring(this);
+            return true;
         } catch (Exception e) {
             String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error("Error while initializing Vnc connection: " + e);
+            s_logger.error("Error while initializing connection with the API server: "
+                    + e);
             s_logger.error(stackTrace);
             e.printStackTrace();
         }
         TaskWatchDog.stopMonitoring(this);
+        return false;
     }
 
     private void connect2vcenter() {
@@ -478,7 +466,7 @@ public class VCenterNotify implements Runnable
         try {
             if (vcenterDB.connect() == true) {
                 createEventFilters();
-                VcenterDBInitComplete = true;
+                vCenterConnected = true;
             }
         } catch (Exception e) {
             String stackTrace = Throwables.getStackTraceAsString(e);
@@ -492,100 +480,86 @@ public class VCenterNotify implements Runnable
     @Override
     public void run()
     {
-        String version = "";
         try
         {
-            for ( ; shouldRun; )
+            if (connect2vnc() == false) {
+                return;
+            }
+
+            boolean syncNeeded = true;
+            for (String version = "" ; shouldRun; )
             {
                 //check if you are the master from time to time
-                //sometimes things dont go as planned
+                //sometimes things don't go as planned
                 if (VCenterMonitor.isZookeeperLeader() == false) {
                     s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
                     System.exit(0);
                 }
 
-                if (VncDBInitComplete == false) {
-                    connect2vnc();
-                }
-                if (VcenterDBInitComplete == false) {
+                if (vCenterConnected == false) {
                     connect2vcenter();
+                    version = "";
+                    syncNeeded = true;
+                }
+
+                while (vncDB.isVncApiServerAlive() == false) {
+                    s_logger.info("Waiting for API server... ");
+                    Thread.sleep(5000);
                 }
 
                 // Perform sync between VNC and VCenter DBs.
-                if (getAddPortSyncAtPluginStart() == true || syncNeeded) {
-                    while (vncDB.isVncApiServerAlive() == false) {
-                        s_logger.error("Waiting for API server before starting sync");
-                        Thread.sleep(5000);
-                    }
-
+                if (syncNeeded) {
                     TaskWatchDog.startMonitoring(this, "Sync",
                             300000, TimeUnit.MILLISECONDS);
 
-                    // When syncVirtualNetworks is run the first time, it also does
+                    // When sync is run, it also does
                     // addPort to vrouter agent for existing VMIs.
-                    // Clear the flag  on first run of syncVirtualNetworks.
                     try {
                         vcenterDB.setReadTimeout(VCenterDB.VCENTER_READ_TIMEOUT);
                         MainDB.sync(vcenterDB, vncDB, VCenterMonitor.mode);
                         vcenterDB.setReadTimeout(0);
                         syncNeeded = false;
-                        setAddPortSyncAtPluginStart(false);
                     } catch (Exception e) {
+                        vCenterConnected = false;
+                        TaskWatchDog.stopMonitoring(this);
                         String stackTrace = Throwables.getStackTraceAsString(e);
                         s_logger.error("Error in sync: " + e);
                         s_logger.error(stackTrace);
                         e.printStackTrace();
-                        if (stackTrace.contains("java.net.ConnectException: Connection refused") ||
-                            stackTrace.contains("java.rmi.RemoteException: VI SDK invoke"))   {
-                                //Remote Exception. Some issue with connection to vcenter-server
-                                // Exception on accessing remote objects.
-                                // Try to reinitialize the VCenter connection.
-                                //For some reason RemoteException not thrown
-                                s_logger.error("Problem with connection to vCenter-Server");
-                                s_logger.error("Restart connection and reSync");
-                                connect2vcenter();
-                                version = "";
-                        }
-                        TaskWatchDog.stopMonitoring(this);
                         continue;
                     }
-                    TaskWatchDog.stopMonitoring(this);
+
                 }
 
                 try
                 {
+                    WaitOptions wOpt = new WaitOptions();
+                    wOpt.setMaxWaitSeconds(VCenterDB.VCENTER_WAIT_FOR_UPDATES_TIMEOUT);
                     PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
-                    @SuppressWarnings("deprecation")
-                    UpdateSet update = propColl.waitForUpdates(version);
-                    if (update != null && update.getFilterSet() != null)
-                    {
+                    for ( ; ; ) {
+                        UpdateSet update = propColl.waitForUpdatesEx(version, wOpt);
+                        if (update != null && update.getFilterSet() != null)
+                        {
+                            version = update.getVersion();
 
-                        version = update.getVersion();
+                            this.handleUpdate(update);
 
-                        this.handleUpdate(update);
-
-                    } else
-                    {
-                        s_logger.error("No update is present!");
+                        } else
+                        {
+                            if (vcenterDB.isAlive() == false) {
+                                s_logger.error("Vcenter connection lost, reconnect and resync needed");
+                                vCenterConnected = false;
+                                break;
+                            }
+                        }
                     }
                 } catch (Exception e)
                 {
-                    syncNeeded = true;
-                    s_logger.error("Error in event handling, resync needed");
+                    vCenterConnected = false;
+                    s_logger.error("Error in event handling, reconnect and resync needed");
                     String stackTrace = Throwables.getStackTraceAsString(e);
                     s_logger.error(stackTrace);
                     e.printStackTrace();
-                    if (stackTrace.contains("java.net.ConnectException: Connection refused") ||
-                        stackTrace.contains("java.rmi.RemoteException: VI SDK invoke"))   {
-                            //Remote Exception. Some issue with connection to vcenter-server
-                            // Exception on accessing remote objects.
-                            // Try to reinitialize the VCenter connection.
-                            //For some reason RemoteException not thrown
-                            s_logger.error("Problem with connection to vCenter-Server");
-                            s_logger.error("Restart connection and reSync");
-                            connect2vcenter();
-                            version = "";
-                    }
                 }
             }
         } catch (Exception e)
@@ -617,16 +591,6 @@ public class VCenterNotify implements Runnable
                 + "\n createdTime : "
                 + anEvent.getCreatedTime().getTime()
                 + "\n----------\n");
-    }
-
-    public static void stopUpdates() {
-        if (vcenterDB == null ||  vcenterDB.getServiceInstance() == null) {
-            return;
-        }
-        PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
-        if (propColl != null) {
-            propColl.stopUpdates();
-        }
     }
 
     public static VncDB getVncDB() {

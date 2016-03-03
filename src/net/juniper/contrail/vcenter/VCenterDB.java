@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Hashtable;
 import java.util.Map;
@@ -63,6 +64,7 @@ public class VCenterDB {
             Logger.getLogger(VCenterDB.class);
     private static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
     static final int VCENTER_READ_TIMEOUT = 30000; //30 sec
+    static final int VCENTER_WAIT_FOR_UPDATES_TIMEOUT = 120; // 120 seconds
     protected final String contrailDvSwitchName;
     public final String contrailDataCenterName;
     private final String vcenterUrl;
@@ -261,8 +263,6 @@ public class VCenterDB {
        serviceInstance.getServerConnection()
                       .getVimService()
                       .getWsc().setReadTimeout(milliSecs);
-       s_logger.info("ServiceInstance read timeout set to " +
-           serviceInstance.getServerConnection().getVimService().getWsc().getReadTimeout());
     }
 
     public boolean isConnected() {
@@ -987,10 +987,14 @@ public class VCenterDB {
     }
 
     public boolean isAlive()  {
-        Folder folder = serviceInstance.getRootFolder();
-        if (folder == null) {
-            String msg = "Failed aliveness check for vCenter " + vcenterUrl;
-            s_logger.error(msg);
+        try {
+            Calendar currTime = serviceInstance.currentTime();
+            if (currTime == null) {
+                String msg = "Failed aliveness check for vCenter " + vcenterUrl;
+                s_logger.error(msg);
+                return false;
+            }
+        } catch (Exception e) {
             return false;
         }
         return true;
