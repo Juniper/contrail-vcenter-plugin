@@ -291,6 +291,11 @@ public class VirtualNetworkInfo extends VCenterObject {
         this.primaryVlanId = vlanId;
     }
 
+    // "virtual-network"s parent is "project"
+    public String getProjectUuid() {
+        return apiVn.getParentUuid();
+    }
+
     public boolean getIpPoolEnabled() {
         return ipPoolEnabled;
     }

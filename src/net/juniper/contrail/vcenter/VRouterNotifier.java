@@ -6,6 +6,7 @@
 
 package net.juniper.contrail.vcenter;
 
+import com.google.common.base.Throwables;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashMap;
@@ -78,7 +79,8 @@ public class VRouterNotifier {
                     Utils.parseMacAddress(vmiInfo.getMacAddress()),
                     UUID.fromString(vnInfo.getUuid()),
                     vnInfo.getIsolatedVlanId(),
-                    vnInfo.getPrimaryVlanId(), vmInfo.getName());
+                    vnInfo.getPrimaryVlanId(), vmInfo.getName(),
+                    UUID.fromString(vnInfo.getProjectUuid()));
             if (ret) {
                 s_logger.info("vRouter " + vrouterIpAddress + " AddPort success for " + vmiInfo);
             } else {
@@ -89,6 +91,8 @@ public class VRouterNotifier {
         } catch(Throwable e) {
             s_logger.error("vRouter " + vrouterIpAddress + " Exception in AddPort for "
                     + vmiInfo + ": " + e.getMessage());
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
             e.printStackTrace();
         }
     }
