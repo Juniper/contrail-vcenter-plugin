@@ -28,6 +28,7 @@ import com.vmware.vim25.UpdateSet;
 import com.vmware.vim25.VmEvent;
 import com.vmware.vim25.VmPoweredOnEvent;
 import com.vmware.vim25.VmPoweredOffEvent;
+import com.vmware.vim25.WaitOptions;
 import com.vmware.vim25.DvsEvent;
 import com.vmware.vim25.DVPortgroupEvent;
 import com.vmware.vim25.DVPortgroupCreatedEvent;
@@ -77,6 +78,7 @@ public class VCenterNotify implements Runnable
     private InventoryNavigator inventoryNavigator;
     private Datacenter _contrailDC;
     private VmwareDistributedVirtualSwitch contrailDVS;
+    static final int VCENTER_WAIT_FOR_UPDATES_TIMEOUT = 120; // 120 seconds
 
     private static Boolean shouldRun;
     private static Thread watchUpdates = null;
@@ -100,7 +102,7 @@ public class VCenterNotify implements Runnable
     /**
      * Initialize the necessary Managed Object References needed here
      */
-    private boolean initialize() {
+    public boolean initialize() {
         // Connect to VCenter
         s_logger.info("Connecting to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + ")");
@@ -114,14 +116,19 @@ public class VCenterNotify implements Runnable
                                     + vcenterPassword + ")");
                 }
             } catch (MalformedURLException e) {
-                    return false;
+                s_logger.error("MalformedURL exception while connecting to vcenter" + e);
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RemoteException e) {
-               s_logger.error("Remote exception while connecting to vcenter" + e);
-                e.printStackTrace();
+                s_logger.error("Remote exception while connecting to vcenter" + e);
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
             } catch (Exception e) {
                 s_logger.error("Error while connecting to vcenter" + e);
-                e.printStackTrace();
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
             }
         }
@@ -136,7 +143,7 @@ public class VCenterNotify implements Runnable
                 return false;
             }
         }
-        s_logger.error("Got rootfolder for vCenter ");
+        s_logger.info("Got rootfolder for vCenter ");
 
         if (inventoryNavigator == null) {
             inventoryNavigator = new InventoryNavigator(rootFolder);
@@ -145,7 +152,7 @@ public class VCenterNotify implements Runnable
                 return false;
             }
         }
-        s_logger.error("Got InventoryNavigator for vCenter ");
+        s_logger.info("Got InventoryNavigator for vCenter ");
 
         // Search contrailDc
         if (_contrailDC == null) {
@@ -153,11 +160,21 @@ public class VCenterNotify implements Runnable
                 _contrailDC = (Datacenter) inventoryNavigator.searchManagedEntity(
                                           "Datacenter", contrailDataCenterName);
             } catch (InvalidProperty e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RuntimeFault e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RemoteException e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
+            } catch (Exception e) {
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             }
             if (_contrailDC == null) {
                 s_logger.error("Failed to find " + contrailDataCenterName 
@@ -175,11 +192,21 @@ public class VCenterNotify implements Runnable
                                         "VmwareDistributedVirtualSwitch",
                                         contrailDvsName);
             } catch (InvalidProperty e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RuntimeFault e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RemoteException e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
+            } catch (Exception e) {
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             }
 
             if (contrailDVS == null) {
@@ -199,6 +226,7 @@ public class VCenterNotify implements Runnable
         inventoryNavigator = null;
         _contrailDC        = null;
         contrailDVS        = null;
+        watchedFilters.clear();
     }
 
     private EventHistoryCollector createEventHistoryCollector(ManagedObject mo, 
@@ -342,8 +370,7 @@ public class VCenterNotify implements Runnable
                     } catch (Exception e) {
                         String stackTrace = Throwables.getStackTraceAsString(e);
                         s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
-                        s_logger.error(stackTrace); 
-                        e.printStackTrace();
+                        s_logger.error(stackTrace);
                     }
                 } else if ((value instanceof EnteredMaintenanceModeEvent) || (value instanceof HostConnectionLostEvent)) {
                     Event anEvent = (Event) value;
@@ -370,8 +397,7 @@ public class VCenterNotify implements Runnable
                     } catch (Exception e) {
                         String stackTrace = Throwables.getStackTraceAsString(e);
                         s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
-                        s_logger.error(stackTrace); 
-                        e.printStackTrace();
+                        s_logger.error(stackTrace);
                     }
                 } else if (value instanceof VmMigratedEvent) {
                     printVmEvent(value);
@@ -380,8 +406,7 @@ public class VCenterNotify implements Runnable
                     } catch (Exception e) {
                         String stackTrace = Throwables.getStackTraceAsString(e);
                         s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
-                        s_logger.error(stackTrace); 
-                        e.printStackTrace();
+                        s_logger.error(stackTrace);
                     }
 
                 } else if (value instanceof DVPortgroupCreatedEvent) {
@@ -393,8 +418,7 @@ public class VCenterNotify implements Runnable
                     } catch (Exception e) {
                         String stackTrace = Throwables.getStackTraceAsString(e);
                         s_logger.error("Error while syncVmwareVirtualNetworks: " + e); 
-                        s_logger.error(stackTrace); 
-                        e.printStackTrace();
+                        s_logger.error(stackTrace);
                     }
 
                 } else if (value instanceof DVPortgroupReconfiguredEvent) {
@@ -426,10 +450,9 @@ public class VCenterNotify implements Runnable
     }
 
 
-     public void start() {
+     public void startThread() {
         try
         {
-            this.initialize();
             System.out.println("info---" + 
                 serviceInstance.getAboutInfo().getFullName());
             createEventFilters();
@@ -442,7 +465,8 @@ public class VCenterNotify implements Runnable
             System.out.println("Caught Exception : " + " Name : "
                     + e.getClass().getName() + " Message : " + e.getMessage()
                     + " Trace : ");
-            e.printStackTrace();
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
         }
     }
 
@@ -462,41 +486,44 @@ public class VCenterNotify implements Runnable
         {
             do
             {
-                try
-                {
-                    PropertyCollector propColl = serviceInstance.getPropertyCollector();
-                    UpdateSet update = propColl.waitForUpdates(version);
-                    if (update != null && update.getFilterSet() != null)
-                    {
-
-                        version = update.getVersion();
-                        
-                        this.handleUpdate(update);
-
-                    } else
-                    {
-                        s_logger.error("No update is present!");
-                    }
-                } catch (Exception e)
-                {
-                    String stackTrace = Throwables.getStackTraceAsString(e);
-                    s_logger.error(stackTrace);
-                    s_logger.error("Exception in ServiceInstance. Refreshing the serviceinstance and starting new");
+                // Check if VCenter Server is Alive
+                if (monitorTask.getVCenterDB().isVCenterAlive() == false) {
+                    s_logger.error("Problem with connection to vCenter-Server");
                     do {
-                        System.out.println("Waiting for periodic thread to reconnect...");
+                        s_logger.error("Waiting for Periodic Thread to Reconnect...");
                         Thread.sleep(2000);
                         if (monitorTask.VCenterNotifyForceRefresh) {
-                            s_logger.info("periodic thread reconnect successful.. initialize Notify..");
+                            s_logger.info("Periodic thread reconnect successful.. initializing Notify Thread..");
                             Cleanup();
                             initialize();
                             createEventFilters();
                             monitorTask.VCenterNotifyForceRefresh = false;
                             version = "";
-                            s_logger.info("reInit Notify Complete..");
+                            s_logger.info("reInit of Notify Thread Complete..");
                             break;
                         }
                     } while (true);
-                    continue;
+                }
+
+                // Wait for updates from vCenterServer with timeout
+                try
+                {
+                    WaitOptions wOpt = new WaitOptions();
+                    wOpt.setMaxWaitSeconds(VCENTER_WAIT_FOR_UPDATES_TIMEOUT);
+                    PropertyCollector propColl = serviceInstance.getPropertyCollector();
+                    UpdateSet update = propColl.waitForUpdatesEx(version, wOpt);
+                    if (update != null && update.getFilterSet() != null)
+                    {
+                        version = update.getVersion();
+                        this.handleUpdate(update);
+                    } else
+                    {
+                        // It could be b'cos of timeout. Go back and wait for update.
+                    }
+                } catch (Exception e)
+                {
+                    String stackTrace = Throwables.getStackTraceAsString(e);
+                    s_logger.error(stackTrace);
                 }
             } while (shouldRun);
         } catch (Exception e)
@@ -510,7 +537,7 @@ public class VCenterNotify implements Runnable
                         + e.getClass().getName() + " Message : "
                         + e.getMessage() + " Trace : ");
                 String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace); 
+                s_logger.error(stackTrace);
             }
         }
     }
@@ -596,7 +623,8 @@ public class VCenterNotify implements Runnable
                 pf.destroyPropertyFilter();
             } catch (RemoteException e) 
             {
-                e.printStackTrace();
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
             }
         }
         watchedFilters.clear();
@@ -625,7 +653,8 @@ public class VCenterNotify implements Runnable
             }
         } catch(Exception e)
         {
-            e.printStackTrace();
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
             throw new RuntimeException(e);
         }
     }
@@ -646,7 +675,8 @@ public class VCenterNotify implements Runnable
                 }
             } catch (RemoteException e) 
             {
-                e.printStackTrace();
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
             }
         }
     }
