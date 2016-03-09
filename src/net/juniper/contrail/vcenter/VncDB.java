@@ -365,7 +365,9 @@ public class VncDB {
         // If this is the only interface on this VM,
         // delete Virtual Machine as well after deleting last VMI
         boolean deleteVm = false;
-        if (vm.getVirtualMachineInterfaceBackRefs().size() == 1) {
+        List<ObjectReference<ApiPropertyBase>> vmiRefs =
+                                               vm.getVirtualMachineInterfaceBackRefs();
+        if ((vmiRefs == null) || (vmiRefs.size() == 1)) {
             deleteVm = true;
         }
         
@@ -681,7 +683,8 @@ public class VncDB {
             }
         }catch(Throwable e) {
             s_logger.error("Exception : " + e);
-            e.printStackTrace();
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
         }
         s_logger.info("Create Virtual Machine :"
                        + " VM:" + vmName + " (uuid=" + vmUuid + ") Done");
@@ -893,7 +896,8 @@ public class VncDB {
             }
         }catch(Throwable e) {
             s_logger.error("Exception : " + e);
-            e.printStackTrace();
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
         }
         s_logger.info("VifPlug for"
                       + " VM:" + vmName + " (" + vmUuid + ") Done");
@@ -1105,7 +1109,8 @@ public class VncDB {
                 apiConnector.list(VirtualNetwork.class, null);
         } catch (Exception ex) {
             s_logger.error("Exception in api.list(VirtualNetorks): " + ex);
-            ex.printStackTrace();
+            String stackTrace = Throwables.getStackTraceAsString(ex);
+            s_logger.error(stackTrace);
         }
         if (networks == null || networks.size() == 0) {
             s_logger.debug("NO virtual networks FOUND");

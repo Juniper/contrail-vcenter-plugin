@@ -20,6 +20,8 @@ import net.juniper.contrail.sandesh.VCenterHttpServices;
 import net.juniper.contrail.watchdog.TaskWatchDog;
 import net.juniper.contrail.zklibrary.MasterSelection;
 
+import com.google.common.base.Throwables;
+
 class ExecutorServiceShutdownThread extends Thread {
     private static final long timeoutValue = 60;
     private static final TimeUnit timeoutUnit = TimeUnit.SECONDS;
@@ -114,9 +116,12 @@ public class VCenterMonitor {
             }
         } catch (IOException ex) {
             s_logger.warn("Unable to read " + _configurationFile, ex);
+            String stackTrace = Throwables.getStackTraceAsString(ex);
+            s_logger.error(stackTrace);
         } catch (Exception ex) {
             s_logger.error("Exception in readVcenterPluginConfigFile: " + ex);
-            ex.printStackTrace();
+            String stackTrace = Throwables.getStackTraceAsString(ex);
+            s_logger.error(stackTrace);
         }
 
         return true;
@@ -164,14 +169,28 @@ public class VCenterMonitor {
             try {
                 Thread.sleep(2);
             } catch (java.lang.InterruptedException e) {
-              System.out.println(e);
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
             }
         }
-        s_logger.info("Starting event monitor Task.. ");
+
+        // Launch Event Monitoring Task
         _eventMonitor = new VCenterNotify(_monitorTask, _vcenterURL,
                                           _vcenterUsername, _vcenterPassword,
                                           _vcenterDcName, _vcenterDvsName);
-        _eventMonitor.start();
+
+        // Wait to initialize Vcenter serviceInstance connection for Notify handling
+        // before starting Notify thread.
+        while(_eventMonitor.initialize() == false) {
+            try {
+                Thread.sleep(2);
+            } catch (java.lang.InterruptedException e) {
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+            }
+        }
+        s_logger.info("Starting event monitor Task.. ");
+        _eventMonitor.startThread();
     }
 
     private static void launchWatchDogs() {

@@ -8,6 +8,7 @@ import java.io.*;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.URL;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
@@ -23,6 +24,8 @@ import com.vmware.vim25.RuntimeFault;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 
 import org.apache.log4j.Logger;
+
+import com.google.common.base.Throwables;
 
 import com.vmware.vim25.DVPortSetting;
 import com.vmware.vim25.DVPortgroupConfigInfo;
@@ -59,6 +62,16 @@ import com.vmware.vim25.mo.util.PropertyCollectorUtil;
 import com.vmware.vim25.mo.ServiceInstance;
 import com.vmware.vim25.mo.VirtualMachine;
 import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
+
+// Exception to generate when invalid no of port-groups are read
+// from Distributed Virtual Switch. In contrail-vcenter integration,
+// we expect at least 1 port-group pre-configed as part of
+// provisioning task.
+class InvalidNoOfPortGroupsException extends Exception {
+    public InvalidNoOfPortGroupsException(String msg) {
+        super(msg);
+    }
+}
 
 public class VCenterDB {
     private static final Logger s_logger =
@@ -120,14 +133,18 @@ public class VCenterDB {
                     connectRetry();
                 }
             } catch (MalformedURLException e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RemoteException e) {
-               s_logger.error("Remote exception while connecting to vcenter" + e);
-                e.printStackTrace();
+                s_logger.error("Remote exception while connecting to vcenter" + e);
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return connectRetry();
             } catch (Exception e) {
                 s_logger.error("Error while connecting to vcenter" + e);
-                e.printStackTrace();
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
             }
         }
@@ -153,7 +170,7 @@ public class VCenterDB {
             }
         }
 
-        s_logger.error("Got rootfolder for vCenter ");
+        s_logger.info("Got rootfolder for vCenter ");
 
         if (inventoryNavigator == null) {
             inventoryNavigator = new InventoryNavigator(rootFolder);
@@ -162,7 +179,7 @@ public class VCenterDB {
                 return false;
             }
         }
-        s_logger.error("Got InventoryNavigator for vCenter ");
+        s_logger.info("Got InventoryNavigator for vCenter ");
 
         if (ipPoolManager == null) {
             ipPoolManager = serviceInstance.getIpPoolManager();
@@ -171,7 +188,7 @@ public class VCenterDB {
                 return false;
             }
         }
-        s_logger.error("Got ipPoolManager for vCenter ");
+        s_logger.info("Got ipPoolManager for vCenter ");
 
         // Search contrailDc
         if (contrailDC == null) {
@@ -179,11 +196,21 @@ public class VCenterDB {
                 contrailDC = (Datacenter) inventoryNavigator.searchManagedEntity(
                                           "Datacenter", contrailDataCenterName);
             } catch (InvalidProperty e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RuntimeFault e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RemoteException e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
+            } catch (Exception e) {
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             }
             if (contrailDC == null) {
                 s_logger.error("Failed to find " + contrailDataCenterName 
@@ -201,11 +228,21 @@ public class VCenterDB {
                                         "VmwareDistributedVirtualSwitch",
                                         contrailDvSwitchName);
             } catch (InvalidProperty e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RuntimeFault e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             } catch (RemoteException e) {
-                    return false;
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
+            } catch (Exception e) {
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                return false;
             }
 
             if (contrailDVS == null) {
@@ -220,13 +257,32 @@ public class VCenterDB {
         return true;
     }
 
+    public boolean isVCenterAlive() {
+        Calendar cal = null;
+        try{
+            cal = serviceInstance.currentTime();
+        } catch (Exception e) {
+            String stackTrace = Throwables.getStackTraceAsString(e);
+            s_logger.error(stackTrace);
+            return false;
+        }
+
+        if (cal == null) {
+            s_logger.warn("No Exception but null time from vCenterServer");
+            return false;
+        }
+
+        return true;
+    }
+
     public boolean connectRetry() {
         Cleanup();
         while(retryServiceInstance() == false) {
             try{
                 Thread.sleep(5000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
             }
 
@@ -256,13 +312,18 @@ public class VCenterDB {
                 return true;
         } catch (MalformedURLException e) {
                 s_logger.info("Re-Connect unsuccessful!");
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
         } catch (RemoteException e) {
                 s_logger.info("Re-Connect unsuccessful!");
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
         } catch (Exception e) {
                 s_logger.error("Error while connecting to vcenter" + e);
-                e.printStackTrace();
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
                 return false;
         }
     }
@@ -1206,7 +1267,7 @@ public class VCenterDB {
         if (dvPgs == null || dvPgs.length == 0) {
             s_logger.error("dvSwitch: " + contrailDvSwitchName +
                     " Distributed portgroups NOT configured");
-            return null;
+            throw new InvalidNoOfPortGroupsException("Empty portGroup list under dvSwitch:"+ contrailDvSwitchName);
         }
 
         // Get stored vcenter database from previous run

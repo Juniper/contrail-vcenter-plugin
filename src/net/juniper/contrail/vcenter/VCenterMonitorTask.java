@@ -541,7 +541,7 @@ class VCenterMonitorTask implements Runnable {
         //check if you are the master from time to time
         //sometimes things dont go as planned
         if (VCenterMonitor.isZookeeperLeader() == false) {
-            s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
+            s_logger.warn("Lost zookeeper leadership. Restarting myself\n");
             System.exit(0);
         }
 
@@ -566,6 +566,16 @@ class VCenterMonitorTask implements Runnable {
             return;
         }
 
+        // Check if VCenter Server is Alive
+        if (vcenterDB.isVCenterAlive() == false) {
+            s_logger.error("Problem with connection to vCenter-Server");
+            s_logger.error("Restart connection and reSync");
+            vcenterDB.connectRetry();
+            this.VCenterNotifyForceRefresh = true;
+            s_logger.info("Restart connection and reSync Complete..");
+            s_logger.info("Inform Notify thread about it....");
+        }
+
         // Perform one time sync between VNC and VCenter DBs.
         if (getAddPortSyncAtPluginStart() == true) {
             TaskWatchDog.startMonitoring(this, "One time sync",
@@ -573,27 +583,15 @@ class VCenterMonitorTask implements Runnable {
 
             // When syncVirtualNetworks is run the first time, it also does
             // addPort to vrouter agent for existing VMIs.
-            // Clear the flag  on first run of syncVirtualNetworks.
+            // Clear the flag  on first successful run of syncVirtualNetworks().
             try {
                 syncVirtualNetworks();
+                setAddPortSyncAtPluginStart(false);
             } catch (Exception e) {
                 String stackTrace = Throwables.getStackTraceAsString(e);
                 s_logger.error("Error while syncVirtualNetworks: " + e); 
                 s_logger.error(stackTrace); 
-                e.printStackTrace();
-                if (stackTrace.contains("java.net.ConnectException: Connection refused") ||
-                    stackTrace.contains("java.rmi.RemoteException: VI SDK invoke"))   {
-                        //Remote Exception. Some issue with connection to vcenter-server
-                        // Exception on accessing remote objects.
-                        // Try to reinitialize the VCenter connection.
-                        //For some reasom RemoteException not thrown
-                        s_logger.error("Problem with connection to vCenter-Server");
-                        s_logger.error("Restart connection and reSync");
-                        vcenterDB.connectRetry();
-                        this.VCenterNotifyForceRefresh = true;
-                }
             }
-            setAddPortSyncAtPluginStart(false);
             TaskWatchDog.stopMonitoring(this);
             return;
         }
@@ -608,7 +606,6 @@ class VCenterMonitorTask implements Runnable {
                 String stackTrace = Throwables.getStackTraceAsString(e);
                 s_logger.error("Error while vrouterAgentPeriodicConnectionCheck: " + e); 
                 s_logger.error(stackTrace); 
-                e.printStackTrace();
             }
         }
 
@@ -620,21 +617,7 @@ class VCenterMonitorTask implements Runnable {
             String stackTrace = Throwables.getStackTraceAsString(e);
             s_logger.error("Error while syncVmwareVirtualNetworks: " + e);
             s_logger.error(stackTrace);
-            e.printStackTrace();
-            if (stackTrace.contains("java.net.ConnectException: Connection refused") ||
-                stackTrace.contains("java.rmi.RemoteException: VI SDK invoke"))   {
-                //Remote Exception. Some issue with connection to vcenter-server
-                // Exception on accessing remote objects.
-                // Try to reinitialize the VCenter connection.
-                //For some reason RemoteException not thrown
-                s_logger.error("Problem with connection to vCenter-Server");
-                s_logger.error("Restart connection and reSync");
-                vcenterDB.connectRetry();
-                s_logger.info("Restart connection and reSync Complete..");
-                s_logger.info("Inform Notify thread about it....");
-                this.VCenterNotifyForceRefresh = true;
-            }
-        } 
+        }
 
         // Increment
         iteration++;
