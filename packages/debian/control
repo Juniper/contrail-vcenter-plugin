@@ -9,6 +9,7 @@ Homepage: https://github.com/Juniper/contrail-vcenter-plugin
 Package: contrail-install-vcenter-plugin
 Architecture: all
 Depends: ${java:Depends}, ${misc:Depends}
+Replaces: contrail-vcenter-plugin
 Description: Contrail vCenter Plugin Application installation 
  This is Contrail vCenter Plugin Application running on Contrail t
  config node. This package combines 4 packages into one
