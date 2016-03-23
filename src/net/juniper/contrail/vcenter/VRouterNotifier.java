@@ -42,7 +42,7 @@ public class VRouterNotifier {
         }
 
         if (vmiInfo.getUuid() == null)  {
-            s_logger.error("Null uuid, cannot perform DeletePort for " + vmiInfo);
+            s_logger.error("Null uuid, cannot perform AddPort for " + vmiInfo);
             return;
         }
 

@@ -3,6 +3,7 @@ package net.juniper.contrail.vcenter;
 import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.UUID;
@@ -20,6 +21,9 @@ import com.vmware.vim25.VMwareDVSPvlanMapEntry;
 import com.vmware.vim25.mo.DistributedVirtualPortgroup;
 import com.vmware.vim25.mo.ManagedObject;
 import com.vmware.vim25.mo.util.PropertyCollectorUtil;
+import net.juniper.contrail.api.ObjectReference;
+import net.juniper.contrail.api.types.VnSubnetsType;
+import net.juniper.contrail.api.types.VnSubnetsType.IpamSubnetType;
 
 public class VirtualNetworkInfo extends VCenterObject {
     private String uuid; // required attribute, key for this object
@@ -87,11 +91,40 @@ public class VirtualNetworkInfo extends VCenterObject {
     }
 
     public VirtualNetworkInfo(net.juniper.contrail.api.types.VirtualNetwork vn) {
-        this.apiVn = vn;
-        this.uuid = vn.getUuid();
+
+        if (vn == null) {
+            throw new IllegalArgumentException();
+        }
+
+        apiVn = vn;
+        uuid = vn.getUuid();
         name = vn.getName();
-        this.vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
-        this.externalIpam = vn.getExternalIpam();
+        vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
+        externalIpam = vn.getExternalIpam();
+
+        List<ObjectReference<VnSubnetsType>> objList = vn.getNetworkIpam();
+        if (objList != null) {
+            for (ObjectReference<VnSubnetsType> objRef: Utils.safe(objList)) {
+                if (objRef == null) {
+                    continue;
+                }
+                VnSubnetsType subnetsType = objRef.getAttr();
+                List<IpamSubnetType> ipamsubList = subnetsType.getIpamSubnets();
+                if (ipamsubList == null) {
+                    continue;
+                }
+                for (IpamSubnetType sub: ipamsubList) {
+                    if (sub == null) {
+                        continue;
+                    }
+                    subnetAddress = sub.getSubnet().getIpPrefix();
+                    int len = sub.getSubnet().getIpPrefixLen();
+                    int mask = 0xFFFFFFFF << (32 - len);
+                    subnetMask = InetAddresses.fromInteger(mask).getHostAddress();
+                    gatewayAddress = sub.getDefaultGateway();
+                }
+            }
+        }
     }
 
     public VirtualNetworkInfo(Event event,  VCenterDB vcenterDB) throws Exception {
@@ -544,6 +577,44 @@ public class VirtualNetworkInfo extends VCenterObject {
 
         VirtualNetworkInfo oldVnInfo = (VirtualNetworkInfo)obj;
 
+        if (uuid == null && oldVnInfo.uuid != null) {
+            uuid = oldVnInfo.uuid;
+        }
+
+        if (name == null && oldVnInfo.name != null) {
+            name = oldVnInfo.name;
+        }
+
+        if (isolatedVlanId == 0 && oldVnInfo.isolatedVlanId != 0) {
+            isolatedVlanId = oldVnInfo.isolatedVlanId;
+        }
+
+        if (primaryVlanId == 0 && oldVnInfo.primaryVlanId != 0) {
+            primaryVlanId = oldVnInfo.primaryVlanId;
+        }
+
+        if (ipPoolId == null && oldVnInfo.ipPoolId != null) {
+            ipPoolId = oldVnInfo.ipPoolId;
+        }
+
+        if (subnetAddress == null && oldVnInfo.subnetAddress != null) {
+            subnetAddress = oldVnInfo.subnetAddress;
+            externalIpam = oldVnInfo.externalIpam;
+        }
+
+        if (subnetMask == null && oldVnInfo.subnetMask != null) {
+            subnetMask = oldVnInfo.subnetMask;
+        }
+
+        if (gatewayAddress == null && oldVnInfo.gatewayAddress != null) {
+            gatewayAddress = oldVnInfo.gatewayAddress;
+        }
+
+        if (range == null && oldVnInfo.range != null) {
+            range = oldVnInfo.range;
+            ipPoolEnabled = oldVnInfo.ipPoolEnabled;
+        }
+
         if (apiVn == null && oldVnInfo.apiVn != null) {
             apiVn = oldVnInfo.apiVn;
         }
@@ -569,6 +640,10 @@ public class VirtualNetworkInfo extends VCenterObject {
             return true;
         }
 
+        if (subnetAddress == null || subnetMask == null) {
+            return false;
+        }
+
         int addr = InetAddresses.coerceToInteger(InetAddresses.forString(ipAddress));
         int subnet = InetAddresses.coerceToInteger(InetAddresses.forString(subnetAddress));
         int mask = InetAddresses.coerceToInteger(InetAddresses.forString(subnetMask));
@@ -576,7 +651,7 @@ public class VirtualNetworkInfo extends VCenterObject {
         if (((addr & mask) != subnet)) {
             return false;
         }
-        if (!ipPoolEnabled || range.isEmpty()) {
+        if (!ipPoolEnabled || range == null || range.isEmpty()) {
             return true;
         }
 
