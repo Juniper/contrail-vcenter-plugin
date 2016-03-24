@@ -26,17 +26,29 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
 
     VirtualMachineInterfaceInfo(VirtualMachineInfo vmInfo,
             VirtualNetworkInfo vnInfo) {
+        if (vmInfo == null) {
+            throw new IllegalArgumentException("Cannot init VMI, null VM argument");
+        }
+        if (vnInfo == null) {
+            throw new IllegalArgumentException("Cannot init VMI, null VN argument");
+        }
         this.vmInfo = vmInfo;
         this.vnInfo = vnInfo;
     }
 
     VirtualMachineInterfaceInfo(String macAddress)
     {
+        if (macAddress == null) {
+            throw new IllegalArgumentException("Cannot init VMI, null MAC address");
+        }
         this.macAddress = macAddress;
     }
 
     VirtualMachineInterfaceInfo(VirtualMachineInterfaceInfo vmiInfo)
     {
+        if (vmiInfo == null) {
+            throw new IllegalArgumentException("Cannot init VMI from null VMI");
+        }
         this.vmInfo = vmiInfo.vmInfo;
         this.vnInfo = vmiInfo.vnInfo;
         this.macAddress = vmiInfo.macAddress;

@@ -51,6 +51,10 @@ public class VirtualNetworkInfo extends VCenterObject {
     net.juniper.contrail.api.types.VirtualNetwork apiVn;
 
     public VirtualNetworkInfo(String uuid) {
+        if (uuid == null) {
+            throw new IllegalArgumentException("Cannot init VN with null uuid");
+        }
+
         this.uuid = uuid;
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
     }
@@ -76,6 +80,9 @@ public class VirtualNetworkInfo extends VCenterObject {
 
     public VirtualNetworkInfo(VirtualNetworkInfo vnInfo)
     {
+        if (vnInfo == null) {
+            throw new IllegalArgumentException("Cannot init VN from null VN");
+        }
         this.uuid = vnInfo.uuid;
         this.name = vnInfo.name;
         this.subnetAddress = vnInfo.subnetAddress;
@@ -93,7 +100,7 @@ public class VirtualNetworkInfo extends VCenterObject {
     public VirtualNetworkInfo(net.juniper.contrail.api.types.VirtualNetwork vn) {
 
         if (vn == null) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Cannot init VN from null API VN");
         }
 
         apiVn = vn;
@@ -181,7 +188,7 @@ public class VirtualNetworkInfo extends VCenterObject {
                 || dvs == null || dvsName == null
                 || dc == null || dcName == null
                 || pvlanMapArray == null) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Cannot init VN from null arguments");
         }
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
         this.dc = dc;

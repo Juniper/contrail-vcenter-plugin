@@ -952,6 +952,12 @@ public class VncDB {
                                             vmInterface.getVirtualNetwork();
             for (ObjectReference<ApiPropertyBase> vnRef : vnRefs) {
                 VirtualNetworkInfo vnInfo = MainDB.getVnById(vnRef.getUuid());
+
+                if (vnInfo == null) {
+                    s_logger.info("Reading from the API server, skipping VMI in unmanaged network "
+                                  + vnRef.getUuid());
+                    continue;
+                }
                 VirtualMachineInterfaceInfo vmiInfo =
                         new VirtualMachineInterfaceInfo(vmInfo, vnInfo);
 
