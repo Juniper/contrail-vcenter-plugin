@@ -41,6 +41,9 @@ public class VirtualMachineInfo extends VCenterObject {
     net.juniper.contrail.api.types.VirtualMachine apiVm;
 
     public VirtualMachineInfo(String uuid) {
+        if (uuid == null) {
+            throw new IllegalArgumentException("Cannot init VM with null uuid");
+        }
         this.uuid = uuid;
 
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
@@ -60,6 +63,9 @@ public class VirtualMachineInfo extends VCenterObject {
 
     public VirtualMachineInfo(VirtualMachineInfo vmInfo)
     {
+        if (vmInfo == null) {
+            throw new IllegalArgumentException("Cannot init VM from null VM");
+        }
         this.uuid = vmInfo.uuid;
         this.name = vmInfo.name;
         this.hostName = vmInfo.hostName;
@@ -116,6 +122,9 @@ public class VirtualMachineInfo extends VCenterObject {
     }
 
     public VirtualMachineInfo(net.juniper.contrail.api.types.VirtualMachine vm) {
+        if (vm == null) {
+            throw new IllegalArgumentException("Cannot init VM with null API VM");
+        }
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
 
         if (vm == null) {
@@ -136,7 +145,7 @@ public class VirtualMachineInfo extends VCenterObject {
 
         if (vcenterDB == null || dc == null || dcName == null
                 || vm == null || pTable == null) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Cannot init VM");
         }
 
         this.dc = dc;
