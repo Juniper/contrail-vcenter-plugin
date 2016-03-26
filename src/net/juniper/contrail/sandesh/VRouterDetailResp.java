@@ -83,7 +83,7 @@ public class VRouterDetailResp {
             VirtualMachineInterfaceSandesh vmi = new VirtualMachineInterfaceSandesh();
             vmi.setMacAddress(vmiInfo.getMacAddress());
             vmi.setNetwork(vnInfo1.getName());
-            vmi.setVirtualMachine(vmInfo.getName());
+            vmi.setVirtualMachine(vmInfo.getDisplayName());
             String ipAddress = vmiInfo.getIpAddress();
             if (ipAddress == null && vnInfo.getExternalIpam()
                  && vmInfo.getToolsRunningStatus().equals(

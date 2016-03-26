@@ -873,6 +873,7 @@ public class VCenterDB {
         Hashtable[] pTables = PropertyCollectorUtil.retrieveProperties(vms, "VirtualMachine",
                 new String[] {"name",
                 "config.instanceUuid",
+                "config.annotation",
                 "runtime.powerState",
                 "runtime.host",
                 "guest.toolsRunningStatus",
@@ -949,8 +950,7 @@ public class VCenterDB {
                 vnInfo = MainDB.getVnByName(netName);
                 if (vnInfo == null) {
                     if (mode == Mode.VCENTER_ONLY) {
-                        s_logger.info("Reading from vCenter, skipping VMI in unmanaged network "
-                                      + netName);
+                        s_logger.info("Skipping VMI in unmanaged network " + netName);
                         continue;
                     }
                 }
