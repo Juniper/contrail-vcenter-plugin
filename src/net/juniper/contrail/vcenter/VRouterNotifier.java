@@ -79,7 +79,8 @@ public class VRouterNotifier {
                     Utils.parseMacAddress(vmiInfo.getMacAddress()),
                     UUID.fromString(vnInfo.getUuid()),
                     vnInfo.getIsolatedVlanId(),
-                    vnInfo.getPrimaryVlanId(), vmInfo.getName(),
+                    vnInfo.getPrimaryVlanId(),
+                    vmInfo.getDisplayName(),
                     UUID.fromString(vnInfo.getProjectUuid()));
             if (ret) {
                 s_logger.info("vRouter " + vrouterIpAddress + " AddPort success for " + vmiInfo);

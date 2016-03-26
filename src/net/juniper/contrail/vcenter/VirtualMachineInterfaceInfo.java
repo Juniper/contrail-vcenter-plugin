@@ -166,7 +166,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
     }
 
     public String toString() {
-        return "VMI <" + vmInfo.getName() + ", " + vnInfo.getName() +
+        return "VMI <" + vmInfo.getDisplayName() + ", " + vnInfo.getName() +
             ", " + uuid + ", " + ipAddress + ", " + macAddress +
             ", primary vlan = " + vnInfo.getPrimaryVlanId() +
             ", isolated vlan = " + vnInfo.getIsolatedVlanId() +

@@ -12,13 +12,13 @@ import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import com.vmware.vim25.Event;
-import com.vmware.vim25.GuestInfo;
 import com.vmware.vim25.GuestNicInfo;
 import com.vmware.vim25.ManagedObjectReference;
 
 public class VirtualMachineInfo extends VCenterObject {
     private String uuid; // required attribute, key for this object
     private String name;
+    private String displayName;
     private String hostName;
     private String vrouterIpAddress;
     private VirtualMachinePowerState powerState;
@@ -54,6 +54,7 @@ public class VirtualMachineInfo extends VCenterObject {
     {
         this.uuid = uuid;
         this.name = name;
+        this.displayName = name;
         this.hostName = hostName;
         this.vrouterIpAddress = vrouterIpAddress;
         this.powerState = powerState;
@@ -68,6 +69,7 @@ public class VirtualMachineInfo extends VCenterObject {
         }
         this.uuid = vmInfo.uuid;
         this.name = vmInfo.name;
+        this.displayName = vmInfo.displayName;
         this.hostName = vmInfo.hostName;
         this.vrouterIpAddress = vmInfo.vrouterIpAddress;
         this.powerState = vmInfo.powerState;
@@ -93,9 +95,18 @@ public class VirtualMachineInfo extends VCenterObject {
             host = vcenterDB.getVmwareHost(hostName, dc, dcName);
 
             if (event.getVm() != null) {
+
                 name = event.getVm().getName();
 
                 vm = vcenterDB.getVmwareVirtualMachine(name, host, hostName, dcName);
+
+                if (vcenterDB.mode == Mode.VCENTER_AS_COMPUTE
+                        && !name.toLowerCase().contains(
+                        contrailVRouterVmNamePrefix.toLowerCase())) {
+                    displayName = vm.getConfig().getAnnotation();
+                } else {
+                    displayName = name;
+                }
              }
         }
 
@@ -127,13 +138,10 @@ public class VirtualMachineInfo extends VCenterObject {
         }
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
 
-        if (vm == null) {
-            return;
-        }
-
         apiVm = vm;
         uuid = vm.getUuid();
         name = vm.getName();
+        displayName = vm.getDisplayName();
     }
 
     public VirtualMachineInfo(VCenterDB vcenterDB,
@@ -155,6 +163,14 @@ public class VirtualMachineInfo extends VCenterObject {
         // Name
         uuid  = (String)  pTable.get("config.instanceUuid");
         name = (String) pTable.get("name");
+
+        if (vcenterDB.mode == Mode.VCENTER_AS_COMPUTE
+                && !name.toLowerCase().contains(
+                contrailVRouterVmNamePrefix.toLowerCase())) {
+            displayName = (String)  pTable.get("config.annotation");
+        } else {
+            displayName = name;
+        }
 
         if (host == null) {
             ManagedObjectReference hostHmor = (ManagedObjectReference) pTable.get("runtime.host");
@@ -196,6 +212,14 @@ public class VirtualMachineInfo extends VCenterObject {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
     }
 
     public String getUuid() {
@@ -294,6 +318,10 @@ public class VirtualMachineInfo extends VCenterObject {
                 || (name == null && vm.name != null)) {
             return false;
         }
+        if ((displayName != null && !displayName.equals(vm.displayName))
+                || (displayName == null && vm.displayName != null)) {
+            return false;
+        }
         if ((vrouterIpAddress != null && !vrouterIpAddress.equals(vm.vrouterIpAddress))
                 || (vrouterIpAddress == null && vm.vrouterIpAddress != null)) {
             return false;
@@ -335,12 +363,12 @@ public class VirtualMachineInfo extends VCenterObject {
     }
 
     public String toString() {
-        return "VM <" + name + ", host " + hostName + ", " + uuid + ">";
+        return "VM <" + displayName + ", host " + hostName + ", " + uuid + ">";
     }
 
     public StringBuffer toStringBuffer() {
         StringBuffer s = new StringBuffer(
-                "VM <" + name + ", host " + hostName + ", " + uuid + ">\n\n");
+                "VM <" + displayName + ", host " + hostName + ", " + uuid + ">\n\n");
         for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
             vmiInfoMap.entrySet()) {
 
@@ -391,6 +419,9 @@ public class VirtualMachineInfo extends VCenterObject {
         }
         if (newVmInfo.name != null) {
             name = newVmInfo.name;
+        }
+        if (newVmInfo.displayName != null) {
+            displayName = newVmInfo.displayName;
         }
         if (newVmInfo.powerState != null) {
             powerState = newVmInfo.powerState;
