@@ -109,7 +109,11 @@ public class VirtualNetworkInfo extends VCenterObject {
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
         externalIpam = vn.getExternalIpam();
 
-        List<ObjectReference<VnSubnetsType>> objList = vn.getNetworkIpam();
+        readIpAm();
+    }
+
+    private void readIpAm() {
+        List<ObjectReference<VnSubnetsType>> objList = apiVn.getNetworkIpam();
         if (objList != null) {
             for (ObjectReference<VnSubnetsType> objRef: Utils.safe(objList)) {
                 if (objRef == null) {
@@ -134,7 +138,7 @@ public class VirtualNetworkInfo extends VCenterObject {
         }
     }
 
-    public VirtualNetworkInfo(Event event,  VCenterDB vcenterDB) throws Exception {
+    public VirtualNetworkInfo(Event event,  VCenterDB vcenterDB, VncDB vncDB) throws Exception {
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
 
         if (event.getDatacenter() != null) {
@@ -174,6 +178,11 @@ public class VirtualNetworkInfo extends VCenterObject {
         }
 
         populateInfo(vcenterDB, pTables[0]);
+
+        if (vcenterDB.mode == Mode.VCENTER_AS_COMPUTE) {
+           apiVn = vncDB.findVirtualNetwork(uuid);
+           readIpAm();
+        }
     }
 
     public VirtualNetworkInfo(VCenterDB vcenterDB,

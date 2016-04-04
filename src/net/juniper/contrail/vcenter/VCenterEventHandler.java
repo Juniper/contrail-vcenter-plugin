@@ -114,7 +114,7 @@ public class VCenterEventHandler {
         VirtualNetworkInfo newVnInfo = null;
 
         try {
-            newVnInfo = new VirtualNetworkInfo(event, vcenterDB);
+            newVnInfo = new VirtualNetworkInfo(event, vcenterDB, vncDB);
         } catch (Exception e) {
             s_logger.info("Skipping update event for deleted network"
                     + event.getClass().getName());
