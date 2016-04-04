@@ -880,6 +880,11 @@ public class VncDB {
         return map;
     }
 
+    public VirtualNetwork findVirtualNetwork(String uuid)
+            throws IOException {
+        return (VirtualNetwork) apiConnector.findById(
+                    VirtualNetwork.class, uuid);
+    }
 
     @SuppressWarnings("unchecked")
     SortedMap<String, VirtualMachineInfo> readVirtualMachines() {
