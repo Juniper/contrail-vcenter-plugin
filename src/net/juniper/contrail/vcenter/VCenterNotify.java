@@ -325,15 +325,14 @@ public class VCenterNotify implements Runnable
                                         && oldPoolId.equals(newPoolId))) {
                             continue;
                         }
-                        vnInfo.setIpPoolId(newPoolId, vcenterDB);
-                        // setIpPool() sets the poolId in VnInfo based on
-                        // pool-name string if newPoolId is null.
-                        // If oldPoolId and vnInfo.getIpPoolId() are same,
-                        // skip subnet update on the virtual network.
-                        s_logger.info("IP Pool ID for " + vnInfo + " set to " + vnInfo.getIpPoolId());
-                        if ((vnInfo.getIpPoolId() != null) &&
-                                    !vnInfo.getIpPoolId().equals(oldPoolId)) {
-                            vncDB.updateVirtualNetwork(vnInfo);
+                        VirtualNetworkInfo newVnInfo = new VirtualNetworkInfo(vnInfo);
+
+                        newVnInfo.setIpPoolId(newPoolId, vcenterDB);
+                        if ((newVnInfo.getIpPoolId() != null) &&
+                               !newVnInfo.getIpPoolId().equals(oldPoolId)) {
+                            s_logger.info("IP Pool ID for " + newVnInfo + " set to "
+                               + newVnInfo.getIpPoolId());
+                            vnInfo.update(newVnInfo, vncDB);
                         }
                     }
                 } else if (propName.equals("guest.toolsRunningStatus")) {
