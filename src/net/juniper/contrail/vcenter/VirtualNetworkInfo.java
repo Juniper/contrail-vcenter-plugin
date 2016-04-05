@@ -28,8 +28,8 @@ import net.juniper.contrail.api.types.VnSubnetsType.IpamSubnetType;
 public class VirtualNetworkInfo extends VCenterObject {
     private String uuid; // required attribute, key for this object
     private String name;
-    private short isolatedVlanId;
     private short primaryVlanId;
+    private short isolatedVlanId;
     private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap; // key is MAC address
     private Integer ipPoolId;
     private String subnetAddress;
@@ -83,18 +83,26 @@ public class VirtualNetworkInfo extends VCenterObject {
         if (vnInfo == null) {
             throw new IllegalArgumentException("Cannot init VN from null VN");
         }
+
         this.uuid = vnInfo.uuid;
         this.name = vnInfo.name;
+        this.primaryVlanId = vnInfo.primaryVlanId;
+        this.isolatedVlanId = vnInfo.isolatedVlanId;
+        this.vmiInfoMap = vnInfo.vmiInfoMap;
+        this.ipPoolId = vnInfo.ipPoolId;
         this.subnetAddress = vnInfo.subnetAddress;
         this.subnetMask = vnInfo.subnetMask;
         this.gatewayAddress = vnInfo.gatewayAddress;
-        this.primaryVlanId = vnInfo.primaryVlanId;
-        this.isolatedVlanId = vnInfo.isolatedVlanId;
         this.ipPoolEnabled = vnInfo.ipPoolEnabled;
         this.range = vnInfo.range;
         this.externalIpam = vnInfo.externalIpam;
-
-        this.vmiInfoMap = vnInfo.vmiInfoMap;
+        this.net = vnInfo.net;
+        this.dpg = vnInfo.dpg;
+        this.dvs = vnInfo.dvs;
+        this.dvsName = vnInfo.dvsName;
+        this.dc = vnInfo.dc;
+        this.dcName = vnInfo.dcName;
+        this.apiVn = vnInfo.apiVn;
     }
 
     public VirtualNetworkInfo(net.juniper.contrail.api.types.VirtualNetwork vn) {
@@ -374,7 +382,6 @@ public class VirtualNetworkInfo extends VCenterObject {
         if (ipPool != null) {
             IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
 
-            // ifconfig setting
             subnetAddress = ipConfigInfo.getSubnetAddress();
             subnetMask = ipConfigInfo.getNetmask();
             gatewayAddress = ipConfigInfo.getGateway();
@@ -528,6 +535,7 @@ public class VirtualNetworkInfo extends VCenterObject {
         }
 
         vncDB.createVirtualNetwork(this);
+        // notify observers
         MainDB.created(this);
     }
 
@@ -541,55 +549,18 @@ public class VirtualNetworkInfo extends VCenterObject {
 
         VirtualNetworkInfo newVnInfo = (VirtualNetworkInfo)obj;
 
-        if (newVnInfo.name != null) {
-            name = newVnInfo.name;
-        }
-        if (newVnInfo.isolatedVlanId != 0) {
-            isolatedVlanId = newVnInfo.isolatedVlanId;
-        }
+        name = newVnInfo.name;
+        primaryVlanId = newVnInfo.primaryVlanId;
+        isolatedVlanId = newVnInfo.isolatedVlanId;
+        ipPoolId = newVnInfo.ipPoolId;
+        subnetAddress = newVnInfo.subnetAddress;
+        subnetMask = newVnInfo.subnetMask;
+        gatewayAddress = newVnInfo.gatewayAddress;
+        ipPoolEnabled = newVnInfo.ipPoolEnabled;
+        range = newVnInfo.range;
+        externalIpam = newVnInfo.externalIpam;
 
-        if (newVnInfo.primaryVlanId != 0) {
-            primaryVlanId = newVnInfo.primaryVlanId;
-        }
-
-        if (newVnInfo.subnetAddress != null) {
-            subnetAddress = newVnInfo.subnetAddress;
-        }
-
-        if (newVnInfo.subnetMask != null) {
-            subnetAddress = newVnInfo.subnetMask;
-        }
-
-        if (newVnInfo.gatewayAddress != null) {
-            gatewayAddress = newVnInfo.gatewayAddress;
-        }
-        if (newVnInfo.ipPoolEnabled != false) {
-            ipPoolEnabled = newVnInfo.ipPoolEnabled;
-        }
-
-        if (newVnInfo.range != null) {
-            range = newVnInfo.range;
-        }
-        if (newVnInfo.externalIpam != false) {
-            externalIpam = newVnInfo.externalIpam;
-        }
-
-        if (newVnInfo.net != null) {
-            net = newVnInfo.net;
-        }
-        if (newVnInfo.dpg != null) {
-            dpg = newVnInfo.dpg;
-        }
-        if (newVnInfo.dvs != null) {
-            dvs = newVnInfo.dvs;
-        }
-
-        if (newVnInfo.dvsName != null) {
-            dvsName = newVnInfo.dvsName;
-        }
-
-        // notify observers
-        // for networks we do not update the API server
+        vncDB.updateVirtualNetwork(this);
     }
 
     @Override

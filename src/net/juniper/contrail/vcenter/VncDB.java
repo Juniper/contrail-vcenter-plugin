@@ -28,6 +28,7 @@ import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
 import net.juniper.contrail.api.types.VirtualNetwork;
 import net.juniper.contrail.api.types.VnSubnetsType;
+import net.juniper.contrail.api.types.VnSubnetsType.IpamSubnetType;
 import net.juniper.contrail.api.types.Project;
 import net.juniper.contrail.api.types.IdPermsType;
 import com.google.common.base.Throwables;
@@ -447,10 +448,22 @@ public class VncDB {
     }
 
     public void createVirtualNetwork(VirtualNetworkInfo vnInfo)
+            throws IOException
+    {
+        updateVirtualNetwork(vnInfo, true);
+    }
+
+    public void updateVirtualNetwork(VirtualNetworkInfo vnInfo)
+            throws IOException
+    {
+        updateVirtualNetwork(vnInfo, false);
+    }
+
+    private void updateVirtualNetwork(VirtualNetworkInfo vnInfo, boolean create)
             throws IOException {
         if (vnInfo == null) {
-            s_logger.error("Null pointer argument");
-            throw new IllegalArgumentException();
+            s_logger.error("Cannot create API VN: null arguments");
+            throw new IllegalArgumentException("Null vnInfo argument");
         }
 
         if (mode == Mode.VCENTER_AS_COMPUTE) {
@@ -461,49 +474,35 @@ public class VncDB {
             return;
         }
 
-        VirtualNetwork    vn = new VirtualNetwork();
-
+        VirtualNetwork vn = new VirtualNetwork();
         vn.setUuid(vnInfo.getUuid());
-        vn.setName(vnInfo.getName());
-        vn.setDisplayName(vnInfo.getName());
-        vn.setIdPerms(vCenterIdPerms);
-        vn.setParent(vCenterProject);
+        if (create) {
+            // these fields can only be set during create
+            vn.setName(vnInfo.getName());
+            vn.setDisplayName(vnInfo.getName());
+            vn.setIdPerms(vCenterIdPerms);
+            vn.setParent(vCenterProject);
+        }
+
         vn.setExternalIpam(vnInfo.getExternalIpam());
 
-        VnSubnetsType subnet = getSubnet(vnInfo, vn);
+        VnSubnetsType subnet = getSubnet(vnInfo);
         if (subnet != null) {
             vn.setNetworkIpam(vCenterIpam, subnet);
         }
 
-        apiConnector.create(vn);
+        if (create) {
+            s_logger.info("Creating API " + vnInfo);
+            apiConnector.create(vn);
+        } else {
+            s_logger.info("Updating API " + vnInfo);
+            apiConnector.update(vn);
+        }
         apiConnector.read(vn);
         vnInfo.apiVn = vn;
-        s_logger.info("Created " + vnInfo);
     }
 
-    public void updateVirtualNetwork(VirtualNetworkInfo vnInfo)
-            throws IOException {
-        if (mode == Mode.VCENTER_AS_COMPUTE) {
-            return;
-        }
-
-        if (vnInfo == null) {
-            s_logger.error("Null pointer argument");
-            throw new IllegalArgumentException();
-        }
-
-        VirtualNetwork    vn = new VirtualNetwork();
-        vn.setUuid(vnInfo.getUuid());
-
-        VnSubnetsType subnet = getSubnet(vnInfo, vn);
-        if (subnet != null) {
-            vn.setNetworkIpam(vCenterIpam, subnet);
-        }
-        apiConnector.update(vn);
-        s_logger.info("Updated " + vnInfo);
-    }
-
-    private VnSubnetsType getSubnet(VirtualNetworkInfo vnInfo, VirtualNetwork vn) {
+    private VnSubnetsType getSubnet(VirtualNetworkInfo vnInfo) {
         if (vnInfo.getSubnetAddress() == null || vnInfo.getSubnetMask() == null) {
             return null;
         }
@@ -518,7 +517,6 @@ public class VncDB {
                 allocation_pools = new ArrayList<VnSubnetsType.IpamSubnetType.AllocationPoolType>();
                 String start = (pools[0]).replace(" ","");
                 String num   = (pools[1]).replace(" ","");
-                String[] bytes = start.split("\\.");
                 int start_ip = InetAddresses.coerceToInteger(InetAddresses.forString(start));
                 int end_ip = start_ip + Integer.parseInt(num) - 1;
                 String end = InetAddresses.toAddrString(InetAddresses.fromInteger(end_ip));
@@ -550,20 +548,19 @@ public class VncDB {
                                        true,                          // addr_from_start
                                        null,                          // dhcp_options_list
                                        null,                          // host_routes
-                                       vn.getName() + "-subnet"));
+                                       vnInfo.getName() + "-subnet"));
         return subnet;
     }
 
     public void deleteVirtualNetwork(VirtualNetworkInfo vnInfo)
             throws IOException {
+        if (vnInfo == null) {
+            s_logger.error("Cannot delete API VN: null arguments");
+            throw new IllegalArgumentException("Null vnInfo argument");
+        }
 
         if (mode == Mode.VCENTER_AS_COMPUTE) {
             return;
-        }
-
-        if (vnInfo == null) {
-            s_logger.error("Cannot delete API VN: null arguments");
-            throw new IllegalArgumentException("Null arguments");
         }
 
         VirtualNetwork apiVn = (VirtualNetwork) apiConnector.findById(
@@ -586,13 +583,13 @@ public class VncDB {
 
     public void createVirtualMachine(VirtualMachineInfo vmInfo)
             throws IOException {
-        if (mode == Mode.VCENTER_AS_COMPUTE) {
-            return;
+        if (vmInfo == null) {
+            s_logger.error("Cannot create API VM: null arguments");
+            throw new IllegalArgumentException("Null vmInfo argument");
         }
 
-        if (vmInfo == null) {
-            s_logger.error("Null argument");
-            throw new IllegalArgumentException("vmInfo is null");
+        if (mode == Mode.VCENTER_AS_COMPUTE) {
+            return;
         }
 
         String vmUuid = vmInfo.getUuid();
@@ -612,14 +609,15 @@ public class VncDB {
 
     public void deleteVirtualMachine(VirtualMachineInfo vmInfo)
             throws IOException {
+        if (vmInfo == null) {
+            s_logger.error("Cannot delete VM: null arguments");
+            throw new IllegalArgumentException("Null vmInfo argument");
+        }
+
         if (mode == Mode.VCENTER_AS_COMPUTE) {
             return;
         }
 
-        if (vmInfo == null) {
-            s_logger.error("Cannot delete VM: null arguments");
-            throw new IllegalArgumentException("Null arguments");
-        }
         VirtualMachine apiVm = (VirtualMachine) apiConnector.findById(
                 VirtualMachine.class, vmInfo.getUuid());
 
@@ -639,6 +637,10 @@ public class VncDB {
     public void createVirtualMachineInterface(
             VirtualMachineInterfaceInfo vmiInfo)
             throws IOException {
+        if (vmiInfo == null) {
+            s_logger.error("Cannot create API VMI: null arguments");
+            throw new IllegalArgumentException("Null vmiInfo argument");
+        }
 
         if (mode == Mode.VCENTER_AS_COMPUTE) {
             return;
@@ -713,13 +715,13 @@ public class VncDB {
     public void deleteVirtualMachineInterface(
             VirtualMachineInterfaceInfo vmiInfo)
             throws IOException {
-        if (mode == Mode.VCENTER_AS_COMPUTE) {
-            return;
+        if (vmiInfo == null) {
+            s_logger.error("Cannot delete API VMI: null arguments");
+            throw new IllegalArgumentException("Null vmiInfo argument");
         }
 
-        if (vmiInfo == null) {
-            s_logger.error("Cannot delete VMI: null argument");
-            throw new IllegalArgumentException("Null arguments");
+        if (mode == Mode.VCENTER_AS_COMPUTE) {
+            return;
         }
 
         VirtualMachineInterface apiVmi = (VirtualMachineInterface) apiConnector.findById(
@@ -788,6 +790,11 @@ public class VncDB {
 
     public void createInstanceIp(VirtualMachineInterfaceInfo vmiInfo)
             throws IOException {
+        if (vmiInfo == null) {
+            s_logger.error("Cannot create API Instance IP: null arguments");
+            throw new IllegalArgumentException("Null vmiInfo argument");
+        }
+
         if (mode == Mode.VCENTER_AS_COMPUTE) {
             return;
         }
@@ -963,6 +970,7 @@ public class VncDB {
                                   + vnRef.getUuid());
                     continue;
                 }
+
                 VirtualMachineInterfaceInfo vmiInfo =
                         new VirtualMachineInterfaceInfo(vmInfo, vnInfo);
 
