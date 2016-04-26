@@ -85,8 +85,9 @@ public class VCenterEventHandler {
         try {
             newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
         } catch (Exception e) {
-            s_logger.info("Skipping update event for deleted VM"
-                    + event.getClass().getName());
+            e.printStackTrace();
+            s_logger.info("Skipping update event " + event.getClass().getName()
+                    +" for missing VM");
             return;
         }
 
@@ -116,8 +117,9 @@ public class VCenterEventHandler {
         try {
             newVnInfo = new VirtualNetworkInfo(event, vcenterDB, vncDB);
         } catch (Exception e) {
-            s_logger.info("Skipping update event for deleted network"
-                    + event.getClass().getName());
+            e.printStackTrace();
+            s_logger.info("Skipping update event " + event.getClass().getName() +
+                    " for missing network");
             return;
         }
 

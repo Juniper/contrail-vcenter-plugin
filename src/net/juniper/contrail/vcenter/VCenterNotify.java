@@ -516,7 +516,6 @@ public class VCenterNotify implements Runnable
                     try {
                         vcenterDB.setReadTimeout(VCenterDB.VCENTER_READ_TIMEOUT);
                         MainDB.sync(vcenterDB, vncDB, VCenterMonitor.mode);
-                        vcenterDB.setReadTimeout(0);
                         syncNeeded = false;
                     } catch (Exception e) {
                         vCenterConnected = false;
@@ -534,8 +533,9 @@ public class VCenterNotify implements Runnable
                 {
                     WaitOptions wOpt = new WaitOptions();
                     wOpt.setMaxWaitSeconds(VCenterDB.VCENTER_WAIT_FOR_UPDATES_TIMEOUT);
-                    PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
                     for ( ; ; ) {
+                        vcenterDB.setReadTimeout(0);
+                        PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
                         UpdateSet update = propColl.waitForUpdatesEx(version, wOpt);
                         if (update != null && update.getFilterSet() != null)
                         {
@@ -545,6 +545,7 @@ public class VCenterNotify implements Runnable
 
                         } else
                         {
+                            vcenterDB.setReadTimeout(VCenterDB.VCENTER_READ_TIMEOUT);
                             if (vcenterDB.isAlive() == false) {
                                 s_logger.error("Vcenter connection lost, reconnect and resync needed");
                                 vCenterConnected = false;

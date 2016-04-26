@@ -64,7 +64,7 @@ public class VCenterDB {
             Logger.getLogger(VCenterDB.class);
     private static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
     static final int VCENTER_READ_TIMEOUT = 30000; //30 sec
-    static final int VCENTER_WAIT_FOR_UPDATES_TIMEOUT = 120; // 120 seconds
+    static final int VCENTER_WAIT_FOR_UPDATES_TIMEOUT = 840; // 14 minutes
     protected final String contrailDvSwitchName;
     public final String contrailDataCenterName;
     private final String vcenterUrl;
@@ -996,6 +996,8 @@ public class VCenterDB {
                 return false;
             }
         } catch (Exception e) {
+            String msg = "Failed aliveness check for vCenter " + vcenterUrl;
+            s_logger.error(msg);
             return false;
         }
         return true;
