@@ -137,12 +137,12 @@ public class VCenterDB {
                 s_logger.error(stackTrace);
                 return false;
             } catch (RemoteException e) {
-                s_logger.error("Remote exception while connecting to vcenter" + e);
+                s_logger.error("Remote exception while connecting to vcenter : " + e);
                 String stackTrace = Throwables.getStackTraceAsString(e);
                 s_logger.error(stackTrace);
                 return connectRetry();
             } catch (Exception e) {
-                s_logger.error("Error while connecting to vcenter" + e);
+                s_logger.error("Error while connecting to vcenter:" + e);
                 String stackTrace = Throwables.getStackTraceAsString(e);
                 s_logger.error(stackTrace);
                 return false;
@@ -276,19 +276,32 @@ public class VCenterDB {
     }
 
     public boolean connectRetry() {
-        Cleanup();
-        while(retryServiceInstance() == false) {
-            try{
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace);
-                return false;
+        while(true) {
+            Cleanup();
+            if (retryServiceInstance() == false) {
+                try{
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    String stackTrace = Throwables.getStackTraceAsString(e);
+                    s_logger.error(stackTrace);
+                }
+                continue;
             }
+            s_logger.info("Re-Connect successful !");
 
+            s_logger.info("Re-initialize data.. !");
+            if (Initialize_data() == false) {
+                try{
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    String stackTrace = Throwables.getStackTraceAsString(e);
+                    s_logger.error(stackTrace);
+                }
+                continue;
+            }
+            break;
         }
-        s_logger.info("Re-Connect successful!");
-        Initialize_data();
+        s_logger.info("Re-initialize data successful !");
         return true;
     }
 

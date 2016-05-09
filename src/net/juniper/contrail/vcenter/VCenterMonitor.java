@@ -181,14 +181,8 @@ public class VCenterMonitor {
 
         // Wait to initialize Vcenter serviceInstance connection for Notify handling
         // before starting Notify thread.
-        while(_eventMonitor.initialize() == false) {
-            try {
-                Thread.sleep(2000); // 2 sec
-            } catch (java.lang.InterruptedException e) {
-                String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace);
-            }
-        }
+        _eventMonitor.initWithRetry();
+
         s_logger.info("Starting event monitor Task.. ");
         _eventMonitor.startThread();
     }

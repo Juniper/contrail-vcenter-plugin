@@ -102,7 +102,7 @@ public class VCenterNotify implements Runnable
     /**
      * Initialize the necessary Managed Object References needed here
      */
-    public boolean initialize() {
+    private boolean initialize() {
         // Connect to VCenter
         s_logger.info("Connecting to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + ")");
@@ -135,6 +135,10 @@ public class VCenterNotify implements Runnable
         s_logger.info("Connected to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + "," 
                                 + vcenterPassword + ")");
+        return true;
+    }
+
+    private boolean Initialize_data() {
 
         if (rootFolder == null) {
             rootFolder = serviceInstance.getRootFolder();
@@ -221,12 +225,12 @@ public class VCenterNotify implements Runnable
     }
 
     public void Cleanup() {
-        serviceInstance    = null;
-        rootFolder         = null;
-        inventoryNavigator = null;
-        _contrailDC        = null;
-        contrailDVS        = null;
         watchedFilters.clear();
+        contrailDVS        = null;
+        _contrailDC        = null;
+        inventoryNavigator = null;
+        rootFolder         = null;
+        serviceInstance    = null;
     }
 
     private EventHistoryCollector createEventHistoryCollector(ManagedObject mo, 
@@ -453,9 +457,6 @@ public class VCenterNotify implements Runnable
      public void startThread() {
         try
         {
-            System.out.println("info---" + 
-                serviceInstance.getAboutInfo().getFullName());
-            createEventFilters();
 
             watchUpdates = new Thread(this);
             shouldRun = true;
@@ -479,6 +480,42 @@ public class VCenterNotify implements Runnable
         watchUpdates.stop();
     }
 
+    public boolean initWithRetry() {
+        while(true) {
+            Cleanup();
+            if(initialize() == false) {
+                try {
+                    Thread.sleep(2000); // 2 sec
+                } catch (java.lang.InterruptedException e) {
+                    String stackTrace = Throwables.getStackTraceAsString(e);
+                    s_logger.error(stackTrace);
+                }
+                continue;
+            }
+
+            if(Initialize_data() == false) {
+                try {
+                    Thread.sleep(2000); // 2 sec
+                } catch (java.lang.InterruptedException e) {
+                    String stackTrace = Throwables.getStackTraceAsString(e);
+                    s_logger.error(stackTrace);
+                }
+                continue;
+            }
+
+            try {
+                createEventFilters();
+            } catch (RemoteException e) {
+                String stackTrace = Throwables.getStackTraceAsString(e);
+                s_logger.error(stackTrace);
+                continue;
+            }
+            break;
+        }
+
+        return true;
+    }
+
     public void run()
     {
         String version = "";
@@ -494,9 +531,7 @@ public class VCenterNotify implements Runnable
                         Thread.sleep(2000);
                         if (monitorTask.VCenterNotifyForceRefresh) {
                             s_logger.info("Periodic thread reconnect successful.. initializing Notify Thread..");
-                            Cleanup();
-                            initialize();
-                            createEventFilters();
+                            initWithRetry();
                             monitorTask.VCenterNotifyForceRefresh = false;
                             version = "";
                             s_logger.info("reInit of Notify Thread Complete..");
