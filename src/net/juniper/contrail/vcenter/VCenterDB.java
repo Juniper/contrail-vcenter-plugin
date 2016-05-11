@@ -96,6 +96,13 @@ public class VCenterDB {
 
     public volatile Map<String, String> esxiToVRouterIpMap;
     public volatile Map<String, Boolean> vRouterActiveMap;
+    
+    public static final String OK = "Ok";
+    private String operationalStatus = OK;
+    
+    public String getOperationalStatus() {
+        return operationalStatus;
+    }
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
@@ -127,9 +134,10 @@ public class VCenterDB {
                 serviceInstance = new ServiceInstance(new URL(vcenterUrl),
                                             vcenterUsername, vcenterPassword, true);
                 if (serviceInstance == null) {
-                    s_logger.error("Failed to connect to vCenter Server : " + "("
+                    operationalStatus = "Failed to connect to vCenter Server : " + "("
                                     + vcenterUrl + "," + vcenterUsername + "," 
-                                    + vcenterPassword + ")");
+                                    + vcenterPassword + ")";
+                    s_logger.error(operationalStatus);
                     connectRetry();
                 }
             } catch (MalformedURLException e) {
@@ -148,6 +156,7 @@ public class VCenterDB {
                 return false;
             }
         }
+        operationalStatus = "OK";
         s_logger.info("Connected to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + "," 
                                 + vcenterPassword + ")");
@@ -165,7 +174,8 @@ public class VCenterDB {
         if (rootFolder == null) {
             rootFolder = serviceInstance.getRootFolder();
             if (rootFolder == null) {
-                s_logger.error("Failed to get rootfolder for vCenter ");
+                operationalStatus = "Failed to get rootfolder for vCenter ";
+                s_logger.error(operationalStatus);
                 return false;
             }
         }
@@ -175,7 +185,8 @@ public class VCenterDB {
         if (inventoryNavigator == null) {
             inventoryNavigator = new InventoryNavigator(rootFolder);
             if (inventoryNavigator == null) {
-                s_logger.error("Failed to get InventoryNavigator for vCenter ");
+                operationalStatus = "Failed to get InventoryNavigator for vCenter ";
+                s_logger.error(operationalStatus);
                 return false;
             }
         }
@@ -184,7 +195,8 @@ public class VCenterDB {
         if (ipPoolManager == null) {
             ipPoolManager = serviceInstance.getIpPoolManager();
             if (ipPoolManager == null) {
-                s_logger.error("Failed to get ipPoolManager for vCenter ");
+                operationalStatus = "Failed to get ipPoolManager for vCenter ";
+                s_logger.error(operationalStatus);
                 return false;
             }
         }
@@ -213,8 +225,9 @@ public class VCenterDB {
                 return false;
             }
             if (contrailDC == null) {
-                s_logger.error("Failed to find " + contrailDataCenterName 
-                               + " DC on vCenter ");
+                operationalStatus = "Failed to find " + contrailDataCenterName 
+                               + " DC on vCenter ";
+                s_logger.error(operationalStatus);
                 return false;
             }
         }
@@ -246,13 +259,15 @@ public class VCenterDB {
             }
 
             if (contrailDVS == null) {
-                s_logger.error("Failed to find " + contrailDvSwitchName + 
-                               " DVSwitch on vCenter");
+                operationalStatus = "Failed to find " + contrailDvSwitchName + 
+                               " DVSwitch on vCenter";
+                s_logger.error(operationalStatus);
                 return false;
             }
         }
         s_logger.info("Found " + contrailDvSwitchName + " DVSwitch on vCenter ");
 
+        operationalStatus = "OK";
         // All well on vCenter front.
         return true;
     }
@@ -268,7 +283,8 @@ public class VCenterDB {
         }
 
         if (cal == null) {
-            s_logger.warn("No Exception but null time from vCenterServer");
+            operationalStatus = "No Exception but null time from vCenterServer";
+            s_logger.warn(operationalStatus);
             return false;
         }
 
@@ -311,9 +327,10 @@ public class VCenterDB {
                 serviceInstance = new ServiceInstance(new URL(vcenterUrl),
                                             vcenterUsername, vcenterPassword, true);
                 if (serviceInstance == null) {
-                    s_logger.error("Failed to connect to vCenter Server : " + "("
-                                    + vcenterUrl + "," + vcenterUsername + ","
-                                    + vcenterPassword + ")" + "Retrying after 5 secs");
+                    operationalStatus = "Failed to connect to vCenter Server : " + "("
+                            + vcenterUrl + "," + vcenterUsername + ","
+                            + vcenterPassword + ")" + "Retrying after 5 secs";
+                    s_logger.error(operationalStatus);
                     return false;
                 }
                 //Set read timeout on connection to vcenter server
@@ -324,16 +341,19 @@ public class VCenterDB {
                     serviceInstance.getServerConnection().getVimService().getWsc().getReadTimeout());
                 return true;
         } catch (MalformedURLException e) {
-                s_logger.info("Re-Connect unsuccessful!");
+                operationalStatus = "Re-Connect unsuccessful!";
+                s_logger.info(operationalStatus);
                 String stackTrace = Throwables.getStackTraceAsString(e);
                 s_logger.error(stackTrace);
                 return false;
         } catch (RemoteException e) {
-                s_logger.info("Re-Connect unsuccessful!");
+                operationalStatus = "Re-Connect unsuccessful!";
+                s_logger.info(operationalStatus);
                 String stackTrace = Throwables.getStackTraceAsString(e);
                 s_logger.error(stackTrace);
                 return false;
         } catch (Exception e) {
+                operationalStatus = "Error while connecting to vcenter";
                 s_logger.error("Error while connecting to vcenter" + e);
                 String stackTrace = Throwables.getStackTraceAsString(e);
                 s_logger.error(stackTrace);
@@ -409,6 +429,10 @@ public class VCenterDB {
 
     public void setDatacenter(Datacenter _dc) {
       contrailDC = _dc;
+    }
+
+    public VmwareDistributedVirtualSwitch getDvs() {
+        return contrailDVS;
     }
 
     public IpPool getIpPool(
