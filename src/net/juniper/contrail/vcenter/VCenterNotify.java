@@ -610,8 +610,12 @@ public class VCenterNotify implements Runnable
     }
 
     public static void stopUpdates() {
-        PropertyCollector propColl = serviceInstance.getPropertyCollector();
-        propColl.stopUpdates();
+        if (serviceInstance != null) {
+            PropertyCollector propColl = serviceInstance.getPropertyCollector();
+            if (propColl != null) {
+                propColl.stopUpdates();
+            }
+        }
     }
 
     private void createEventFilters() throws RemoteException  {
