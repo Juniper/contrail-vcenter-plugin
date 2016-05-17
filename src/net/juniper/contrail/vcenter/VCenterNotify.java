@@ -44,6 +44,7 @@ import com.vmware.vim25.mo.HostSystem;
 import com.google.common.base.Throwables;
 import com.vmware.vim25.InvalidState;
 import org.apache.log4j.Logger;
+import java.net.SocketTimeoutException;
 
 /**
  * @author Sachchidanand Vaidya
@@ -68,6 +69,12 @@ public class VCenterNotify implements Runnable
 
     private static Boolean shouldRun;
     private static Thread watchUpdates = null;
+
+    private static final int VCENTER_READ_TIMEOUT = 30000; //30 sec
+    private static final int VCENTER_CONNECT_TIMEOUT = 30000; //30 sec
+    private static final int VCENTER_WAIT_FOR_UPDATES_READ_TIMEOUT = 180000; // 3 minutes
+    private static final int VCENTER_WAIT_FOR_UPDATES_SERVER_TIMEOUT = 120; // 2 minutes
+    private static final int VCENTER_TIMEOUT_DELTA = 10000; // 10 seconds
 
     public VCenterNotify(
             String vcenterUrl, String vcenterUsername,
@@ -446,24 +453,24 @@ public class VCenterNotify implements Runnable
                 Thread.sleep(1000);
             }
             s_logger.info("Connected to the API server ...");
-            TaskWatchDog.stopMonitoring(this);
-            return true;
         } catch (Exception e) {
             String stackTrace = Throwables.getStackTraceAsString(e);
             s_logger.error("Error while initializing connection with the API server: "
-                    + e);
+                                     + e);
             s_logger.error(stackTrace);
             e.printStackTrace();
+            TaskWatchDog.stopMonitoring(this);
+            return false;
         }
         TaskWatchDog.stopMonitoring(this);
-        return false;
+        return true;
     }
 
     private void connect2vcenter() {
         TaskWatchDog.startMonitoring(this, "Init VCenter",
                 300000, TimeUnit.MILLISECONDS);
         try {
-            if (vcenterDB.connect() == true) {
+            if (vcenterDB.connect(VCENTER_CONNECT_TIMEOUT) == true) {
                 createEventFilters();
                 vCenterConnected = true;
             }
@@ -514,29 +521,33 @@ public class VCenterNotify implements Runnable
                     // When sync is run, it also does
                     // addPort to vrouter agent for existing VMIs.
                     try {
-                        vcenterDB.setReadTimeout(VCenterDB.VCENTER_READ_TIMEOUT);
+                        vcenterDB.setReadTimeout(VCENTER_READ_TIMEOUT);
                         MainDB.sync(vcenterDB, vncDB, VCenterMonitor.mode);
                         syncNeeded = false;
                     } catch (Exception e) {
                         vCenterConnected = false;
-                        TaskWatchDog.stopMonitoring(this);
                         String stackTrace = Throwables.getStackTraceAsString(e);
                         s_logger.error("Error in sync: " + e);
                         s_logger.error(stackTrace);
                         e.printStackTrace();
+                        TaskWatchDog.stopMonitoring(this);
                         continue;
                     }
-
+                    TaskWatchDog.stopMonitoring(this);
                 }
 
                 try
                 {
                     WaitOptions wOpt = new WaitOptions();
-                    wOpt.setMaxWaitSeconds(VCenterDB.VCENTER_WAIT_FOR_UPDATES_TIMEOUT);
+                    wOpt.setMaxWaitSeconds(VCENTER_WAIT_FOR_UPDATES_SERVER_TIMEOUT);
                     for ( ; ; ) {
-                        vcenterDB.setReadTimeout(0);
+                        vcenterDB.setReadTimeout(VCENTER_WAIT_FOR_UPDATES_READ_TIMEOUT);
                         PropertyCollector propColl = vcenterDB.getServiceInstance().getPropertyCollector();
+                        TaskWatchDog.startMonitoring(this, "WaitForUpdatesEx",
+                                VCENTER_WAIT_FOR_UPDATES_READ_TIMEOUT + VCENTER_TIMEOUT_DELTA,
+                                TimeUnit.MILLISECONDS);
                         UpdateSet update = propColl.waitForUpdatesEx(version, wOpt);
+                        TaskWatchDog.stopMonitoring(this);
                         if (update != null && update.getFilterSet() != null)
                         {
                             version = update.getVersion();
@@ -545,16 +556,27 @@ public class VCenterNotify implements Runnable
 
                         } else
                         {
-                            vcenterDB.setReadTimeout(VCenterDB.VCENTER_READ_TIMEOUT);
+                            vcenterDB.setReadTimeout(VCENTER_READ_TIMEOUT);
+                            TaskWatchDog.startMonitoring(this, "AlivenessCheck",
+                                    VCENTER_READ_TIMEOUT + VCENTER_TIMEOUT_DELTA,
+                                    TimeUnit.MILLISECONDS);
                             if (vcenterDB.isAlive() == false) {
                                 s_logger.error("Vcenter connection lost, reconnect and resync needed");
                                 vCenterConnected = false;
+                                TaskWatchDog.stopMonitoring(this);
                                 break;
                             }
+                            TaskWatchDog.stopMonitoring(this);
                         }
                     }
-                } catch (Exception e)
-                {
+                } catch (RemoteException e)  {
+                    vCenterConnected = false;
+                    s_logger.info("Vcenter disconnected, reconnect and resync needed");
+                    String stackTrace = Throwables.getStackTraceAsString(e);
+                    s_logger.info(stackTrace);
+                    e.printStackTrace();
+                }
+                catch (Exception e) {
                     vCenterConnected = false;
                     s_logger.error("Error in event handling, reconnect and resync needed");
                     String stackTrace = Throwables.getStackTraceAsString(e);

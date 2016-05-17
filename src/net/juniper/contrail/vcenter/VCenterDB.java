@@ -63,8 +63,6 @@ public class VCenterDB {
     private static final Logger s_logger =
             Logger.getLogger(VCenterDB.class);
     private static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
-    static final int VCENTER_READ_TIMEOUT = 30000; //30 sec
-    static final int VCENTER_WAIT_FOR_UPDATES_TIMEOUT = 840; // 14 minutes
     protected final String contrailDvSwitchName;
     public final String contrailDataCenterName;
     private final String vcenterUrl;
@@ -177,8 +175,8 @@ public class VCenterDB {
         return true;
     }
 
-    public boolean connect() {
-        while(!createServiceInstance()) {
+    public boolean connect(int timeout) {
+        while(!createServiceInstance(timeout)) {
             try{
                 Thread.sleep(5000);
             } catch (InterruptedException e) {
@@ -200,7 +198,7 @@ public class VCenterDB {
         return true;
     }
 
-    private boolean createServiceInstance() {
+    private boolean createServiceInstance(int timeout) {
         try {
             serviceInstance = null;
             s_logger.info("Trying to Connect to vCenter Server : " + "("
@@ -213,6 +211,7 @@ public class VCenterDB {
                                 + vcenterPassword + ")" + "Retrying after 5 secs");
                 return false;
             }
+            setConnectTimeout(timeout);
             s_logger.info("Connected to vCenter Server : " + "("
                     + vcenterUrl + "," + vcenterUsername + ","
                     + vcenterPassword + ")");
@@ -264,6 +263,13 @@ public class VCenterDB {
                       .getVimService()
                       .getWsc().setReadTimeout(milliSecs);
     }
+
+    public void setConnectTimeout(int milliSecs) {
+        //Set connect timeout on connection to vcenter server
+        serviceInstance.getServerConnection()
+                       .getVimService()
+                       .getWsc().setConnectTimeout(milliSecs);
+     }
 
     public boolean isConnected() {
       return (serviceInstance != null);
