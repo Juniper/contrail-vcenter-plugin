@@ -5,7 +5,7 @@ import java.util.SortedMap;
 
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 
-import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
+import net.juniper.contrail.vcenter.ContrailVRouterApi;
 import net.juniper.contrail.vcenter.MainDB;
 import net.juniper.contrail.vcenter.VCenterNotify;
 import net.juniper.contrail.vcenter.VRouterNotifier;
