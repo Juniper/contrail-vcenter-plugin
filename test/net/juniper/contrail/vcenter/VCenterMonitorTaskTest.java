@@ -224,13 +224,13 @@ public class VCenterMonitorTaskTest extends TestCase {
     public void TestSyncVirtualMachineTC2() throws IOException {
         String vnUuid         = UUID.randomUUID().toString();
         String vnName         = "TestVN-A";
-        String subnetAddr     = "192.168.2.0";
-        String subnetMask     = "255.255.255.0";
+        String subnetAddr     = "192.168.0.0";
+        String subnetMask     = "255.255.0.0";
         String gatewayAddr    = "192.168.2.1";
         short primaryVlanId   = 200;
         short isolatedVlanId  = 201;
         boolean ipPoolEnabled = true;
-        String range          = "192.18.2.2 # 230";
+        String range          = "192.18.2.2 # 430";
         boolean externalIpam  = false;
 
         // Fill vmMapInfos as null such that no VM will be created
