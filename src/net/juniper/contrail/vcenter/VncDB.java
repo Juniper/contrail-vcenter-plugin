@@ -548,7 +548,7 @@ public class VncDB {
                                        true,                          // addr_from_start
                                        null,                          // dhcp_options_list
                                        null,                          // host_routes
-                                       vnInfo.getName() + "-subnet"));
+                                       vnInfo.getName() + "-subnet", 1));
         return subnet;
     }
 
