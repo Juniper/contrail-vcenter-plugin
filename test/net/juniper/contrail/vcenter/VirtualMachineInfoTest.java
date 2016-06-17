@@ -7,13 +7,11 @@ package net.juniper.contrail.vcenter;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.Map;
 import java.util.SortedMap;
 import org.apache.log4j.Logger;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.anyShort;
 import static org.mockito.Mockito.verify;
@@ -31,8 +29,8 @@ import net.juniper.contrail.api.ApiConnectorMock;
 import net.juniper.contrail.api.types.InstanceIp;
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.Project;
+import net.juniper.contrail.vcenter.ContrailVRouterApi;
 import com.vmware.vim25.VirtualMachinePowerState;
-import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
 @RunWith(JUnit4.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -113,13 +111,13 @@ public class VirtualMachineInfoTest extends TestCase {
         VirtualMachineInterfaceInfoTest.vncDB = vncDB;
         MainDB.vncDB = vncDB;
 
-        // Setup mock ContrailVRouterApi connection for vrouterIp = 10.84.24.45
+        // Setup mock VRouterApi connection for vrouterIp = 10.84.24.45
         Map<String, ContrailVRouterApi> vrouterApiMap = VRouterNotifier.getVrouterApiMap();
         vrouterApi = mock(ContrailVRouterApi.class);
-        when(vrouterApi.AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                                anyString(), any(UUID.class))).thenReturn(true);
-        when(vrouterApi.DeletePort(any(UUID.class))).thenReturn(true);
+        when(vrouterApi.addPort(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyShort(), anyShort(),
+                                anyString(), anyString())).thenReturn(true);
+        when(vrouterApi.deletePort(anyString())).thenReturn(true);
         vrouterApiMap.put("10.84.24.45", vrouterApi);
 
         vnInfo = VirtualNetworkInfoTest.BLUE;
@@ -174,9 +172,9 @@ public class VirtualMachineInfoTest extends TestCase {
         verifyVirtualMachinePresent(vmInfo);
         VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfacePresent(vmiInfo);
         InstanceIp instanceIp = VirtualMachineInterfaceInfoTest.verifyInstanceIpPresent(vmiInfo);
-        verify(vrouterApi).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString(), any(UUID.class));
+        verify(vrouterApi).addPort(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyShort(), anyShort(),
+                anyString(), anyString());
 
         // delete the VM
         try {
@@ -191,7 +189,7 @@ public class VirtualMachineInfoTest extends TestCase {
         VirtualMachineInterfaceInfoTest.verifyVirtualMachineInterfaceAbsent(vmiInfo);
         verifyVirtualMachineAbsent(vmInfo);
 
-        verify(vrouterApi).DeletePort(any(UUID.class));
+        verify(vrouterApi).deletePort(anyString());
     }
 
     @Test
@@ -219,9 +217,9 @@ public class VirtualMachineInfoTest extends TestCase {
         InstanceIp instanceIp = VirtualMachineInterfaceInfoTest.verifyInstanceIpPresent(newVmiInfo);
         // verify VMI has been added in the VMI map of VN
         assertTrue(vnInfo.contains(newVmiInfo));
-        verify(vrouterApi).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString(), any(UUID.class));
+        verify(vrouterApi).addPort(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyShort(), anyShort(),
+                anyString(), anyString());
 
         s_logger.info("Sync again should not produce any change");
         MainDB.sync(oldVMs, newVMs);

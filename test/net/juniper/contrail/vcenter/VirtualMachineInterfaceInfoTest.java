@@ -37,7 +37,7 @@ import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
 import net.juniper.contrail.api.types.VirtualNetwork;
 import net.juniper.contrail.api.types.Project;
-import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
+import net.juniper.contrail.vcenter.ContrailVRouterApi;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(VCenterNotify.class)
@@ -207,10 +207,10 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
 
         // Setup mock ContrailVRouterApi connection for vrouterIp = 10.84.24.45
         vrouterApi = mock(ContrailVRouterApi.class);
-        when(vrouterApi.AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                                anyString(), any(UUID.class))).thenReturn(true);
-        when(vrouterApi.DeletePort(any(UUID.class))).thenReturn(true);
+        when(vrouterApi.addPort(anyString(), anyString(), anyString(), anyString(),
+                                anyString(), anyString(), anyShort(), anyShort(),
+                                anyString(), anyString())).thenReturn(true);
+        when(vrouterApi.deletePort(anyString())).thenReturn(true);
         Map<String, ContrailVRouterApi> vrouterApiMap = VRouterNotifier.getVrouterApiMap();
         vrouterApiMap.put("10.84.24.45", vrouterApi);
 
@@ -248,9 +248,9 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         VirtualMachineInfoTest.verifyVirtualMachinePresent(vmInfo);
         verifyVirtualMachineInterfacePresent(firstVmiInfo);
         firstInstanceIp = verifyInstanceIpPresent(firstVmiInfo);
-        verify(vrouterApi).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString(), any(UUID.class));
+        verify(vrouterApi).addPort(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyShort(), anyShort(),
+                anyString(), anyString());
     }
 
     @Test
@@ -277,9 +277,8 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
 
         verifyVirtualMachineInterfacePresent(secondVmiInfo);
         InstanceIp secondInstanceIp = verifyInstanceIpPresent(secondVmiInfo);
-        verify(vrouterApi, times(2)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString(), any(UUID.class));
+        verify(vrouterApi, times(2)).addPort(anyString(), anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyShort(), anyShort(),anyString(), anyString());
 
         // update should have no effect
         try {
@@ -300,7 +299,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         verifyInstanceIpAbsent(secondInstanceIp);
         verifyVirtualMachineInterfaceAbsent(secondVmiInfo);
 
-        verify(vrouterApi).DeletePort(any(UUID.class));
+        verify(vrouterApi).deletePort(anyString());
 
 
         try {
@@ -312,7 +311,7 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
 
         verifyInstanceIpAbsent(firstInstanceIp);
         verifyVirtualMachineInterfaceAbsent(firstVmiInfo);
-        verify(vrouterApi, times(2)).DeletePort(any(UUID.class));
+        verify(vrouterApi, times(2)).deletePort(anyString());
 
         try {
             s_logger.info("Delete " + vmInfo);
@@ -361,9 +360,9 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         assertNull(vmiInfo.getIpAddress());
         assertNull(vmiInfo.apiInstanceIp);
 
-        verify(vrouterApi, times(2)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString(), any(UUID.class));
+        verify(vrouterApi, times(2)).addPort(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyShort(), anyShort(),
+                anyString(), anyString());
     }
 
     @Test
@@ -394,11 +393,11 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         InstanceIp redIp = verifyInstanceIpPresent(firstVmiInfo);
         s_logger.info("New IP Address is " + redIp.getAddress());
 
-        verify(vrouterApi, times(2)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString(), any(UUID.class));
+        verify(vrouterApi, times(2)).addPort(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyShort(), anyShort(),
+                anyString(), anyString());
 
-        verify(vrouterApi).DeletePort(any(UUID.class));
+        verify(vrouterApi).deletePort(anyString());
         verifyInstanceIpAbsent(firstInstanceIp);
 
         VirtualNetworkInfo staticVnInfo = VirtualNetworkInfoTest.STATIC_IP;
@@ -427,11 +426,11 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         InstanceIp staticIp = verifyInstanceIpPresent(firstVmiInfo);
         assertEquals("192.168.3.2", staticIp.getAddress());
 
-        verify(vrouterApi, times(3)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString(), any(UUID.class));
+        verify(vrouterApi, times(3)).addPort(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyShort(), anyShort(),
+                anyString(), anyString());
 
-        verify(vrouterApi, times(2)).DeletePort(any(UUID.class));
+        verify(vrouterApi, times(2)).deletePort(anyString());
         verifyInstanceIpAbsent(redIp);
 
         VirtualNetworkInfo staticVnInfo2 = VirtualNetworkInfoTest.STATIC_IP2;
@@ -459,11 +458,11 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         verifyVirtualMachineInterfacePresent(firstVmiInfo);
         InstanceIp staticIp2 = verifyInstanceIpPresent(firstVmiInfo);
         assertEquals("192.168.4.2", staticIp2.getAddress());
-        verify(vrouterApi, times(4)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString(), any(UUID.class));
+        verify(vrouterApi, times(4)).addPort(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyShort(), anyShort(),
+                anyString(), anyString());
 
-        verify(vrouterApi, times(3)).DeletePort(any(UUID.class));
+        verify(vrouterApi, times(3)).deletePort(anyString());
         verifyInstanceIpAbsent(staticIp);
 
         s_logger.info("Change VM1 nw adapter from network STATIC_IP2 (static) to network BLUE (dhcp)");
@@ -482,11 +481,11 @@ public class VirtualMachineInterfaceInfoTest extends TestCase {
         verifyVirtualMachineInterfacePresent(firstVmiInfo);
         InstanceIp blueIp = verifyInstanceIpPresent(firstVmiInfo);
         assertNotSame(null, blueIp.getAddress());
-        verify(vrouterApi, times(5)).AddPort(any(UUID.class), any(UUID.class), anyString(), any(InetAddress.class),
-                any(byte[].class), any(UUID.class), anyShort(), anyShort(),
-                anyString(), any(UUID.class));
+        verify(vrouterApi, times(5)).addPort(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyShort(), anyShort(),
+                anyString(), anyString());
 
-        verify(vrouterApi, times(4)).DeletePort(any(UUID.class));
+        verify(vrouterApi, times(4)).deletePort(anyString());
         verifyInstanceIpAbsent(staticIp2);
     }
 }

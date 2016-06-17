@@ -16,13 +16,13 @@ public class MainDB {
             new ConcurrentSkipListMap<String, VirtualNetworkInfo>();
     private static volatile SortedMap<String, VirtualMachineInfo> vmwareVMs =
             new ConcurrentSkipListMap<String, VirtualMachineInfo>();
-    
+
     static volatile VncDB vncDB;
     private static volatile VCenterDB vcenterDB;
     private static volatile Mode mode;
     private final static Logger s_logger =
             Logger.getLogger(MainDB.class);
-    
+
     public static SortedMap<String, VirtualNetworkInfo> getVNs() {
         return vmwareVNs;
     }
@@ -55,23 +55,23 @@ public class MainDB {
         }
         return null;
     }
-    
+
     public static void created(VirtualNetworkInfo vnInfo) {
         vmwareVNs.put(vnInfo.getUuid(), vnInfo);
     }
-    
+
     public static void updated(VirtualNetworkInfo vnInfo) {
         if (!vmwareVNs.containsKey(vnInfo.getUuid())) {
             vmwareVNs.put(vnInfo.getUuid(), vnInfo);
         }
     }
-    
+
     public static void deleted(VirtualNetworkInfo vnInfo) {
         if (vmwareVNs.containsKey(vnInfo.getUuid())) {
             vmwareVNs.remove(vnInfo.getUuid());
         }
     }
-    
+
     public static void deleteVirtualNetwork(VirtualNetworkInfo vnInfo) {
         if (vmwareVNs.containsKey(vnInfo.getUuid())) {
             vmwareVNs.remove(vnInfo.getUuid());
@@ -88,27 +88,27 @@ public class MainDB {
     public static void created(VirtualMachineInfo vmInfo) {
         vmwareVMs.put(vmInfo.getUuid(), vmInfo);
     }
-    
+
     public static void updated(VirtualMachineInfo vmInfo) {
         if (!vmwareVMs.containsKey(vmInfo.getUuid())) {
             vmwareVMs.put(vmInfo.getUuid(), vmInfo);
         }
     }
-    
+
     public static void deleted(VirtualMachineInfo vmInfo) {
         if (vmwareVMs.containsKey(vmInfo.getUuid())) {
             vmwareVMs.remove(vmInfo.getUuid());
         }
     }
 
-    public static <K extends Comparable<K>, V extends VCenterObject> 
+    public static <K extends Comparable<K>, V extends VCenterObject>
     void sync(SortedMap<K, V> oldMap, SortedMap<K, V> newMap) {
-        
+
         Iterator<Entry<K, V>> oldIter = oldMap.entrySet().iterator();
         Entry<K, V> oldEntry = oldIter.hasNext()? oldIter.next() : null;
         Iterator<Entry<K, V>> newIter = newMap.entrySet().iterator();
         Entry<K, V> newEntry = newIter.hasNext()? newIter.next() : null;
-        
+
         while (oldEntry != null && newEntry != null) {
             Integer cmp = newEntry.getKey().compareTo(oldEntry.getKey());
             try {
@@ -121,7 +121,7 @@ public class MainDB {
                         newEntry.getValue().create(vncDB);
                     }
                     newEntry = newIter.hasNext()? newIter.next() : null;
-                } else { 
+                } else {
                     if (mode != Mode.VCENTER_AS_COMPUTE) {
                         oldEntry.getValue().delete(vncDB);
                     }
@@ -142,7 +142,7 @@ public class MainDB {
                 oldEntry = oldIter.hasNext()? oldIter.next() : null;
             }
         }
-        
+
         while (newEntry != null) {
             try {
                 newEntry.getValue().create(vncDB);
@@ -152,15 +152,15 @@ public class MainDB {
             newEntry = newIter.hasNext()? newIter.next() : null;
         }
     }
-  
-    public static <K extends Comparable<K>, V extends VCenterObject> 
+
+    public static <K extends Comparable<K>, V extends VCenterObject>
     void update(SortedMap<K, V> oldMap, SortedMap<K, V> newMap) {
-        
+
         Iterator<Entry<K, V>> oldIter = oldMap.entrySet().iterator();
         Entry<K, V> oldEntry = oldIter.hasNext()? oldIter.next() : null;
         Iterator<Entry<K, V>> newIter = newMap.entrySet().iterator();
         Entry<K, V> newEntry = newIter.hasNext()? newIter.next() : null;
-        
+
         while (oldEntry != null && newEntry != null) {
             Integer cmp = newEntry.getKey().compareTo(oldEntry.getKey());
             try {
@@ -198,26 +198,27 @@ public class MainDB {
             newEntry = newIter.hasNext()? newIter.next() : null;
         }
     }
-    
-    public static void sync(VCenterDB _vcenterDB, VncDB _vncDB, Mode _mode) 
+
+    public static void sync(VCenterDB _vcenterDB, VncDB _vncDB, Mode _mode)
             throws Exception {
         vcenterDB = _vcenterDB;
         vncDB = _vncDB;
         mode = _mode;
-        
+
         vmwareVNs.clear();
         vmwareVMs.clear();
-        
+
         vmwareVNs = vcenterDB.readVirtualNetworks();
         SortedMap<String, VirtualNetworkInfo> oldVNs = vncDB.readVirtualNetworks();
         sync(oldVNs, vmwareVNs);
-        
+
         vmwareVMs = vcenterDB.readVirtualMachines();
         SortedMap<String, VirtualMachineInfo> oldVMs = vncDB.readVirtualMachines();
+        VRouterNotifier.syncVrouterAgent();
         sync(oldVMs, vmwareVMs);
-         
+
         printInfo();
-        
+
         s_logger.info("\nSync complete, waiting for events\n");
     }
 
@@ -226,7 +227,7 @@ public class MainDB {
         for (VirtualNetworkInfo vnInfo: vmwareVNs.values()) {
             System.out.println(vnInfo.toStringBuffer());
         }
-        
+
         System.out.println("\nVirtual Machines after sync:");
         for (VirtualMachineInfo vmInfo: vmwareVMs.values()) {
             System.out.println(vmInfo.toStringBuffer());

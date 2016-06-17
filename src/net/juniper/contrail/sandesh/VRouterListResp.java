@@ -1,18 +1,18 @@
 package net.juniper.contrail.sandesh;
 
 import java.util.Map;
-import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 import net.juniper.contrail.vcenter.VCenterNotify;
 import net.juniper.contrail.vcenter.VRouterNotifier;
+import net.juniper.contrail.vcenter.ContrailVRouterApi;
 
-public class VRouterListResp {    
+public class VRouterListResp {
     private SandeshObjectList<VRouterInfo> vrouterInfoList;
-    
+
     public VRouterListResp(VRouterListReq req) {
-        vrouterInfoList = 
-                new SandeshObjectList<VRouterInfo>(VRouterInfo.class, 
+        vrouterInfoList =
+                new SandeshObjectList<VRouterInfo>(VRouterInfo.class,
                                                     new ComparatorVRouterInfo());
-                
+
         Map<String, String> host2VrouterMap = VCenterNotify.getVcenterDB().getEsxiToVRouterIpMap();
         Map<String, ContrailVRouterApi> vRouters = VRouterNotifier.getVrouterApiMap();
 
@@ -32,7 +32,7 @@ public class VRouterListResp {
             }
         }
     }
-    
+
     public void writeObject(StringBuilder s) {
         s.append("<vRouterListResp type=\"sandesh\">");
         vrouterInfoList.writeObject(s, "VirtualRouters", DetailLevel.REGULAR, 1);
