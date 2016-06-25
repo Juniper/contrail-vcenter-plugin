@@ -1,9 +1,10 @@
 package net.juniper.contrail.vcenter;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 import java.io.IOException;
 import org.apache.log4j.Logger;
 import net.juniper.contrail.api.ApiConnector;
@@ -23,8 +24,10 @@ public class ContrailVRouterApi {
     private final String authurl;
 
     protected ApiConnector apiConnector;
-    private Map<String, Port> ports;
+    private ConcurrentMap<String, Port> ports2Add;
+    private Queue<String> ports2Delete;
     private boolean alive;
+    private boolean syncFailed;
 
     public ContrailVRouterApi(String serverAddress, int serverPort) {
         this.serverAddress = serverAddress;
@@ -34,7 +37,8 @@ public class ContrailVRouterApi {
         this.tenant = null;
         this.authtype = null;
         this.authurl = null;
-        this.ports = new HashMap<String, Port>();
+        this.ports2Add = new ConcurrentHashMap<String, Port>();
+        this.ports2Delete = new ConcurrentLinkedQueue<String>();
     }
 
     public ContrailVRouterApi(String serverAddress, int serverPort,
@@ -47,7 +51,8 @@ public class ContrailVRouterApi {
         this.tenant   = tenant;
         this.authtype = authtype;
         this.authurl  = authurl;
-        this.ports = new HashMap<String, Port>();
+        this.ports2Add = new ConcurrentHashMap<String, Port>();
+        this.ports2Delete = new ConcurrentLinkedQueue<String>();
     }
 
     public boolean isServerAlive() {
@@ -60,11 +65,11 @@ public class ContrailVRouterApi {
                             .authServer(authtype, authurl);
             }
             if (apiConnector == null) {
-                s_logger.error(" failed to create ApiConnector.. retry later");
+                s_logger.warn(this + " failed to create ApiConnector.. retry later");
                 alive = false;
                 return false;
             }
-            s_logger.info("Server " + this + " alive. Got the pulse..");
+            s_logger.info(this + " is alive. Got the pulse..");
         }
 
         alive = true;
@@ -81,41 +86,26 @@ public class ContrailVRouterApi {
 
     @Override
     public String toString() {
-        return "VRouterApi " + serverAddress + ":" + serverPort;
+        return "Vrouter" + serverAddress + ":" + serverPort;
     }
 
     /**
-     * Get current list of ports
+     * Get outstanding list of ports to be added
      * @return Port Map
      */
-    public Map<String, Port> getPorts() {
-        return ports;
+    public ConcurrentMap<String, Port> getPorts2Add() {
+        return ports2Add;
     }
 
     /**
-     * Add a port to the agent. The information is stored in the ports
-     * map since the vrouter agent may not be running at the
-     * moment or the RPC may fail.
-     *
-     * @param vif_uuid         String of the VIF/Port
-     * @param vm_uuid          String of the instance
-     * @param interface_name   Name of the VIF/Port
-     * @param interface_ip     IP address associated with the VIF
-     * @param mac_address      MAC address of the VIF
-     * @param network_uuid     String of the associated virtual network
+     * Get outstanding list of ports to be deleted
      */
-    public boolean addPort(String vif_uuid, String vm_uuid, String interface_name,
-            String interface_ip, String mac_address, String network_uuid, short vlanId,
-            short primaryVlanId, String vm_name) {
-        addPort(vif_uuid, vm_uuid, interface_name, interface_ip,
-                mac_address, network_uuid, vlanId, primaryVlanId, vm_name, null);
-        return true;
+    public Queue<String> getPorts2Delete() {
+        return ports2Delete;
     }
 
     /**
-     * Add a port to the agent. The information is stored in the ports
-     * map since the vrouter agent may not be running at the
-     * moment or the RPC may fail.
+     * Add a port to the vrouter agent.
      *
      * @param vif_uuid         String of the VIF/Port
      * @param vm_uuid          String of the instance
@@ -138,84 +128,155 @@ public class ContrailVRouterApi {
         aport.setIp_address(interface_ip);
         aport.setMac_address(mac_address);
         aport.setVn_id(network_uuid);
-        aport.setRx_vlan_id(primaryVlanId);
-        aport.setTx_vlan_id(isolatedVlanId);
+        aport.setTx_vlan_id(primaryVlanId);
+        aport.setRx_vlan_id(isolatedVlanId);
         aport.setDisplay_name(vm_name);
         aport.setVm_project_id(project_uuid);
 
-        ports.put(vif_uuid, aport);
-        if (apiConnector == null) {
-            if (!isServerAlive()) {
-                s_logger.error(this +
-                        " AddPort: " + vif_uuid + "(" + interface_name +
-                        ") FAILED");
-                return false;
-            }
-        } else {
-            List<Port> aports = new ArrayList<Port>();
-            aports.add(aport);
-            try {
-                apiConnector.create(aport);
-            } catch (IOException e) {
-                s_logger.error(this +
-                        " AddPort: " + vif_uuid + "(" +
-                        interface_name + ") Exception: " + e.getMessage());
-                return false;
-            }
+        if (!isServerAlive()) {
+            ports2Add.put(vif_uuid, aport);
+
+            s_logger.warn(this +
+                    " addPort: " + aport.getUuid() + "(" + aport.getSystem_name() + ") "
+                    + "failed, will retry later");
+            return false;
         }
+        if (syncFailed) {
+            if (!sync()) {
+                ports2Add.put(vif_uuid, aport);
+
+                s_logger.warn(this +
+                        " addPort: " + aport.getUuid() + "(" + aport.getSystem_name() + ") "
+                        + "failed, will retry later");
+                return false;
+            }
+            retryFailedPorts();
+        }
+        if (!addPortInternal(aport)) {
+            ports2Add.put(vif_uuid, aport);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean addPortInternal(Port aport) {
+        try {
+            apiConnector.create(aport);
+        } catch (IOException e) {
+               s_logger.warn(this +
+                    " addPort: " + aport.getUuid()  + "(" +
+                    aport.getSystem_name()  + ") Exception: " + e.getMessage());
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * Delete a port from the agent. The port is first removed from the
-     * internal ports map
+     * Delete a port from the agent.
      *
-     * @param vif_uuid  String of the VIF/Port
+     * @param uuid  String of the VIF/Port
      */
-    public boolean deletePort(String vif_uuid) {
-        ports.remove(vif_uuid);
-        if (apiConnector == null) {
-            if (!isServerAlive()) {
-                s_logger.error(this +
-                        " deletePort: " + vif_uuid + " FAILED");
+    public boolean deletePort(String uuid) {
+         if (ports2Add.containsKey(uuid)) {
+             ports2Add.remove(uuid);
+         }
+         if (!isServerAlive()) {
+             ports2Delete.add(uuid);
+
+             s_logger.warn(this +
+                     " deletePort: " + uuid + " failed, will retry later");
+             return false;
+        }
+        if (syncFailed) {
+             if (!sync()) {
+                 ports2Delete.add(uuid);
+                 s_logger.warn(this +
+                          " deletePort: " + uuid
+                          + "failed, will retry later");
+                  return false;
+              }
+             retryFailedPorts();
+        }
+        if (!deletePortInternal(uuid)) {
+            ports2Delete.add(uuid);
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean deletePortInternal(String uuid) {
+        try {
+            apiConnector.delete(Port.class, uuid.toString());
+        } catch (IOException e) {
+
+            s_logger.warn(this +
+                    " deletePort: " + uuid +
+                    " Exception: " + e.getMessage());
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean sync() {
+
+        if (!isServerAlive()) {
+            s_logger.warn(this +
+                    " sync failed, vrouter is not alive");
+            syncFailed = true;
+            return false;
+        }
+        try {
+            boolean res = apiConnector.sync("/syncports");
+
+            if (!res) {
+                s_logger.warn(this + " sync request FAILED");
+                syncFailed = true;
                 return false;
             }
-        } else {
-            try {
-                apiConnector.delete(Port.class, vif_uuid.toString());
+        } catch (IOException e) {
+            s_logger.warn(this +
+                    " sync failed, exception: " + e.getMessage());
+            syncFailed = true;
+            return false;
+        }
+        syncFailed = false;
 
-            } catch (Exception e) {
-                s_logger.error(this +
-                        " deletePort: " + vif_uuid +
-                        " Exception: " + e.getMessage());
-                return false;
+        return true;
+    }
+
+    private boolean retryFailedPorts() {
+        for (String uuid: ports2Delete) {
+            if (deletePortInternal(uuid)) {
+                ports2Delete.remove(uuid);
+            }
+        }
+
+        for (Map.Entry<String, Port> entry: ports2Add.entrySet()) {
+            if (addPortInternal(entry.getValue())) {
+                ports2Add.remove(entry.getKey());
             }
         }
         return true;
     }
 
-    public boolean syncPorts() {
-        if (apiConnector == null) {
-            if (!isServerAlive()) {
-                s_logger.error(this +
-                        " syncPorts FAILED, vrouter is not alive");
-                return false;
-            }
-        }
-        try {
-            boolean res = apiConnector.sync("/sync");
-
-            if (!res) {
-                s_logger.error(this + " syncPorts request failed");
-                return false;
-            }
-        } catch (Exception e) {
-            s_logger.error(this +
-                    " syncPorts exception: " + e.getMessage());
-            e.printStackTrace();
+    public boolean periodicCheck() {
+        if (!isServerAlive()) {
+            s_logger.warn(this + " not reachable");
             return false;
         }
+        if (syncFailed) {
+            if (!sync()) {
+                s_logger.warn(this + " is alive, but sync request fails");
+                return false;
+            }
+        }
 
+        if (!retryFailedPorts()) {
+            s_logger.warn(this + ": provisioning of one or more ports failed");
+        }
         return true;
     }
 }
