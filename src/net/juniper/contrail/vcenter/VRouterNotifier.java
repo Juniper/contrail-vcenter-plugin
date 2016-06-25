@@ -161,9 +161,8 @@ public class VRouterNotifier {
 
                 vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
-            // run Keep Alive with vRouter Agent.
-            if (!vrouterApi.isServerAlive()) {
-                s_logger.warn(vrouterIpAddress + " not reachable");
+            if (!vrouterApi.periodicCheck()) {
+                s_logger.warn(vrouterIpAddress + " periodic check failed");
             }
         }
     }
@@ -187,15 +186,15 @@ public class VRouterNotifier {
 
                 vrouterApiMap.put(vrouterIpAddress, vrouterApi);
             }
-            boolean ret = vrouterApi.syncPorts();
+            boolean ret = vrouterApi.sync();
 
             if (ret) {
                 s_logger.info("vRouter " + vrouterIpAddress +
-                        "syncPorts success");
+                        " sync request success");
             } else {
-                // log failure but don't worry. Periodic KeepAlive task will
-                // attempt to connect to vRouter Agent and replay DeletePorts.
-                s_logger.error("vRouter " + vrouterIpAddress + " syncPorts failed");
+                // log failure but don't worry. Periodic  task will
+                // attempt to connect to vRouter Agent and replay sync.
+                s_logger.warn("vRouter " + vrouterIpAddress + " sync request failed");
             }
         }
     }
