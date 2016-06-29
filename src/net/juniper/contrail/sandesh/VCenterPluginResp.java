@@ -6,6 +6,8 @@ import net.juniper.contrail.vcenter.VCenterMonitor;
 import net.juniper.contrail.vcenter.VCenterNotify;
 import net.juniper.contrail.vcenter.VRouterNotifier;
 import net.juniper.contrail.vcenter.VncDB;
+import com.vmware.vim25.mo.Datacenter;
+import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
 
 public class VCenterPluginResp {
     private VCenterPlugin vCenterPluginInfo;
@@ -69,8 +71,17 @@ public class VCenterPluginResp {
         if (VCenterNotify.getVcenterDB() != null) {
             vCenterServerInfo.setUrl(VCenterNotify.getVcenterDB().getVcenterUrl() );
 
-            vCenterServerInfo.setConnected(
-                    VCenterNotify.getVCenterConnected());
+            vCenterServerInfo.setConnected(VCenterNotify.getVCenterConnected());
+
+            vCenterServerInfo.setOperationalStatus(VCenterNotify.getVcenterDB().getOperationalStatus());
+            Datacenter dc = VCenterNotify.getVcenterDB().getDatacenter();
+            if (dc != null && dc.getMOR() != null) {
+                vCenterServerInfo.setDatacenterMor(dc.getMOR().getVal());
+            }
+            VmwareDistributedVirtualSwitch dvs = VCenterNotify.getVcenterDB().getDvs();
+            if (dvs != null && dvs.getMOR() != null) {
+                vCenterServerInfo.setDvsMor(dvs.getMOR().getVal());
+            }
         }
     }
 

@@ -83,6 +83,13 @@ public class VCenterDB {
     public volatile Map<String, String> esxiToVRouterIpMap;
     public static volatile Map<String, Boolean> vRouterActiveMap;
 
+    public static final String OK = "Ok";
+    private String operationalStatus = OK;
+
+    public String getOperationalStatus() {
+        return operationalStatus;
+    }
+
     public VCenterDB(String vcenterUrl, String vcenterUsername,
                      String vcenterPassword, String contrailDcName,
                      String contrailDvsName, String ipFabricPgName, Mode mode) {
@@ -107,7 +114,8 @@ public class VCenterDB {
         rootFolder = null;
         rootFolder = serviceInstance.getRootFolder();
         if (rootFolder == null) {
-            s_logger.error("Failed to get rootfolder for vCenter ");
+            operationalStatus = "Failed to get rootfolder for vCenter ";
+            s_logger.error(operationalStatus);
             return false;
         }
         s_logger.info("Got rootfolder for vCenter ");
@@ -115,7 +123,8 @@ public class VCenterDB {
         inventoryNavigator = null;
         inventoryNavigator = new InventoryNavigator(rootFolder);
         if (inventoryNavigator == null) {
-            s_logger.error("Failed to get InventoryNavigator for vCenter ");
+            operationalStatus = "Failed to get InventoryNavigator for vCenter ";
+            s_logger.error(operationalStatus);
             return false;
         }
         s_logger.info("Got InventoryNavigator for vCenter ");
@@ -123,7 +132,8 @@ public class VCenterDB {
         ipPoolManager = null;
         ipPoolManager = serviceInstance.getIpPoolManager();
         if (ipPoolManager == null) {
-            s_logger.error("Failed to get ipPoolManager for vCenter ");
+            operationalStatus = "Failed to get ipPoolManager for vCenter ";
+            s_logger.error(operationalStatus);
             return false;
         }
         s_logger.info("Got ipPoolManager for vCenter ");
@@ -134,15 +144,13 @@ public class VCenterDB {
             contrailDC = (Datacenter) inventoryNavigator.searchManagedEntity(
                                       "Datacenter", contrailDataCenterName);
         } catch (InvalidProperty e) {
-                return false;
         } catch (RuntimeFault e) {
-                return false;
         } catch (RemoteException e) {
-                return false;
         }
         if (contrailDC == null) {
-            s_logger.error("Failed to find " + contrailDataCenterName
-                           + " DC on vCenter ");
+            operationalStatus = "Failed to find " + contrailDataCenterName
+                           + " DC on vCenter ";
+            s_logger.error(operationalStatus);
             return false;
         }
         s_logger.info("Found " + contrailDataCenterName + " DC on vCenter ");
@@ -156,22 +164,21 @@ public class VCenterDB {
                                     "VmwareDistributedVirtualSwitch",
                                     contrailDvSwitchName);
         } catch (InvalidProperty e) {
-                return false;
         } catch (RuntimeFault e) {
-                return false;
         } catch (RemoteException e) {
-                return false;
         }
 
         if (contrailDVS == null) {
-            s_logger.error("Failed to find " + contrailDvSwitchName +
-                           " DVSwitch on vCenter");
+            operationalStatus = "Failed to find " + contrailDvSwitchName +
+                           " DVSwitch on vCenter";
+            s_logger.error(operationalStatus);
             return false;
         }
         s_logger.info("Found " + contrailDvSwitchName + " DVSwitch on vCenter ");
         dvswitches.put(contrailDvSwitchName, contrailDVS);
 
         // All well on vCenter front.
+        operationalStatus = OK;
         return true;
     }
 
@@ -206,24 +213,29 @@ public class VCenterDB {
             serviceInstance = new ServiceInstance(new URL(vcenterUrl),
                                         vcenterUsername, vcenterPassword, true);
             if (serviceInstance == null) {
-                s_logger.error("Failed to connect to vCenter Server : " + "("
+                operationalStatus = "Failed to connect to vCenter Server : " + "("
                                 + vcenterUrl + "," + vcenterUsername + ","
-                                + vcenterPassword + ")" + "Retrying after 5 secs");
+                                + vcenterPassword + ")" + "Retrying after 5 secs";
+                s_logger.error(operationalStatus);
                 return false;
             }
             setConnectTimeout(timeout);
             s_logger.info("Connected to vCenter Server : " + "("
                     + vcenterUrl + "," + vcenterUsername + ","
                     + vcenterPassword + ")");
+            operationalStatus = OK;
             return true;
         } catch (MalformedURLException e) {
-                s_logger.info("Re-Connect unsuccessful: " + e.getMessage());
+                operationalStatus = "Re-Connect unsuccessful: " + e.getMessage();
+                s_logger.error(operationalStatus);
                 return false;
         } catch (RemoteException e) {
-                s_logger.info("Re-Connect unsuccessful: " + e.getMessage());
+                operationalStatus = "Re-Connect unsuccessful: " + e.getMessage();
+                s_logger.error(operationalStatus);
                 return false;
         } catch (Exception e) {
-                s_logger.error("Error while connecting to vcenter: " + e.getMessage());
+                operationalStatus = "Error while connecting to vcenter: " + e.getMessage();
+                s_logger.error(operationalStatus);
                 e.printStackTrace();
                 return false;
         }
@@ -297,6 +309,10 @@ public class VCenterDB {
 
     public void setDatacenter(Datacenter _dc) {
       contrailDC = _dc;
+    }
+
+    public VmwareDistributedVirtualSwitch getDvs() {
+        return contrailDVS;
     }
 
     protected static String getVirtualMachineMacAddress(
@@ -593,9 +609,9 @@ public class VCenterDB {
 
         Folder rootFolder = serviceInstance.getRootFolder();
         if (rootFolder == null) {
-            String msg = "Failed to get rootfolder for vCenter " + vcenterUrl;
-            s_logger.error(msg);
-            throw new RemoteException(msg);
+            operationalStatus = "Failed to get rootfolder for vCenter " + vcenterUrl;
+            s_logger.error(operationalStatus);
+            throw new RemoteException(operationalStatus);
         }
         InventoryNavigator inventoryNavigator = new InventoryNavigator(rootFolder);
         Datacenter dc = null;
@@ -603,15 +619,15 @@ public class VCenterDB {
             dc = (Datacenter) inventoryNavigator.searchManagedEntity(
                           "Datacenter", name);
         } catch (RemoteException e ) {
-            String msg = "Failed to retrieve " + description;
-            s_logger.error(msg);
-            throw new RemoteException(msg, e);
+            operationalStatus = "Failed to retrieve " + description;
+            s_logger.error(operationalStatus);
+            throw new RemoteException(operationalStatus, e);
         }
 
         if (dc == null) {
-            String msg = "Failed to retrieve " + description;
-            s_logger.error(msg);
-            throw new RemoteException(msg);
+            operationalStatus = "Failed to retrieve " + description;
+            s_logger.error(operationalStatus);
+            throw new RemoteException(operationalStatus);
         }
 
         datacenters.put(name, dc);
@@ -639,15 +655,15 @@ public class VCenterDB {
             dvs = (VmwareDistributedVirtualSwitch)inventoryNavigator.searchManagedEntity(
                     "VmwareDistributedVirtualSwitch", name);
         } catch (RemoteException e ) {
-            String msg = "Failed to retrieve " + description;
-            s_logger.error(msg);
-            throw new RemoteException(msg, e);
+            operationalStatus = "Failed to retrieve " + description;
+            s_logger.error(operationalStatus);
+            throw new RemoteException(operationalStatus, e);
         }
 
         if (dvs == null) {
-            String msg = "Failed to retrieve " + description;
-            s_logger.error(msg);
-            throw new RemoteException(msg);
+            operationalStatus = "Failed to retrieve " + description;
+            s_logger.error(operationalStatus);
+            throw new RemoteException(operationalStatus);
         }
 
         s_logger.info("Found " + description);
@@ -822,6 +838,7 @@ public class VCenterDB {
             return map;
         }
 
+        @SuppressWarnings("rawtypes")
         Hashtable[] pTables = PropertyCollectorUtil.retrieveProperties(dvPgs,
                                 "DistributedVirtualPortgroup",
                 new String[] {"name",
@@ -876,6 +893,7 @@ public class VCenterDB {
             vrouterIpAddress = getVRouterVMIpFabricAddress(hostName, host, dcName);
         }
 
+        @SuppressWarnings("rawtypes")
         Hashtable[] pTables = PropertyCollectorUtil.retrieveProperties(vms, "VirtualMachine",
                 new String[] {"name",
                 "config.instanceUuid",
@@ -997,13 +1015,13 @@ public class VCenterDB {
         try {
             Calendar currTime = serviceInstance.currentTime();
             if (currTime == null) {
-                String msg = "Failed aliveness check for vCenter " + vcenterUrl;
-                s_logger.error(msg);
+                operationalStatus = "Failed aliveness check for vCenter " + vcenterUrl;
+                s_logger.error(operationalStatus);
                 return false;
             }
         } catch (Exception e) {
-            String msg = "Failed aliveness check for vCenter " + vcenterUrl;
-            s_logger.error(msg);
+            operationalStatus = "Failed aliveness check for vCenter " + vcenterUrl;
+            s_logger.error(operationalStatus);
             return false;
         }
         return true;
