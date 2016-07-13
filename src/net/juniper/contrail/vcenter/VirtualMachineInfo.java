@@ -1,7 +1,9 @@
 package net.juniper.contrail.vcenter;
 
+import org.apache.log4j.Logger;
 import com.vmware.vim25.VirtualMachinePowerState;
 import com.vmware.vim25.VirtualMachineRuntimeInfo;
+import com.vmware.vim25.VirtualMachineConfigInfo;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import com.vmware.vim25.mo.HostSystem;
 import java.io.IOException;
@@ -13,6 +15,7 @@ import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import com.vmware.vim25.Event;
 import com.vmware.vim25.GuestNicInfo;
+import com.vmware.vim25.GuestInfo;
 import com.vmware.vim25.ManagedObjectReference;
 
 public class VirtualMachineInfo extends VCenterObject {
@@ -39,6 +42,9 @@ public class VirtualMachineInfo extends VCenterObject {
 
     //API server objects
     net.juniper.contrail.api.types.VirtualMachine apiVm;
+    
+    private final Logger s_logger =
+            Logger.getLogger(VirtualMachineInfo.class);
 
     public VirtualMachineInfo(String uuid) {
         if (uuid == null) {
@@ -113,11 +119,20 @@ public class VirtualMachineInfo extends VCenterObject {
         vrouterIpAddress = vcenterDB.getVRouterVMIpFabricAddress(
                 hostName, host, contrailVRouterVmNamePrefix);
 
-        uuid = vm.getConfig().getInstanceUuid();
+        VirtualMachineConfigInfo config = vm.getConfig();
+        if (config != null) {
+        	uuid = config.getInstanceUuid();
+        }
 
         VirtualMachineRuntimeInfo vmRuntimeInfo = vm.getRuntime();
-        powerState = vmRuntimeInfo.getPowerState();
-        toolsRunningStatus = vm.getGuest().getToolsRunningStatus();
+        if (vmRuntimeInfo != null) {
+        	powerState = vmRuntimeInfo.getPowerState();
+        	s_logger.info("Power state read from vCenter is " + powerState);
+        }
+        GuestInfo guest = vm.getGuest();
+        if (guest != null) {
+        	toolsRunningStatus = guest.getToolsRunningStatus();
+        }
 
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
         vcenterDB.readVirtualMachineInterfaces(this);

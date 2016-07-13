@@ -6,6 +6,7 @@
 package net.juniper.contrail.vcenter;
 
 import java.io.IOException;
+import org.apache.log4j.Logger;
 import com.google.common.net.InetAddresses;
 import com.vmware.vim25.GuestNicInfo;
 import com.vmware.vim25.NetIpConfigInfo;
@@ -23,6 +24,9 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
     //API server objects
     net.juniper.contrail.api.types.VirtualMachineInterface apiVmi;
     net.juniper.contrail.api.types.InstanceIp apiInstanceIp;
+    
+    private final Logger s_logger =
+            Logger.getLogger(VirtualMachineInterfaceInfo.class);
 
     VirtualMachineInterfaceInfo(VirtualMachineInfo vmInfo,
             VirtualNetworkInfo vnInfo) {
@@ -192,6 +196,8 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
 
         if (!portAdded) {
             addPort();
+        } else {
+        	s_logger.info("Skipping addPort, port has already been added");
         }
 
         vnInfo.created(this);
@@ -240,6 +246,8 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         if (vmInfo.isPoweredOnState()) {
             if (!portAdded) {
                 addPort();
+            } else {
+            	s_logger.info("VM is powered On, skipping addPort, port has already been added");
             }
         } else {
             deletePort();
@@ -307,6 +315,8 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         if (vmInfo.isPoweredOnState()) {
             portAdded = true;
             VRouterNotifier.created(this);
+        } else {
+        	s_logger.info("VM is powered off, port not added");
         }
     }
 
