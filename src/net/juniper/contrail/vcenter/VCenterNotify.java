@@ -669,6 +669,7 @@ public class VCenterNotify implements Runnable
             "VmDeployedEvent",
             // VM modify events
             "VmPoweredOnEvent",
+            "DrsVmPoweredOnEvent",
             "VmPoweredOffEvent",
             "VmRenamedEvent",
             "VmMacChangedEvent",

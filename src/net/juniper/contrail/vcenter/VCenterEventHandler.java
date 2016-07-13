@@ -22,6 +22,7 @@ import com.vmware.vim25.DrsVmMigratedEvent;
 import com.vmware.vim25.VmMigratedEvent;
 import com.vmware.vim25.VmPoweredOffEvent;
 import com.vmware.vim25.VmPoweredOnEvent;
+import com.vmware.vim25.DrsVmPoweredOnEvent;
 import com.vmware.vim25.VmReconfiguredEvent;
 import com.vmware.vim25.VmRemovedEvent;
 import com.vmware.vim25.VmRenamedEvent;
@@ -62,6 +63,7 @@ public class VCenterEventHandler {
             || event instanceof VmMacChangedEvent
             || event instanceof VmMacAssignedEvent
             || event instanceof DrsVmMigratedEvent
+            || event instanceof DrsVmPoweredOnEvent
             || event instanceof VmMigratedEvent
             || event instanceof VmPoweredOnEvent
             || event instanceof VmPoweredOffEvent) {

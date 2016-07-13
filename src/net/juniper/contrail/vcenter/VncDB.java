@@ -840,7 +840,7 @@ public class VncDB {
         vmiInfo.apiInstanceIp = instanceIp;
         vmiInfo.setIpAddress(instanceIp.getAddress());
 
-        s_logger.debug("Created instanceIP:" + instanceIp.getName() + ": " +
+        s_logger.debug("Created instanceIP: " + instanceIp.getName() + ": " +
                 instanceIp.getAddress());
     }
 
