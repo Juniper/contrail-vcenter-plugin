@@ -6,6 +6,7 @@ import java.util.Properties;
 import org.apache.log4j.Logger;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import com.google.common.base.Throwables;
 
 @SuppressWarnings("restriction")
 public class VCenterHttpServer implements HttpService {
@@ -14,11 +15,11 @@ public class VCenterHttpServer implements HttpService {
     private final static String webRoot = "/usr/share/contrail-vcenter-plugin/webs";
     private final Logger s_logger =
             Logger.getLogger(VCenterHttpServer.class);
-    
+
     public static String getWebRoot() {
         return webRoot;
     }
-    
+
     public VCenterHttpServer(Properties configProps) {
 
         String portStr = configProps.getProperty("introspect.port");
@@ -55,8 +56,8 @@ public class VCenterHttpServer implements HttpService {
             server.setExecutor(null); // creates a default executor
             server.start();
         } catch (IOException e) {
-            s_logger.error(" Cannot start HTTP server on port " + port);
-            e.printStackTrace();
+            s_logger.error(" Cannot start HTTP server on port " + port + " due to exception " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
         }
 
         if (server == null) {
@@ -65,7 +66,7 @@ public class VCenterHttpServer implements HttpService {
             s_logger.info("HTTP server on port " + port + " started.");
         }
     }
-    
+
     @Override
     public void registerHandler(String path, HttpHandler h) {
         if (server != null) {

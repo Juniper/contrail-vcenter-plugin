@@ -208,7 +208,8 @@ public class VCenterNotify implements Runnable
                 pf.destroyPropertyFilter();
             } catch (RemoteException e)
             {
-                e.printStackTrace();
+                s_logger.error("Cannot unwatchManagedObject " + mos + " due to exception " + e);
+                s_logger.error(Throwables.getStackTraceAsString(e));
             }
         }
     }
@@ -426,10 +427,10 @@ public class VCenterNotify implements Runnable
             watchUpdates.start();
         } catch (Exception e)
         {
-            System.out.println("Caught Exception : " + " Name : "
+            s_logger.error("Caught Exception : " + " Name : "
                     + e.getClass().getName() + " Message : " + e.getMessage()
                     + " Trace : ");
-            e.printStackTrace();
+            s_logger.error(Throwables.getStackTraceAsString(e));
         }
     }
 
@@ -450,15 +451,12 @@ public class VCenterNotify implements Runnable
             s_logger.info("Connecting to the API server ...");
             while (vncDB.Initialize() != true) {
                 s_logger.info("Waiting for API server ...");
-                Thread.sleep(1000);
+                Thread.sleep(5000);
             }
             s_logger.info("Connected to the API server ...");
         } catch (Exception e) {
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error("Error while initializing connection with the API server: "
-                                     + e);
-            s_logger.error(stackTrace);
-            e.printStackTrace();
+            s_logger.error("Error while initializing connection with the API server: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             TaskWatchDog.stopMonitoring(this);
             return false;
         }
@@ -475,10 +473,8 @@ public class VCenterNotify implements Runnable
                 vCenterConnected = true;
             }
         } catch (Exception e) {
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error("Error while initializing VCenter connection: " + e);
-            s_logger.error(stackTrace);
-            e.printStackTrace();
+            s_logger.error("Error while initializing VCenter connection: ");
+            s_logger.error(Throwables.getStackTraceAsString(e));
         }
         TaskWatchDog.stopMonitoring(this);
     }
@@ -498,7 +494,7 @@ public class VCenterNotify implements Runnable
                 //check if you are the master from time to time
                 //sometimes things don't go as planned
                 if (VCenterMonitor.isZookeeperLeader() == false) {
-                    s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
+                    s_logger.warn("Lost zookeeper leadership. Restarting myself\n");
                     System.exit(0);
                 }
 
@@ -526,10 +522,8 @@ public class VCenterNotify implements Runnable
                         syncNeeded = false;
                     } catch (Exception e) {
                         vCenterConnected = false;
-                        String stackTrace = Throwables.getStackTraceAsString(e);
                         s_logger.error("Error in sync: " + e);
-                        s_logger.error(stackTrace);
-                        e.printStackTrace();
+                        s_logger.error(Throwables.getStackTraceAsString(e));
                         TaskWatchDog.stopMonitoring(this);
                         continue;
                     }
@@ -571,17 +565,12 @@ public class VCenterNotify implements Runnable
                     }
                 } catch (RemoteException e)  {
                     vCenterConnected = false;
-                    s_logger.info("Vcenter disconnected, reconnect and resync needed");
-                    String stackTrace = Throwables.getStackTraceAsString(e);
-                    s_logger.info(stackTrace);
-                    e.printStackTrace();
-                }
-                catch (Exception e) {
+                    s_logger.info("Vcenter disconnected, reconnect and resync needed: " + e);
+                    s_logger.info(Throwables.getStackTraceAsString(e));
+                } catch (Exception e) {
                     vCenterConnected = false;
                     s_logger.error("Error in event handling, reconnect and resync needed");
-                    String stackTrace = Throwables.getStackTraceAsString(e);
-                    s_logger.error(stackTrace);
-                    e.printStackTrace();
+                    s_logger.error(Throwables.getStackTraceAsString(e));
                 }
             }
         } catch (Exception e)
@@ -594,8 +583,7 @@ public class VCenterNotify implements Runnable
                 s_logger.error("Caught Exception : " + " Name : "
                         + e.getClass().getName() + " Message : "
                         + e.getMessage() + " Trace : ");
-                String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace);
+                s_logger.error(Throwables.getStackTraceAsString(e));
             }
         }
     }
@@ -708,7 +696,8 @@ public class VCenterNotify implements Runnable
             }
         } catch(Exception e)
         {
-            e.printStackTrace();
+            s_logger.error("Cannot watchManagedObjectEvents for " + mos + ", exception " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             throw new RuntimeException(e);
         }
     }
@@ -730,7 +719,8 @@ public class VCenterNotify implements Runnable
                 }
             } catch (RemoteException e)
             {
-                e.printStackTrace();
+                s_logger.error("Cannot unwatchManagedObjectEvents for " + mos + ", exception " + e);
+                s_logger.error(Throwables.getStackTraceAsString(e));
             }
         }
     }
