@@ -8,6 +8,8 @@
 package net.juniper.contrail.vcenter;
 
 import org.apache.log4j.Logger;
+
+import com.google.common.base.Throwables;
 import com.vmware.vim25.DVPortgroupCreatedEvent;
 import com.vmware.vim25.DVPortgroupDestroyedEvent;
 import com.vmware.vim25.DVPortgroupReconfiguredEvent;
@@ -87,9 +89,9 @@ public class VCenterEventHandler {
         try {
             newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
         } catch (Exception e) {
-            e.printStackTrace();
             s_logger.info("Skipping update event " + event.getClass().getName()
-                    +" for missing VM");
+                    +" for missing VM, due to exception " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return;
         }
 
@@ -119,9 +121,9 @@ public class VCenterEventHandler {
         try {
             newVnInfo = new VirtualNetworkInfo(event, vcenterDB, vncDB);
         } catch (Exception e) {
-            e.printStackTrace();
             s_logger.info("Skipping update event " + event.getClass().getName() +
-                    " for missing network");
+                    " for missing network, due to exception " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return;
         }
 
@@ -147,6 +149,6 @@ public class VCenterEventHandler {
     }
 
     private void handleEvent(Event event) {
-        s_logger.error("Need to process "+ event.getClass().getName());
+        s_logger.error("Event "+ event.getClass().getName() + " received, but not handled.");
     }
 }

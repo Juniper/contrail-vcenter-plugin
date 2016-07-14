@@ -26,6 +26,8 @@ import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.RuntimeFault;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import org.apache.log4j.Logger;
+
+import com.google.common.base.Throwables;
 import com.vmware.vim25.DVPortSetting;
 import com.vmware.vim25.DVPortgroupConfigInfo;
 import com.vmware.vim25.GuestInfo;
@@ -187,7 +189,7 @@ public class VCenterDB {
             try{
                 Thread.sleep(5000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                s_logger.error(Throwables.getStackTraceAsString(e));
                 return false;
             }
 
@@ -197,7 +199,7 @@ public class VCenterDB {
             try{
                 Thread.sleep(5000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                s_logger.error(Throwables.getStackTraceAsString(e));
                 return false;
             }
 
@@ -236,7 +238,7 @@ public class VCenterDB {
         } catch (Exception e) {
                 operationalStatus = "Error while connecting to vcenter: " + e.getMessage();
                 s_logger.error(operationalStatus);
-                e.printStackTrace();
+                s_logger.error(Throwables.getStackTraceAsString(e));
                 return false;
         }
     }

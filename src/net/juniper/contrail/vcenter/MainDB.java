@@ -128,7 +128,8 @@ public class MainDB {
                     oldEntry = oldIter.hasNext()? oldIter.next() : null;
                 }
             } catch (Exception e) {
-                //s_logger.error("Cannot sync " + entry1.getKey());
+                s_logger.error("Cannot sync old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "] with new [" +
+                        newEntry.getKey() + ", " + newEntry.getValue() + "]" );
             }
         }
 
@@ -137,7 +138,7 @@ public class MainDB {
                 try {
                     oldEntry.getValue().delete(vncDB);
                 } catch (Exception e) {
-                    //s_logger.error("Cannot delete " + entry2.getKey());
+                    s_logger.error("Cannot delete old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "]");
                 }
                 oldEntry = oldIter.hasNext()? oldIter.next() : null;
             }
@@ -147,7 +148,7 @@ public class MainDB {
             try {
                 newEntry.getValue().create(vncDB);
             } catch (Exception e) {
-                //s_logger.error("Cannot create VN " + entry1.getKey());
+                s_logger.error("Cannot create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
             }
             newEntry = newIter.hasNext()? newIter.next() : null;
         }
@@ -176,7 +177,8 @@ public class MainDB {
                     oldEntry = oldIter.hasNext()? oldIter.next() : null;
                 }
             } catch (Exception e) {
-                //s_logger.error("Cannot sync " + entry1.getKey());
+                s_logger.error("Cannot update old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "] with new [" +
+                        newEntry.getKey() + ", " + newEntry.getValue() + "]" );
             }
         }
 
@@ -184,7 +186,7 @@ public class MainDB {
             try {
                 oldEntry.getValue().delete(vncDB);
             } catch (Exception e) {
-                //s_logger.error("Cannot delete " + entry2.getKey());
+                s_logger.error("Cannot delete old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "]");
             }
             oldEntry = oldIter.hasNext()? oldIter.next() : null;
         }
@@ -193,7 +195,7 @@ public class MainDB {
             try {
                 newEntry.getValue().create(vncDB);
             } catch (Exception e) {
-                //s_logger.error("Cannot create VN " + entry1.getKey());
+                s_logger.error("Cannot create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
             }
             newEntry = newIter.hasNext()? newIter.next() : null;
         }

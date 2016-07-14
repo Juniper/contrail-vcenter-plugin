@@ -18,7 +18,7 @@ class VRouterMonitorTask implements Runnable {
         //check if you are the master from time to time
         //sometimes things don't go as planned
         if (VCenterMonitor.isZookeeperLeader() == false) {
-            s_logger.debug("Lost zookeeper leadership. Restarting myself\n");
+            s_logger.warn("Lost zookeeper leadership. Restarting myself\n");
             System.exit(0);
         }
 
@@ -33,10 +33,8 @@ class VRouterMonitorTask implements Runnable {
             // run KeepAlive with vRouter Agent.
             VRouterNotifier.vrouterAgentPeriodicConnectionCheck();
         } catch (Exception e) {
-            String stackTrace = Throwables.getStackTraceAsString(e);
             s_logger.error("Error while vrouterAgentPeriodicConnectionCheck: " + e);
-            s_logger.error(stackTrace);
-            e.printStackTrace();
+            s_logger.error(Throwables.getStackTraceAsString(e));
         }
 
         TaskWatchDog.stopMonitoring(this);

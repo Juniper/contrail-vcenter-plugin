@@ -152,7 +152,7 @@ public class VncDB {
             @SuppressWarnings("unchecked")
             List<Project> projects = (List<Project>) apiConnector.list(Project.class, null);
             if (projects == null) {
-                s_logger.error(" ApiServer not fully awake yet.. retry again..");
+                s_logger.info(" ApiServer not fully awake yet.. retry again..");
                 alive = false;
                 return false;
             }
@@ -184,12 +184,10 @@ public class VncDB {
             vCenterProject = (Project) apiConnector.findByFQN(Project.class,
                                         VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT);
         } catch (Exception e) {
-            s_logger.error("Exception : " + e);
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error(stackTrace);
+            s_logger.error("Exception in find vcenter project: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return false;
         }
-        s_logger.info(" fqn-to-uuid complete..");
 
         if (vCenterProject == null) {
             s_logger.info(" vCenter project not present, creating ");
@@ -202,9 +200,8 @@ public class VncDB {
                     return false;
                 }
             } catch (Exception e) {
-                s_logger.error("Exception : " + e);
-                String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace);
+                s_logger.error("Exception in creating vcenter object: " + e);
+                s_logger.error(Throwables.getStackTraceAsString(e));
                 return false;
             }
         } else {
@@ -216,9 +213,8 @@ public class VncDB {
             vCenterIpam = (NetworkIpam) apiConnector.findByFQN(NetworkIpam.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_IPAM);
         } catch (Exception e) {
-            s_logger.error("Exception : " + e);
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error(stackTrace);
+            s_logger.error("Exception in find network Ipam: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return false;
         }
 
@@ -233,9 +229,8 @@ public class VncDB {
                     s_logger.error("Unable to create Ipam: " + vCenterIpam.getName());
                 }
             } catch (Exception e) {
-                s_logger.error("Exception : " + e);
-                String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace);
+                s_logger.error("Exception in network Ipam create: " + e);
+                s_logger.error(Throwables.getStackTraceAsString(e));
                 return false;
             }
         } else {
@@ -247,9 +242,8 @@ public class VncDB {
             vCenterDefSecGrp = (SecurityGroup) apiConnector.findByFQN(SecurityGroup.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_DEFAULT_SG);
         } catch (Exception e) {
-            s_logger.error("Exception : " + e);
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error(stackTrace);
+            s_logger.error("Exception in find sec group: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return false;
         }
 
@@ -358,10 +352,8 @@ public class VncDB {
                     s_logger.error("Unable to create test Ipam: " + vCenterIpam.getName());
                 }
             } catch (IOException e) {
-                s_logger.error("Exception : " + e);
-                String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace);
-                e.printStackTrace();
+                s_logger.error("Exception in vCenterIpam create : " + e );
+                s_logger.error(Throwables.getStackTraceAsString(e));
                 return false;
             }
         } else {
@@ -373,9 +365,8 @@ public class VncDB {
             vCenterDefSecGrp = (SecurityGroup) apiConnector.findByFQN(SecurityGroup.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_DEFAULT_SG);
         } catch (Exception e) {
-            s_logger.error("Exception : " + e);
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error(stackTrace);
+            s_logger.error("Exception in default sec group find: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return false;
         }
 
@@ -424,9 +415,8 @@ public class VncDB {
                     s_logger.error("Unable to create def sec grp: " + vCenterDefSecGrp.getName());
                 }
             } catch (Exception e) {
-                s_logger.error("Exception : " + e);
-                String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace);
+                s_logger.error("Exception in default sec group find: " + e);
+                s_logger.error(Throwables.getStackTraceAsString(e));
                 return false;
             }
         } else {
@@ -853,17 +843,14 @@ public class VncDB {
         try {
             apiObjs = (List<VirtualNetwork>)
                     apiConnector.list(VirtualNetwork.class, null);
-        } catch (Exception ex) {
-            s_logger.error("Exception in api.list(VirtualNetworks): " + ex);
-            String stackTrace = Throwables.getStackTraceAsString(ex);
-            s_logger.error(stackTrace);
-            ex.printStackTrace();
+        } catch (Exception e) {
+            s_logger.error("Exception in api.list(VirtualNetworks): " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return map;
         }
 
         for (VirtualNetwork vn : apiObjs) {
             try {
-                //TODO can we get rid of this call by reading everything with the list?
                 apiConnector.read(vn);
                 // Ignore network ?
                 if (doIgnoreVirtualNetwork(vn.getName())) {
@@ -905,9 +892,7 @@ public class VncDB {
                     apiConnector.list(VirtualMachine.class, null);
         } catch (Exception e) {
             s_logger.error("Exception in api.list(VirtualMachine): " + e);
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error(stackTrace);
-            e.printStackTrace();
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return map;
         }
 
@@ -1094,11 +1079,9 @@ public class VncDB {
         try {
             apiObjs = (List<InstanceIp>)
                     apiConnector.list(InstanceIp.class, null);
-        } catch (Exception ex) {
-            s_logger.error("Exception in api.list: " + ex);
-            String stackTrace = Throwables.getStackTraceAsString(ex);
-            s_logger.error(stackTrace);
-            ex.printStackTrace();
+        } catch (Exception e) {
+            s_logger.error("Exception in api.list: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return ;
         }
 
@@ -1184,11 +1167,9 @@ public class VncDB {
         try {
             apiObjs = (List<VirtualMachineInterface>)
                     apiConnector.list(VirtualMachineInterface.class, null);
-        } catch (Exception ex) {
-            s_logger.error("Exception in api.list: " + ex);
-            String stackTrace = Throwables.getStackTraceAsString(ex);
-            s_logger.error(stackTrace);
-            ex.printStackTrace();
+        } catch (Exception e) {
+            s_logger.error("Exception in api.list: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return ;
         }
 
@@ -1262,11 +1243,9 @@ public class VncDB {
         try {
             apiObjs = (List<VirtualMachine>)
                     apiConnector.list(VirtualMachine.class, null);
-        } catch (Exception ex) {
-            s_logger.error("Exception in api.list: " + ex);
-            String stackTrace = Throwables.getStackTraceAsString(ex);
-            s_logger.error(stackTrace);
-            ex.printStackTrace();
+        } catch (Exception e) {
+            s_logger.error("Exception in api.list: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return ;
         }
 
@@ -1283,11 +1262,9 @@ public class VncDB {
         try {
             apiObjs = (List<VirtualNetwork>)
                     apiConnector.list(VirtualNetwork.class, null);
-        } catch (Exception ex) {
-            s_logger.error("Exception in api.list: " + ex);
-            String stackTrace = Throwables.getStackTraceAsString(ex);
-            s_logger.error(stackTrace);
-            ex.printStackTrace();
+        } catch (Exception e) {
+            s_logger.error("Exception in api.list: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
             return ;
         }
 
@@ -1303,9 +1280,7 @@ public class VncDB {
         deleteVirtualMachines();
         deleteVirtualNetworks();
         } catch (Exception e) {
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error(stackTrace);
-            e.printStackTrace();
+            s_logger.error(Throwables.getStackTraceAsString(e));
         }
     }
 }

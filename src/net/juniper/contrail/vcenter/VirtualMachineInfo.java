@@ -1,6 +1,5 @@
 package net.juniper.contrail.vcenter;
 
-import org.apache.log4j.Logger;
 import com.vmware.vim25.VirtualMachinePowerState;
 import com.vmware.vim25.VirtualMachineRuntimeInfo;
 import com.vmware.vim25.VirtualMachineConfigInfo;
@@ -42,9 +41,6 @@ public class VirtualMachineInfo extends VCenterObject {
 
     //API server objects
     net.juniper.contrail.api.types.VirtualMachine apiVm;
-
-    private final Logger s_logger =
-            Logger.getLogger(VirtualMachineInfo.class);
 
     public VirtualMachineInfo(String uuid) {
         if (uuid == null) {
@@ -160,7 +156,7 @@ public class VirtualMachineInfo extends VCenterObject {
 
     public VirtualMachineInfo(VCenterDB vcenterDB,
             com.vmware.vim25.mo.Datacenter dc, String dcName,
-            com.vmware.vim25.mo.VirtualMachine vm, Hashtable pTable,
+            com.vmware.vim25.mo.VirtualMachine vm, @SuppressWarnings("rawtypes") Hashtable pTable,
             com.vmware.vim25.mo.HostSystem host,
             String vrouterIpAddress)
                     throws Exception {
