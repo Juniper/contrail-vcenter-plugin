@@ -13,6 +13,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.log4j.Logger;
+
+import com.google.common.base.Throwables;
+
 import net.juniper.contrail.sandesh.VCenterHttpServices;
 import net.juniper.contrail.watchdog.TaskWatchDog;
 import net.juniper.contrail.zklibrary.MasterSelection;
@@ -139,11 +142,11 @@ public class VCenterMonitor {
             } finally {
                 fileStream.close();
             }
-        } catch (IOException ex) {
-            s_logger.warn("Unable to read " + _configurationFile, ex);
-        } catch (Exception ex) {
-            s_logger.error("Exception in readVcenterPluginConfigFile: " + ex);
-            ex.printStackTrace();
+        } catch (IOException e) {
+            s_logger.error("Unable to read " + _configurationFile, e);
+        } catch (Exception e) {
+            s_logger.error("Exception in readVcenterPluginConfigFile: " + e);
+            s_logger.error(Throwables.getStackTraceAsString(e));
         }
 
         return configProps;

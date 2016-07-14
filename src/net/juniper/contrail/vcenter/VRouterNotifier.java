@@ -87,9 +87,7 @@ public class VRouterNotifier {
         } catch(Throwable e) {
             s_logger.warn("vRouter " + vrouterIpAddress + " Exception in addPort for "
                     + vmiInfo + ": " + e.getMessage());
-            String stackTrace = Throwables.getStackTraceAsString(e);
-            s_logger.error(stackTrace);
-            e.printStackTrace();
+            s_logger.error(Throwables.getStackTraceAsString(e));
         }
     }
 
