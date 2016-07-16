@@ -24,7 +24,6 @@ import com.vmware.vim25.RequestCanceled;
 import com.vmware.vim25.SelectionSpec;
 import com.vmware.vim25.UpdateSet;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
-import com.vmware.vim25.VmEvent;
 import com.vmware.vim25.WaitOptions;
 import com.vmware.vim25.mo.EventHistoryCollector;
 import com.vmware.vim25.mo.EventManager;
@@ -44,7 +43,6 @@ import com.vmware.vim25.mo.HostSystem;
 import com.google.common.base.Throwables;
 import com.vmware.vim25.InvalidState;
 import org.apache.log4j.Logger;
-import java.net.SocketTimeoutException;
 
 /**
  * @author Sachchidanand Vaidya
@@ -57,6 +55,7 @@ public class VCenterNotify implements Runnable
             Logger.getLogger(VCenterNotify.class);
     static volatile VCenterDB vcenterDB = null;
     static volatile VncDB vncDB;
+    private VCenterEventHandler eventHandler;
     private static boolean vCenterConnected = false;
     private final static String[] guestProps = { "guest.toolsRunningStatus", "guest.net" };
     private final static String[] ipPoolProps = { "summary.ipPoolId" };
@@ -100,6 +99,8 @@ public class VCenterNotify implements Runnable
         default:
             vncDB = new VncDB(_apiServerAddress, _apiServerPort, mode);
         }
+
+        eventHandler = new VCenterEventHandler(vcenterDB, vncDB);
     }
 
     public static VCenterDB getVcenterDB() {
@@ -303,9 +304,6 @@ public class VCenterNotify implements Runnable
 
     void handleChanges(ObjectUpdate oUpdate) throws Exception
     {
-        s_logger.info("+++++++++++++Received vcenter update of type "
-                        + oUpdate.getKind() + "+++++++++++++");
-
         PropertyChange[] changes = oUpdate.getChangeSet();
         if (changes == null) {
             return;
@@ -323,6 +321,7 @@ public class VCenterNotify implements Runnable
             PropertyChangeOp op = changes[pci].getOp();
             if (op!= PropertyChangeOp.remove) {
                 if (propName.equals("summary.ipPoolId")) {
+                    s_logger.info("Received summary.ipPoolId property change");
                     Integer newPoolId = (Integer)value;
                     ManagedObjectReference mor = oUpdate.getObj();
                     if (watchedVNs.containsKey(mor.getVal())) {
@@ -331,6 +330,7 @@ public class VCenterNotify implements Runnable
                         if ((oldPoolId == null && newPoolId == null)
                                 || (oldPoolId != null && newPoolId != null
                                         && oldPoolId.equals(newPoolId))) {
+                            s_logger.info("Done processing property update, nothing changed");
                             continue;
                         }
                         VirtualNetworkInfo newVnInfo = new VirtualNetworkInfo(vnInfo);
@@ -343,9 +343,12 @@ public class VCenterNotify implements Runnable
                             vnInfo.update(newVnInfo, vncDB);
                         }
                     }
+                    s_logger.info("Done processing property update");
                 } else if (propName.equals("guest.toolsRunningStatus")) {
+                    s_logger.info("Received guest.toolsRunningStatus property change");
                     toolsRunningStatus = (String)value;
                 } else if (value instanceof ArrayOfEvent) {
+                    s_logger.info("Received ArrayOfEvent");
                     ArrayOfEvent aoe = (ArrayOfEvent) value;
                     Event[] evts = aoe.getEvent();
                     if (evts == null) {
@@ -357,15 +360,12 @@ public class VCenterNotify implements Runnable
                         if (anEvent == null) {
                             continue;
                         }
-                        s_logger.info("\n----------" + "\n Event ID: "
-                                + anEvent.getKey() + "\n Event: "
-                                + anEvent.getClass().getName()
-                                + "\n FullFormattedMessage: "
-                                + anEvent.getFullFormattedMessage()
-                                + "\n----------\n");
+                        printEvent(anEvent);
                     }
+                    s_logger.info("Done processing array of events");
                 } else if ((value instanceof EnteredMaintenanceModeEvent) || (value instanceof HostConnectionLostEvent)) {
                     Event anEvent = (Event) value;
+                    printEvent(anEvent);
                     String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
                         VCenterDB.vRouterActiveMap.put(vRouterIpAddress, false);
@@ -373,8 +373,10 @@ public class VCenterNotify implements Runnable
                     } else {
                         s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
                     }
+                    s_logger.info("Done processing event " + anEvent.getFullFormattedMessage());
                 } else if ((value instanceof ExitMaintenanceModeEvent) || (value instanceof HostConnectedEvent)) {
                     Event anEvent = (Event) value;
+                    printEvent(anEvent);
                     String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(anEvent.getHost().getName());
                     if (vRouterIpAddress != null) {
                         VCenterDB.vRouterActiveMap.put(vRouterIpAddress, true);
@@ -382,15 +384,16 @@ public class VCenterNotify implements Runnable
                     } else {
                         s_logger.info("\nNot managing the host " + vRouterIpAddress +" inactive");
                     }
+                    s_logger.info("Done processing event " + anEvent.getFullFormattedMessage());
                 } else if (value instanceof ArrayOfGuestNicInfo) {
-                    s_logger.info("Received update array of GuestNics");
+                    s_logger.info("Received event update array of GuestNics");
                     ArrayOfGuestNicInfo aog = (ArrayOfGuestNicInfo) value;
                     nics = aog.getGuestNicInfo();
 
                 } else if (value instanceof Event) {
-                    VCenterEventHandler handler = new VCenterEventHandler(
-                            (Event) value, vcenterDB, vncDB);
-                    handler.handle();
+                    Event anEvent = (Event)value;
+                    printEvent(anEvent);
+                    eventHandler.handle(anEvent);
                 } else {
                     if (value != null) {
                         s_logger.info("\n Received unhandled property");
@@ -415,8 +418,8 @@ public class VCenterNotify implements Runnable
                     vmInfo.updatedGuestNics(nics, vncDB);
                 }
             }
+            s_logger.info("Done processing property update");
         }
-        s_logger.info("+++++++++++++Update Processing Complete +++++++++++++++++++++");
     }
 
     public void start() {
@@ -517,6 +520,7 @@ public class VCenterNotify implements Runnable
                     // When sync is run, it also does
                     // addPort to vrouter agent for existing VMIs.
                     try {
+                        s_logger.info("+++++++++++++ Starting sync  +++++++++++++++++++++");
                         vcenterDB.setReadTimeout(VCENTER_READ_TIMEOUT);
                         MainDB.sync(vcenterDB, vncDB, VCenterMonitor.mode);
                         syncNeeded = false;
@@ -528,8 +532,10 @@ public class VCenterNotify implements Runnable
                         continue;
                     }
                     TaskWatchDog.stopMonitoring(this);
+                    s_logger.info("+++++++++++++ Sync complete +++++++++++++++++++++");
                 }
 
+                s_logger.info("+++++++++++++ Waiting for events +++++++++++++++++++++");
                 try
                 {
                     WaitOptions wOpt = new WaitOptions();
@@ -588,19 +594,15 @@ public class VCenterNotify implements Runnable
         }
     }
 
-    void printVmEvent(Object value)
-    {
-        VmEvent anEvent = (VmEvent) value;
+    public static void printEvent(Event event) {
         s_logger.info("\n----------" + "\n Event ID: "
-                + anEvent.getKey() + "\n Event: "
-                + anEvent.getClass().getName()
-                + "\n FullFormattedMessage: "
-                + anEvent.getFullFormattedMessage()
-                + "\n VM Reference: "
-                + anEvent.getVm().getVm().get_value()
-                + "\n createdTime : "
-                + anEvent.getCreatedTime().getTime()
-                + "\n----------\n");
+              + event.getKey() + "\n Event: "
+              + event.getClass().getName()
+              + ", happened on: "
+              + event.getCreatedTime().getTime()
+              + "\n FullFormattedMessage: "
+              + event.getFullFormattedMessage()
+              + "\n----------\n");
     }
 
     public static VncDB getVncDB() {

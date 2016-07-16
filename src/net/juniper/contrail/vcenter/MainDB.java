@@ -220,8 +220,6 @@ public class MainDB {
         sync(oldVMs, vmwareVMs);
 
         printInfo();
-
-        s_logger.info("\nSync complete, waiting for events\n");
     }
 
     private static void printInfo() {
