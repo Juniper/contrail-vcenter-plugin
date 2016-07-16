@@ -30,33 +30,18 @@ import com.vmware.vim25.VmRemovedEvent;
 import com.vmware.vim25.VmRenamedEvent;
 
 public class VCenterEventHandler {
-    Event event;
     VCenterDB vcenterDB;
     VncDB vncDB;
-    private final Logger s_logger =
+    private static final Logger s_logger =
             Logger.getLogger(VCenterEventHandler.class);
 
-    VCenterEventHandler(Event event, VCenterDB vcenterDB, VncDB vncDB) {
-        this.event = event;
+    VCenterEventHandler(VCenterDB vcenterDB, VncDB vncDB) {
         this.vcenterDB = vcenterDB;
         this.vncDB = vncDB;
     }
 
-    private void printEvent() {
-        s_logger.info("===============");
-        s_logger.info("\nEvent Details follows:");
-
-        s_logger.info("\n----------" + "\n Event ID: "
-                + event.getKey() + "\n Event: "
-                + event.getClass().getName()
-                + "\n FullFormattedMessage: "
-                + event.getFullFormattedMessage()
-                + "\n----------\n");
-    }
-
-    public void handle() throws Exception {
-        printEvent();
-
+    public void handle(Event event) throws Exception {
+        s_logger.info("Process event " + event.getFullFormattedMessage());
         if (event instanceof VmCreatedEvent
             || event instanceof VmClonedEvent
             || event instanceof VmDeployedEvent
@@ -69,21 +54,22 @@ public class VCenterEventHandler {
             || event instanceof VmMigratedEvent
             || event instanceof VmPoweredOnEvent
             || event instanceof VmPoweredOffEvent) {
-            handleVmUpdateEvent();
+            handleVmUpdateEvent(event);
         } else if (event instanceof VmRemovedEvent) {
-            handleVmDeleteEvent();
+            handleVmDeleteEvent(event);
         } else if (event instanceof DVPortgroupCreatedEvent
                 || event instanceof DVPortgroupReconfiguredEvent
                 || event instanceof DVPortgroupRenamedEvent) {
-            handleNetworkUpdateEvent();
+            handleNetworkUpdateEvent(event);
         } else if (event instanceof DVPortgroupDestroyedEvent) {
-            handleNetworkDeleteEvent();
+            handleNetworkDeleteEvent(event);
         } else {
             handleEvent(event);
         }
+        s_logger.info("Done processing event " + event.getFullFormattedMessage());
     }
 
-    private void handleVmUpdateEvent() throws Exception {
+    private void handleVmUpdateEvent(Event event) throws Exception {
         VirtualMachineInfo newVmInfo = null;
 
         try {
@@ -104,7 +90,7 @@ public class VCenterEventHandler {
         }
     }
 
-    private void handleVmDeleteEvent() throws Exception {
+    private void handleVmDeleteEvent(Event event) throws Exception {
         VirtualMachineInfo vmInfo = MainDB.getVmByName(event.getVm().getName());
 
         if (vmInfo == null) {
@@ -115,7 +101,7 @@ public class VCenterEventHandler {
         vmInfo.delete(vncDB);
     }
 
-    private void handleNetworkUpdateEvent() throws Exception {
+    private void handleNetworkUpdateEvent(Event event) throws Exception {
         VirtualNetworkInfo newVnInfo = null;
 
         try {
@@ -137,7 +123,7 @@ public class VCenterEventHandler {
         }
     }
 
-    private void handleNetworkDeleteEvent() throws Exception {
+    private void handleNetworkDeleteEvent(Event event) throws Exception {
 
         VirtualNetworkInfo vnInfo = MainDB.getVnByName(event.getNet().getName());
 
