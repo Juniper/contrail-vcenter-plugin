@@ -26,7 +26,6 @@ import com.vmware.vim25.InvalidProperty;
 import com.vmware.vim25.RuntimeFault;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import org.apache.log4j.Logger;
-
 import com.google.common.base.Throwables;
 import com.vmware.vim25.DVPortSetting;
 import com.vmware.vim25.DVPortgroupConfigInfo;
@@ -87,6 +86,7 @@ public class VCenterDB {
 
     public static final String OK = "Ok";
     private String operationalStatus = OK;
+    private Calendar lastTimeSeenAlive;
 
     public String getOperationalStatus() {
         return operationalStatus;
@@ -113,6 +113,10 @@ public class VCenterDB {
     }
 
     private boolean initData() {
+        if (!isAlive()) {
+            return false;
+        }
+
         rootFolder = null;
         rootFolder = serviceInstance.getRootFolder();
         if (rootFolder == null) {
@@ -1015,8 +1019,9 @@ public class VCenterDB {
 
     public boolean isAlive()  {
         try {
-            Calendar currTime = serviceInstance.currentTime();
-            if (currTime == null) {
+            lastTimeSeenAlive = null;
+            lastTimeSeenAlive = serviceInstance.currentTime();
+            if (lastTimeSeenAlive == null) {
                 operationalStatus = "Failed aliveness check for vCenter " + vcenterUrl;
                 s_logger.error(operationalStatus);
                 return false;
@@ -1027,6 +1032,10 @@ public class VCenterDB {
             return false;
         }
         return true;
+    }
+
+    public Calendar getLastTimeSeenAlive() {
+        return lastTimeSeenAlive;
     }
 
     public VmwareDistributedVirtualSwitch getContrailDvs() {

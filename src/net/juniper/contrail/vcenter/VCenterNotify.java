@@ -4,6 +4,7 @@
 package net.juniper.contrail.vcenter;
 
 import java.rmi.RemoteException;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -12,6 +13,7 @@ import com.vmware.vim25.ArrayOfGuestNicInfo;
 import com.vmware.vim25.Event;
 import com.vmware.vim25.EventFilterSpec;
 import com.vmware.vim25.EventFilterSpecByEntity;
+import com.vmware.vim25.EventFilterSpecByTime;
 import com.vmware.vim25.EventFilterSpecRecursionOption;
 import com.vmware.vim25.ObjectSpec;
 import com.vmware.vim25.ObjectUpdate;
@@ -57,6 +59,7 @@ public class VCenterNotify implements Runnable
     static volatile VncDB vncDB;
     private VCenterEventHandler eventHandler;
     private static boolean vCenterConnected = false;
+    private Calendar vcenterConnectedTime;
     private final static String[] guestProps = { "guest.toolsRunningStatus", "guest.net" };
     private final static String[] ipPoolProps = { "summary.ipPoolId" };
     private static Map<String, VirtualMachineInfo> watchedVMs
@@ -218,27 +221,27 @@ public class VCenterNotify implements Runnable
     private EventHistoryCollector createEventHistoryCollector(ManagedObject mo,
             String[] events) throws InvalidState, RuntimeFault, RemoteException
     {
+        EventFilterSpec eventFilter = new EventFilterSpec();
+        eventFilter.setType(events);
+
         // Create an Entity Event Filter Spec to
-        // specify the MoRef of the VM to be get events filtered for
+        // specify the MoRef of the MO to be get events filtered for
         EventFilterSpecByEntity entitySpec = new EventFilterSpecByEntity();
         entitySpec.setEntity(mo.getMOR());
         entitySpec.setRecursion(EventFilterSpecRecursionOption.children);
-
         // set the entity spec in the EventFilter
-        EventFilterSpec eventFilter = new EventFilterSpec();
         eventFilter.setEntity(entitySpec);
 
-        // we are only interested in getting events for the VM.
-        // Add as many events you want to track relating to vm.
-        // Refer to API Data Object vmEvent and see the extends class list for
-        // elaborate list of vmEvents
-
-        eventFilter.setType(events);
+        if (vcenterConnectedTime != null) {
+            EventFilterSpecByTime timeSpec = new EventFilterSpecByTime();
+            timeSpec.setBeginTime(vcenterConnectedTime);
+            // set the time spec in the EventFilter
+            eventFilter.setTime(timeSpec);
+        }
 
         // create the EventHistoryCollector to monitor events for a VM
         // and get the ManagedObjectReference of the EventHistoryCollector
         // returned
-
         EventManager eventManager = vcenterDB.getServiceInstance().getEventManager();
 
         if (eventManager != null) {
@@ -361,6 +364,7 @@ public class VCenterNotify implements Runnable
                             continue;
                         }
                         printEvent(anEvent);
+                        eventHandler.handle(anEvent);
                     }
                     s_logger.info("Done processing array of events");
                 } else if ((value instanceof EnteredMaintenanceModeEvent) || (value instanceof HostConnectionLostEvent)) {
@@ -472,8 +476,9 @@ public class VCenterNotify implements Runnable
                 300000, TimeUnit.MILLISECONDS);
         try {
             if (vcenterDB.connect(VCENTER_CONNECT_TIMEOUT) == true) {
-                createEventFilters();
                 vCenterConnected = true;
+                vcenterConnectedTime = vcenterDB.getLastTimeSeenAlive();
+                createEventFilters();
             }
         } catch (Exception e) {
             s_logger.error("Error while initializing VCenter connection: ");
@@ -514,13 +519,14 @@ public class VCenterNotify implements Runnable
 
                 // Perform sync between VNC and VCenter DBs.
                 if (syncNeeded) {
+                    s_logger.info("+++++++++++++ Starting sync  +++++++++++++++++++++");
+
                     TaskWatchDog.startMonitoring(this, "Sync",
                             300000, TimeUnit.MILLISECONDS);
 
                     // When sync is run, it also does
                     // addPort to vrouter agent for existing VMIs.
                     try {
-                        s_logger.info("+++++++++++++ Starting sync  +++++++++++++++++++++");
                         vcenterDB.setReadTimeout(VCENTER_READ_TIMEOUT);
                         MainDB.sync(vcenterDB, vncDB, VCenterMonitor.mode);
                         syncNeeded = false;
@@ -531,7 +537,9 @@ public class VCenterNotify implements Runnable
                         TaskWatchDog.stopMonitoring(this);
                         continue;
                     }
+
                     TaskWatchDog.stopMonitoring(this);
+
                     s_logger.info("+++++++++++++ Sync complete +++++++++++++++++++++");
                 }
 
