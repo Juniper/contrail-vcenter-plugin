@@ -29,7 +29,7 @@ import net.juniper.contrail.api.ApiConnectorMock;
 import net.juniper.contrail.api.types.InstanceIp;
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.Project;
-import net.juniper.contrail.vcenter.ContrailVRouterApi;
+import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 import com.vmware.vim25.VirtualMachinePowerState;
 
 @RunWith(JUnit4.class)

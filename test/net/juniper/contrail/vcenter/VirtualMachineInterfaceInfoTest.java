@@ -37,7 +37,7 @@ import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
 import net.juniper.contrail.api.types.VirtualNetwork;
 import net.juniper.contrail.api.types.Project;
-import net.juniper.contrail.vcenter.ContrailVRouterApi;
+import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(VCenterNotify.class)

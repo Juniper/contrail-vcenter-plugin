@@ -10,7 +10,7 @@ import com.google.common.base.Throwables;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.log4j.Logger;
-import net.juniper.contrail.vcenter.ContrailVRouterApi;
+import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
 public class VRouterNotifier {
     static volatile HashMap<String, ContrailVRouterApi> vrouterApiMap =

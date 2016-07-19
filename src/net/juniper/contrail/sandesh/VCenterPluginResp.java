@@ -1,7 +1,7 @@
 package net.juniper.contrail.sandesh;
 
 import java.util.Map;
-import net.juniper.contrail.vcenter.ContrailVRouterApi;
+import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 import net.juniper.contrail.vcenter.VCenterMonitor;
 import net.juniper.contrail.vcenter.VCenterNotify;
 import net.juniper.contrail.vcenter.VRouterNotifier;

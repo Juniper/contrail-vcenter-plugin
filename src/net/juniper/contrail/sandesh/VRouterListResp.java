@@ -3,7 +3,7 @@ package net.juniper.contrail.sandesh;
 import java.util.Map;
 import net.juniper.contrail.vcenter.VCenterNotify;
 import net.juniper.contrail.vcenter.VRouterNotifier;
-import net.juniper.contrail.vcenter.ContrailVRouterApi;
+import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
 public class VRouterListResp {
     private SandeshObjectList<VRouterInfo> vrouterInfoList;
