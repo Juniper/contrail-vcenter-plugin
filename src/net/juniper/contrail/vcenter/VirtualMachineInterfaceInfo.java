@@ -197,7 +197,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         if (!portAdded) {
             addPort();
         } else {
-            s_logger.info("Skipping addPort, port has already been added");
+            s_logger.info("Skipping addPort, port already added for VM " + toString());
         }
 
         vnInfo.created(this);
@@ -247,7 +247,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             if (!portAdded) {
                 addPort();
             } else {
-                s_logger.info("VM is powered On, skipping addPort, port has already been added");
+                s_logger.info("Skipping addPort, port already added for VM " + toString());
             }
         } else {
             deletePort();
@@ -316,7 +316,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             portAdded = true;
             VRouterNotifier.created(this);
         } else {
-            s_logger.info("VM is powered off, skipping addPort");
+            s_logger.info("Skipping addPort for powered off VM " + toString());
         }
     }
 

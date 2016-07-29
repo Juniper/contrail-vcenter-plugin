@@ -223,15 +223,15 @@ public class MainDB {
     }
 
     private static void printInfo() {
-        System.out.println("\nNetworks after sync:");
+        s_logger.debug("\nFound " + vmwareVNs.size() + " Virtual Networks after sync:");
         for (VirtualNetworkInfo vnInfo: vmwareVNs.values()) {
-            System.out.println(vnInfo.toStringBuffer());
+            s_logger.debug(vnInfo.toStringBuffer());
         }
 
-        System.out.println("\nVirtual Machines after sync:");
+        s_logger.debug("\nFound " + vmwareVMs.size() + " Virtual Machines after sync:");
         for (VirtualMachineInfo vmInfo: vmwareVMs.values()) {
-            System.out.println(vmInfo.toStringBuffer());
+            s_logger.debug(vmInfo.toStringBuffer());
         }
-        System.out.println("\n");
+        s_logger.debug("\n");
     }
 }

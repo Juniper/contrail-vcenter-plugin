@@ -836,6 +836,8 @@ public class VncDB {
 
     @SuppressWarnings("unchecked")
     SortedMap<String, VirtualNetworkInfo> readVirtualNetworks() {
+        s_logger.info("Start reading virtual networks from the API server ...");
+
         SortedMap<String, VirtualNetworkInfo>  map =
                 new ConcurrentSkipListMap<String, VirtualNetworkInfo>();
 
@@ -871,6 +873,7 @@ public class VncDB {
             }
         }
 
+        s_logger.info("Done reading from the API server, found " + map.size() + " Virtual Networks");
         return map;
     }
 
@@ -882,6 +885,8 @@ public class VncDB {
 
     @SuppressWarnings("unchecked")
     SortedMap<String, VirtualMachineInfo> readVirtualMachines() {
+
+        s_logger.info("Start reading virtual machines from the API server ...");
 
         List<VirtualMachine> apiVms = null;
         SortedMap<String, VirtualMachineInfo>  map =
@@ -917,6 +922,7 @@ public class VncDB {
             }
         }
 
+        s_logger.info("Done reading from the API server, found " + map.size() + " Virtual Machines");
         return map;
     }
 

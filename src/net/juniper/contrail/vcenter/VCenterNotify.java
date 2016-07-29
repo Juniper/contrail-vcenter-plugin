@@ -324,7 +324,6 @@ public class VCenterNotify implements Runnable
             PropertyChangeOp op = changes[pci].getOp();
             if (op!= PropertyChangeOp.remove) {
                 if (propName.equals("summary.ipPoolId")) {
-                    s_logger.info("Received summary.ipPoolId property change");
                     Integer newPoolId = (Integer)value;
                     ManagedObjectReference mor = oUpdate.getObj();
                     if (watchedVNs.containsKey(mor.getVal())) {
@@ -346,7 +345,6 @@ public class VCenterNotify implements Runnable
                             vnInfo.update(newVnInfo, vncDB);
                         }
                     }
-                    s_logger.info("Done processing property update");
                 } else if (propName.equals("guest.toolsRunningStatus")) {
                     s_logger.info("Received guest.toolsRunningStatus property change");
                     toolsRunningStatus = (String)value;
@@ -519,7 +517,7 @@ public class VCenterNotify implements Runnable
 
                 // Perform sync between VNC and VCenter DBs.
                 if (syncNeeded) {
-                    s_logger.info("+++++++++++++ Starting sync  +++++++++++++++++++++");
+                    s_logger.info("+++++++++++++ Start syncing  +++++++++++++++++++++");
 
                     TaskWatchDog.startMonitoring(this, "Sync",
                             300000, TimeUnit.MILLISECONDS);
@@ -540,7 +538,7 @@ public class VCenterNotify implements Runnable
 
                     TaskWatchDog.stopMonitoring(this);
 
-                    s_logger.info("+++++++++++++ Sync complete +++++++++++++++++++++");
+                    s_logger.info("+++++++++++++ Done syncing +++++++++++++++++++++");
                 }
 
                 s_logger.info("+++++++++++++ Waiting for events +++++++++++++++++++++");

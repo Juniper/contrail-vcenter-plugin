@@ -22,8 +22,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.net.MalformedURLException;
 import java.rmi.RemoteException;
 import java.io.FileNotFoundException;
-import com.vmware.vim25.InvalidProperty;
-import com.vmware.vim25.RuntimeFault;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import org.apache.log4j.Logger;
 import com.google.common.base.Throwables;
@@ -76,10 +74,12 @@ public class VCenterDB {
     private volatile Folder rootFolder;
     private volatile InventoryNavigator inventoryNavigator;
     private volatile IpPoolManager ipPoolManager;
+    private volatile IpPool[] ipPools;
     protected volatile Datacenter contrailDC;
     protected volatile VmwareDistributedVirtualSwitch contrailDVS;
     private volatile ConcurrentMap<String, Datacenter> datacenters;
-    private volatile ConcurrentMap<String, VmwareDistributedVirtualSwitch> dvswitches;
+    private volatile ConcurrentMap<String, VmwareDistributedVirtualSwitch> dvswitches; // key is dvsName
+    private volatile ConcurrentMap<String, VMwareDVSPvlanMapEntry[]> dvsPvlanMap; // key is dvsName
 
     public volatile Map<String, String> esxiToVRouterIpMap;
     public static volatile Map<String, Boolean> vRouterActiveMap;
@@ -107,6 +107,7 @@ public class VCenterDB {
         vRouterActiveMap = new HashMap<String, Boolean>();
         datacenters = new ConcurrentHashMap<String, Datacenter>();
         dvswitches = new ConcurrentHashMap<String, VmwareDistributedVirtualSwitch>();
+        dvsPvlanMap = new ConcurrentHashMap<String, VMwareDVSPvlanMapEntry[]>();
 
         // Create ESXi host to vRouterVM Ip address map
         buildEsxiToVRouterIpMap();
@@ -142,15 +143,12 @@ public class VCenterDB {
             s_logger.error(operationalStatus);
             return false;
         }
-        s_logger.info("Got ipPoolManager for vCenter ");
+        s_logger.info("Got ipPoolManager for datacenter " + contrailDataCenterName);
 
-        // Search contrailDc
         contrailDC = null;
         try {
-            contrailDC = (Datacenter) inventoryNavigator.searchManagedEntity(
-                                      "Datacenter", contrailDataCenterName);
-        } catch (InvalidProperty e) {
-        } catch (RuntimeFault e) {
+            contrailDC = getVmwareDatacenter(contrailDataCenterName);
+
         } catch (RemoteException e) {
         }
         if (contrailDC == null) {
@@ -160,17 +158,10 @@ public class VCenterDB {
             return false;
         }
         s_logger.info("Found " + contrailDataCenterName + " DC on vCenter ");
-        datacenters.put(contrailDataCenterName, contrailDC);
 
-        // Search contrailDvSwitch
         contrailDVS = null;
         try {
-            contrailDVS = (VmwareDistributedVirtualSwitch)
-                            inventoryNavigator.searchManagedEntity(
-                                    "VmwareDistributedVirtualSwitch",
-                                    contrailDvSwitchName);
-        } catch (InvalidProperty e) {
-        } catch (RuntimeFault e) {
+            contrailDVS = getVmwareDvs(contrailDvSwitchName, contrailDC, contrailDataCenterName);
         } catch (RemoteException e) {
         }
 
@@ -181,7 +172,13 @@ public class VCenterDB {
             return false;
         }
         s_logger.info("Found " + contrailDvSwitchName + " DVSwitch on vCenter ");
-        dvswitches.put(contrailDvSwitchName, contrailDVS);
+
+        try {
+            getDvsPvlanMap(contrailDvSwitchName, contrailDC, contrailDataCenterName);
+        } catch (RemoteException e) {
+            s_logger.error(this + "Private vlan not configured on dvSwitch: " + contrailDvSwitchName +
+                    " Datacenter: " + contrailDataCenterName);
+        }
 
         // All well on vCenter front.
         operationalStatus = OK;
@@ -505,54 +502,6 @@ public class VCenterDB {
         return true;
     }
 
-    public HashMap<String, Short> getVlanInfo(DistributedVirtualPortgroup dvPg,
-        DVPortSetting portSetting,
-        VMwareDVSPvlanMapEntry[] pvlanMapArray) {
-
-        // Create HashMap which will store private vlan info
-        HashMap<String, Short> vlan = new HashMap<String, Short>();
-
-        if (portSetting instanceof VMwareDVSPortSetting) {
-            VMwareDVSPortSetting vPortSetting =
-                    (VMwareDVSPortSetting) portSetting;
-            VmwareDistributedVirtualSwitchVlanSpec vlanSpec =
-                    vPortSetting.getVlan();
-            if (vlanSpec instanceof VmwareDistributedVirtualSwitchPvlanSpec) {
-                // Find isolated secondary VLAN Id
-                VmwareDistributedVirtualSwitchPvlanSpec pvlanSpec =
-                        (VmwareDistributedVirtualSwitchPvlanSpec) vlanSpec;
-                short isolatedVlanId = (short)pvlanSpec.getPvlanId();
-                // Find primaryVLAN corresponding to isolated secondary VLAN
-                short primaryVlanId = 0;
-                for (short i=0; i < pvlanMapArray.length; i++) {
-                    if ((short)pvlanMapArray[i].getSecondaryVlanId() != isolatedVlanId)
-                        continue;
-                    if (!pvlanMapArray[i].getPvlanType().equals("isolated"))
-                        continue;
-                    s_logger.debug("    VlanType = PrivateVLAN"
-                                  + " PrimaryVLAN = " + pvlanMapArray[i].getPrimaryVlanId()
-                                  + " IsolatedVLAN = " + pvlanMapArray[i].getSecondaryVlanId());
-                    primaryVlanId = (short)pvlanMapArray[i].getPrimaryVlanId();
-                }
-                vlan.put("primary-vlan", primaryVlanId);
-                vlan.put("secondary-vlan", isolatedVlanId);
-            } else if (vlanSpec instanceof VmwareDistributedVirtualSwitchVlanIdSpec) {
-                VmwareDistributedVirtualSwitchVlanIdSpec vlanIdSpec =
-                        (VmwareDistributedVirtualSwitchVlanIdSpec) vlanSpec;
-                short vlanId = (short)vlanIdSpec.getVlanId();
-                s_logger.debug("    VlanType = VLAN " + " VlanId = " + vlanId);
-                vlan.put("primary-vlan", vlanId);
-                vlan.put("secondary-vlan", vlanId);
-            } else {
-                s_logger.error("dvPg: " + dvPg.getName() +
-                        " port setting: " +  vPortSetting +
-                        ": INVALID vlan spec: " + vlanSpec);
-                return null;
-            }
-        }
-
-        return vlan;
-    }
 
     public boolean getExternalIpamInfo(DVPortgroupConfigInfo configInfo, String vnName) throws Exception {
 
@@ -605,13 +554,12 @@ public class VCenterDB {
 
     public Datacenter getVmwareDatacenter(String name)
         throws RemoteException {
-        String description = "<datacenter " + name
-                + ", vCenter " + vcenterUrl + ">.";
 
         if (datacenters.containsKey(name)) {
-            s_logger.info("Found in cache " + description);
             return datacenters.get(name);
         }
+
+        String description = "<datacenter " + name + ", vCenter " + vcenterUrl + ">.";
 
         Folder rootFolder = serviceInstance.getRootFolder();
         if (rootFolder == null) {
@@ -645,14 +593,12 @@ public class VCenterDB {
     public VmwareDistributedVirtualSwitch getVmwareDvs(String name,
             Datacenter dc, String dcName)
                     throws RemoteException {
-        String description = "<dvs " + name
-                + ", datacenter " + dcName
-                + ", vCenter " + vcenterUrl + ">.";
-
         if (dvswitches.containsKey(name)) {
-            s_logger.info("Found in cache " + description);
             return dvswitches.get(name);
         }
+
+        String description = "<dvs " + name + ", datacenter " + dcName
+                + ", vCenter " + vcenterUrl + ">.";
 
         InventoryNavigator inventoryNavigator = new InventoryNavigator(dc);
 
@@ -675,6 +621,90 @@ public class VCenterDB {
         s_logger.info("Found " + description);
         dvswitches.put(name, dvs);
         return dvs;
+    }
+
+    public VMwareDVSPvlanMapEntry[] getDvsPvlanMap(String dvsName, Datacenter dc, String dcName)
+                    throws RemoteException {
+        if (dvsPvlanMap.containsKey(dvsName)) {
+            return dvsPvlanMap.get(dvsName);
+        }
+
+        VmwareDistributedVirtualSwitch dvs = getVmwareDvs(dvsName, dc, dcName);
+
+        // Extract private vlan entries for the virtual switch
+        VMwareDVSConfigInfo dvsConfigInfo = (VMwareDVSConfigInfo) dvs.getConfig();
+        if (dvsConfigInfo == null) {
+            s_logger.error("dvSwitch: " + dvsName
+                    + " Datacenter: " + dcName + " ConfigInfo is empty");
+        }
+
+        if (!(dvsConfigInfo instanceof VMwareDVSConfigInfo)) {
+            s_logger.error("dvSwitch: " + dvsName +
+                    " Datacenter: " + dcName + " ConfigInfo " +
+                    "isn't instanceof VMwareDVSConfigInfo");
+        }
+
+        VMwareDVSPvlanMapEntry[] pvlanMapArray = dvsConfigInfo.getPvlanConfig();
+        if (pvlanMapArray != null) {
+            dvsPvlanMap.put(dvsName, pvlanMapArray);
+            s_logger.info("Found private vlan map array on dvSwitch: " + dvsName +
+                    " Datacenter: " + dcName);
+            return pvlanMapArray;
+        }
+
+        s_logger.error("dvSwitch: " + dvsName +
+                " Datacenter: " + dcName + " Private VLAN NOT" +
+                "configured");
+        return null;
+    }
+
+    public IpPool getIpPoolById(Integer poolid,  String nwName, Datacenter dc, String dcName)
+            throws RemoteException {
+
+        if (ipPools == null) {
+            ipPools = ipPoolManager.queryIpPools(dc);
+            if (ipPools == null || ipPools.length == 0) {
+                s_logger.debug(" Datacenter: " + dcName + " IP Pools NOT configured");
+                return null;
+            }
+        }
+
+        IpPool pool = getIpPool(poolid, nwName);
+        if (pool != null) {
+            return pool;
+        }
+        // refresh cached pools and try again
+        ipPools = ipPoolManager.queryIpPools(dc);
+        if (ipPools == null || ipPools.length == 0) {
+            s_logger.debug(" Datacenter: " + dcName + " IP Pools NOT configured");
+            return null;
+        }
+
+        return getIpPool(poolid, nwName);
+    }
+
+    private IpPool getIpPool(Integer poolid, String nwName) {
+        if (poolid == null) {
+            // there is a vmware bug in which the ip pool association
+            // is lost upon vcenter restart.
+            // Retrieve the pool based on name
+            // Remove this code if vmware bug is fixed
+            String IpPoolForPG = "ip-pool-for-" + nwName;
+            for (IpPool pool : ipPools) {
+                if (IpPoolForPG.equals(pool.getName())) {
+                    return pool;
+                }
+            }
+            return null;
+        }
+
+        for (IpPool pool : ipPools) {
+            if (pool.id.equals(poolid)) {
+              return pool;
+            }
+        }
+
+        return null;
     }
 
     public Network getVmwareNetwork(String name,
@@ -795,6 +825,8 @@ public class VCenterDB {
     public SortedMap<String, VirtualNetworkInfo> readVirtualNetworks()
             throws Exception {
 
+        s_logger.info("Start reading virtual networks from vcenter ...");
+
         SortedMap<String, VirtualNetworkInfo> map =
                 new ConcurrentSkipListMap<String, VirtualNetworkInfo>();
 
@@ -808,39 +840,6 @@ public class VCenterDB {
         if (dvPgs == null || dvPgs.length == 0) {
             s_logger.error("dvSwitch: " + contrailDvSwitchName +
                     " Distributed portgroups NOT configured");
-            return map;
-        }
-
-        // Extract IP Pools
-        IpPool[] ipPools = ipPoolManager.queryIpPools(contrailDC);
-        if ((mode != Mode.VCENTER_AS_COMPUTE) && (ipPools == null || ipPools.length == 0)) {
-            s_logger.debug("dvSwitch: " + contrailDvSwitchName +
-                    " Datacenter: " + contrailDC.getName() + " IP Pools NOT " +
-                    "configured");
-            return map;
-        }
-
-        // Extract private vlan entries for the virtual switch
-        VMwareDVSConfigInfo dvsConfigInfo = (VMwareDVSConfigInfo) contrailDVS.getConfig();
-        if (dvsConfigInfo == null) {
-            s_logger.error("dvSwitch: " + contrailDvSwitchName +
-                    " Datacenter: " + contrailDC.getName() + " ConfigInfo " +
-                    "is empty");
-            return map;
-        }
-
-        if (!(dvsConfigInfo instanceof VMwareDVSConfigInfo)) {
-            s_logger.error("dvSwitch: " + contrailDvSwitchName +
-                    " Datacenter: " + contrailDC.getName() + " ConfigInfo " +
-                    "isn't instanceof VMwareDVSConfigInfo");
-            return map;
-        }
-
-        VMwareDVSPvlanMapEntry[] pvlanMapArray = dvsConfigInfo.getPvlanConfig();
-        if (pvlanMapArray == null) {
-            s_logger.error("dvSwitch: " + contrailDvSwitchName +
-                    " Datacenter: " + contrailDC.getName() + " Private VLAN NOT" +
-                    "configured");
             return map;
         }
 
@@ -865,13 +864,14 @@ public class VCenterDB {
             VirtualNetworkInfo vnInfo =
                     new VirtualNetworkInfo(
                             this, dvPgs[i], pTables[i], contrailDC, contrailDataCenterName,
-                            contrailDVS, contrailDvSwitchName,
-                            ipPools, pvlanMapArray);
+                            contrailDVS, contrailDvSwitchName);
 
+            s_logger.info("Read from vcenter " + vnInfo);
             VCenterNotify.watchVn(vnInfo);
             map.put(vnInfo.getUuid(), vnInfo);
         }
 
+        s_logger.info("Done reading from vcenter, found " + map.size() + " Virtual Networks");
         return map;
     }
 
@@ -924,12 +924,16 @@ public class VCenterDB {
                 continue;
             }
 
+            s_logger.info("Read from vcenter " + vmInfo);
+
             map.put(vmInfo.getUuid(), vmInfo);
         }
     }
 
     SortedMap<String, VirtualMachineInfo> readVirtualMachines()
             throws IOException, Exception {
+
+        s_logger.info("Start reading virtual machines from vcenter ...");
 
         SortedMap<String, VirtualMachineInfo> map =
                 new ConcurrentSkipListMap<String, VirtualMachineInfo>();
@@ -963,6 +967,7 @@ public class VCenterDB {
             readVirtualMachines(map, host, contrailDC, contrailDataCenterName);
         }
 
+        s_logger.info("Done reading from vcenter, found " + map.size() + " Virtual Machines");
         return map;
     }
 
