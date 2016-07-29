@@ -1,23 +1,25 @@
 package net.juniper.contrail.vcenter;
 
 import java.rmi.RemoteException;
-import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
+import org.apache.log4j.Logger;
 import com.google.common.net.InetAddresses;
 import com.vmware.vim25.DVPortSetting;
-import com.vmware.vim25.DVSConfigInfo;
 import com.vmware.vim25.DistributedVirtualSwitchKeyedOpaqueBlob;
 import com.vmware.vim25.Event;
 import com.vmware.vim25.IpPool;
 import com.vmware.vim25.IpPoolIpPoolConfigInfo;
 import com.vmware.vim25.RuntimeFault;
-import com.vmware.vim25.VMwareDVSConfigInfo;
+import com.vmware.vim25.VMwareDVSPortSetting;
 import com.vmware.vim25.VMwareDVSPvlanMapEntry;
+import com.vmware.vim25.VmwareDistributedVirtualSwitchPvlanSpec;
+import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanIdSpec;
+import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanSpec;
 import com.vmware.vim25.mo.DistributedVirtualPortgroup;
 import com.vmware.vim25.mo.ManagedObject;
 import com.vmware.vim25.mo.util.PropertyCollectorUtil;
@@ -26,6 +28,9 @@ import net.juniper.contrail.api.types.VnSubnetsType;
 import net.juniper.contrail.api.types.VnSubnetsType.IpamSubnetType;
 
 public class VirtualNetworkInfo extends VCenterObject {
+    private final Logger s_logger =
+            Logger.getLogger(VirtualNetworkInfo.class);
+
     private String uuid; // required attribute, key for this object
     private String name;
     private short primaryVlanId;
@@ -146,6 +151,7 @@ public class VirtualNetworkInfo extends VCenterObject {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     public VirtualNetworkInfo(Event event,  VCenterDB vcenterDB, VncDB vncDB) throws Exception {
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
 
@@ -193,18 +199,16 @@ public class VirtualNetworkInfo extends VCenterObject {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     public VirtualNetworkInfo(VCenterDB vcenterDB,
             DistributedVirtualPortgroup dpg, Hashtable pTable,
             com.vmware.vim25.mo.Datacenter dc, String dcName,
             com.vmware.vim25.mo.VmwareDistributedVirtualSwitch dvs,
-            String dvsName,
-            IpPool[] ipPools,
-            VMwareDVSPvlanMapEntry[] pvlanMapArray) throws Exception {
+            String dvsName) throws Exception {
 
         if (vcenterDB == null || dpg == null || pTable == null
                 || dvs == null || dvsName == null
-                || dc == null || dcName == null
-                || pvlanMapArray == null) {
+                || dc == null || dcName == null) {
             throw new IllegalArgumentException("Cannot init VN from null arguments");
         }
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
@@ -217,8 +221,9 @@ public class VirtualNetworkInfo extends VCenterObject {
         populateInfo(vcenterDB, pTable);
     }
 
-    void populateInfo(VCenterDB vcenterDB, Hashtable pTable) throws Exception {
-        populateVlans(vcenterDB, pTable);
+    @SuppressWarnings("rawtypes")
+    void populateInfo(VCenterDB vcenterDB, Hashtable pTable)
+            throws Exception {
 
         name = (String) pTable.get("name");
 
@@ -237,9 +242,12 @@ public class VirtualNetworkInfo extends VCenterObject {
             throw new Exception("Unhandled mode " + vcenterDB.mode.name());
         }
 
+        populateVlans(vcenterDB, pTable);
+
         populateAddressManagement(vcenterDB, pTable);
     }
 
+    @SuppressWarnings("rawtypes")
     private void populateAddressManagement(VCenterDB vcenterDB,
             Hashtable pTable)
             throws RuntimeFault, RemoteException, Exception {
@@ -255,40 +263,51 @@ public class VirtualNetworkInfo extends VCenterObject {
         externalIpam = vcenterDB.getExternalIpamInfo(opaqueBlobs, name);
     }
 
+    @SuppressWarnings("rawtypes")
     private void populateVlans(VCenterDB vcenterDB, Hashtable pTable) throws Exception {
-        // get pvlan/vlan info for the portgroup.
-        // Extract private vlan entries for the virtual switch
-        DVSConfigInfo dvsConf = dvs.getConfig();
 
-        if (dvsConf == null) {
-            throw new Exception("dvSwitch: " + dvsName +
-                    " Datacenter: " + dcName + " ConfigInfo " +
-                    "is empty");
-        }
-
-        if (!(dvsConf instanceof VMwareDVSConfigInfo)) {
-            throw new Exception("dvSwitch: " + dvsName +
-                    " Datacenter: " + dcName + " ConfigInfo " +
-                    "isn't instanceof VMwareDVSConfigInfo");
-        }
-        VMwareDVSConfigInfo dvsConfigInfo = (VMwareDVSConfigInfo) dvsConf;
-
-        VMwareDVSPvlanMapEntry[] pvlanMapArray = dvsConfigInfo.getPvlanConfig();
+        VMwareDVSPvlanMapEntry[] pvlanMapArray = vcenterDB.getDvsPvlanMap(dvsName, dc, dcName);
         if (pvlanMapArray == null) {
-            throw new Exception("dvSwitch: " + dvsName +
-                    " Datacenter: " + dcName + " Private VLAN NOT" +
-                    "configured");
+            s_logger.error(this + "Cannot populate vlan, private vlan not configured on dvSwitch: " + dvsName +
+                    " Datacenter: " + dcName);
+            return;
         }
 
         // Extract dvPg configuration info and port setting
         DVPortSetting portSetting = (DVPortSetting) pTable.get("config.defaultPortConfig");
-        HashMap<String, Short> vlan = vcenterDB.getVlanInfo(dpg, portSetting, pvlanMapArray);
-        if (vlan == null) {
+        if (!(portSetting instanceof VMwareDVSPortSetting)) {
+            s_logger.error(this + " Cannot populate vlan, invalid port setting: " +  portSetting);
             return;
         }
 
-        primaryVlanId = vlan.get("primary-vlan");
-        isolatedVlanId = vlan.get("secondary-vlan");
+        VMwareDVSPortSetting vPortSetting = (VMwareDVSPortSetting) portSetting;
+        VmwareDistributedVirtualSwitchVlanSpec vlanSpec = vPortSetting.getVlan();
+
+        if (vlanSpec instanceof VmwareDistributedVirtualSwitchPvlanSpec) {
+            // config.defaultPortConfig.vlan contains isolated secondary VLAN Id
+            VmwareDistributedVirtualSwitchPvlanSpec pvlanSpec =
+                    (VmwareDistributedVirtualSwitchPvlanSpec) vlanSpec;
+            isolatedVlanId = (short)pvlanSpec.getPvlanId();
+            // Find primaryVLAN corresponding to isolated secondary VLAN
+            // by searching in the pvlan Map Array
+            for (short i=0; i < pvlanMapArray.length; i++) {
+                if (pvlanMapArray[i].getPvlanType().equals("isolated")
+                        && (short)pvlanMapArray[i].getSecondaryVlanId() == isolatedVlanId) {
+                    primaryVlanId = (short)pvlanMapArray[i].getPrimaryVlanId();
+                    s_logger.debug(this + " VlanType = PrivateVLAN"
+                            + " PrimaryVLAN = " + primaryVlanId
+                            + " IsolatedVLAN = " + isolatedVlanId);
+                    return;
+                }
+            }
+        } else if (vlanSpec instanceof VmwareDistributedVirtualSwitchVlanIdSpec) {
+            VmwareDistributedVirtualSwitchVlanIdSpec vlanIdSpec =
+                    (VmwareDistributedVirtualSwitchVlanIdSpec) vlanSpec;
+            primaryVlanId = isolatedVlanId = (short)vlanIdSpec.getVlanId();
+            s_logger.info(this + " VlanType = VLAN " + " VlanId = " + primaryVlanId);
+        } else {
+            s_logger.error(this + " Cannot populate vlan, invalid vlan spec: " + vlanSpec);
+        }
     }
 
     public String getName() {
@@ -340,30 +359,6 @@ public class VirtualNetworkInfo extends VCenterObject {
         return vmiInfoMap;
     }
 
-    private IpPool getIpPool(Integer poolid, IpPool[] ipPools) {
-        if (poolid == null) {
-            // there is a vmware bug in which the ip pool association
-            // is lost upon vcenter restart.
-            // Retrieve the pool based on name
-            // Remove this code if vmware bug is fixed
-            String IpPoolForPG = "ip-pool-for-" + name;
-            for (IpPool pool : ipPools) {
-                if (IpPoolForPG.equals(pool.getName())) {
-                    return pool;
-                }
-            }
-            return null;
-        }
-
-        for (IpPool pool : ipPools) {
-            if (pool.id.equals(poolid)) {
-              return pool;
-            }
-        }
-
-        return null;
-    }
-
     public Integer getIpPoolId() {
         return ipPoolId;
     }
@@ -371,14 +366,7 @@ public class VirtualNetworkInfo extends VCenterObject {
     public void setIpPoolId(Integer poolId, VCenterDB vcenterDB)
             throws RuntimeFault, RemoteException {
 
-
-        // Extract IP Pools
-        IpPool[] ipPools = vcenterDB.getIpPoolManager().queryIpPools(dc);
-        if ( ipPools == null || ipPools.length == 0) {
-            return;
-        }
-
-        IpPool ipPool = getIpPool(poolId, ipPools);
+        IpPool ipPool = vcenterDB.getIpPoolById(poolId, name, dc, dcName);
         if (ipPool != null) {
             IpPoolIpPoolConfigInfo ipConfigInfo = ipPool.getIpv4Config();
 
