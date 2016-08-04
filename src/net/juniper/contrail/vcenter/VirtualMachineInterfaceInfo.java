@@ -260,6 +260,10 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
 
         VirtualMachineInterfaceInfo oldVmiInfo = (VirtualMachineInterfaceInfo)obj;
 
+        if (uuid == null && oldVmiInfo.uuid != null) {
+            uuid = oldVmiInfo.uuid;
+        }
+
         if (apiVmi == null && oldVmiInfo.apiVmi != null) {
             apiVmi = oldVmiInfo.apiVmi;
         }
