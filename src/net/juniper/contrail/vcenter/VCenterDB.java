@@ -159,6 +159,18 @@ public class VCenterDB {
         }
         s_logger.info("Found " + contrailDataCenterName + " DC on vCenter ");
 
+        Folder hostsFolder = null;
+        try {
+            hostsFolder = contrailDC.getHostFolder();
+        } catch (RemoteException e) {
+        }
+
+        if (hostsFolder == null) {
+            operationalStatus = "Failed to find hostFolder on datacenter " + contrailDataCenterName;
+            s_logger.error(operationalStatus);
+            return false;
+        }
+
         contrailDVS = null;
         try {
             contrailDVS = getVmwareDvs(contrailDvSwitchName, contrailDC, contrailDataCenterName);
@@ -946,6 +958,12 @@ public class VCenterDB {
          */
 
         Folder hostsFolder = contrailDC.getHostFolder();
+
+        if (hostsFolder == null) {
+            s_logger.error("Unable to read VMs, hostFolder is null");
+            return map;
+        }
+
         List<HostSystem> hostsList = new ArrayList<HostSystem>();
 
         for (ManagedEntity e : hostsFolder.getChildEntity()) {

@@ -28,6 +28,7 @@ import com.vmware.vim25.DrsVmPoweredOnEvent;
 import com.vmware.vim25.VmReconfiguredEvent;
 import com.vmware.vim25.VmRemovedEvent;
 import com.vmware.vim25.VmRenamedEvent;
+import com.vmware.vim25.VmSuspendedEvent;
 
 public class VCenterEventHandler {
     VCenterDB vcenterDB;
@@ -53,7 +54,8 @@ public class VCenterEventHandler {
             || event instanceof DrsVmPoweredOnEvent
             || event instanceof VmMigratedEvent
             || event instanceof VmPoweredOnEvent
-            || event instanceof VmPoweredOffEvent) {
+            || event instanceof VmPoweredOffEvent
+            || event instanceof VmSuspendedEvent) {
             handleVmUpdateEvent(event);
         } else if (event instanceof VmRemovedEvent) {
             handleVmDeleteEvent(event);
@@ -70,8 +72,15 @@ public class VCenterEventHandler {
     }
 
     private void handleVmUpdateEvent(Event event) throws Exception {
-        VirtualMachineInfo newVmInfo = null;
+        if (event.getHost() != null) {
+            String hostName = event.getHost().getName();
+            if (!vcenterDB.esxiToVRouterIpMap.containsKey(hostName)) {
+                s_logger.info("Skipping event for unmanaged host " + hostName);
+                return;
+            }
+        }
 
+        VirtualMachineInfo newVmInfo = null;
         try {
             newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
         } catch (Exception e) {
@@ -80,6 +89,7 @@ public class VCenterEventHandler {
             s_logger.error(Throwables.getStackTraceAsString(e));
             return;
         }
+
 
         VirtualMachineInfo oldVmInfo = MainDB.getVmById(newVmInfo.getUuid());
 
@@ -91,6 +101,14 @@ public class VCenterEventHandler {
     }
 
     private void handleVmDeleteEvent(Event event) throws Exception {
+        if (event.getHost() != null) {
+            String hostName = event.getHost().getName();
+            if (!vcenterDB.esxiToVRouterIpMap.containsKey(hostName)) {
+                s_logger.info("Skipping event for unmanaged host " + hostName);
+                return;
+            }
+        }
+
         VirtualMachineInfo vmInfo = MainDB.getVmByName(event.getVm().getName());
 
         if (vmInfo == null) {

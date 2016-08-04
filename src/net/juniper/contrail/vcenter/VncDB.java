@@ -1116,8 +1116,6 @@ public class VncDB {
 
         deleteInstanceIp(apiVmi);
 
-        s_logger.debug("Deleted instanceIP:" + vmiInfo.apiInstanceIp.getName() + ": " +
-                vmiInfo.apiInstanceIp.getAddress());
         vmiInfo.apiInstanceIp = null;
     }
 
@@ -1125,6 +1123,9 @@ public class VncDB {
         // delete instance Ip
         List<ObjectReference<ApiPropertyBase>> instanceIpRefs =
                 apiVmi.getInstanceIpBackRefs();
+        if (instanceIpRefs == null) {
+            return;
+        }
         for (ObjectReference<ApiPropertyBase> instanceIpRef :
             Utils.safe(instanceIpRefs)) {
             s_logger.info("Delete instance IP: " +
@@ -1140,6 +1141,9 @@ public class VncDB {
         // delete all instance Ip back refs, if there are any left
         List<ObjectReference<ApiPropertyBase>> instanceIpRefs =
                 apiVn.getInstanceIpBackRefs();
+        if (instanceIpRefs == null) {
+            return;
+        }
         for (ObjectReference<ApiPropertyBase> instanceIpRef :
             Utils.safe(instanceIpRefs)) {
             s_logger.info("Delete instance IP: " +
@@ -1155,6 +1159,9 @@ public class VncDB {
         // delete all instance Ip back refs, if there are any left
         List<ObjectReference<ApiPropertyBase>> instanceIpRefs =
                 apiVmi.getInstanceIpBackRefs();
+        if (instanceIpRefs == null) {
+            return;
+        }
         for (ObjectReference<ApiPropertyBase> instanceIpRef :
             Utils.safe(instanceIpRefs)) {
             s_logger.info("Delete instance IP: " +
