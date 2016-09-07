@@ -486,13 +486,13 @@ public class VCenterDB {
             for (NetIpConfigInfoIpAddress ipAddrConfigInfo :
                 ipAddrConfigInfos) {
                 String ipAddress = ipAddrConfigInfo.getIpAddress();
-                // Choose IPv4 only
                 InetAddress ipAddr = InetAddress.getByName(ipAddress);
                 if (ipAddr instanceof Inet4Address) {
+                    // the VMI can have multiple IPv4 and IPv6 addresses,
+                    // but we pick only the first IPv4 address
                     return ipAddress;
                 }
             }
-
         }
         return null;
     }
