@@ -24,12 +24,17 @@ struct VCenterInfo {
 	2: bool connected;
 }
 
+struct VNetworkStats {
+    1: int total (link="vNetworksTotal");
+}
+
 struct VCenterPlugin {
 	1: bool master;
 	2: bool pluginState;
 	3: VRouterStats vRouterStats;
 	4: ApiServerInfo apiServerInfo;
 	5: VCenterServerInfo vCenterServerInfo;
+	6: VNetworkStats vNetworkStats;
 }
 
 /* all requests to "/" are handled here */
@@ -80,6 +85,12 @@ struct VirtualMachineInfo {
 struct VirtualNetworkInfo {
 	1: string name;
 	2: list<VirtualMachineInterfaceInfo> vInterfaces;
+	3: int primaryVlanId;
+	4: int isolatedVlanId;
+	5: bool externalIpam;
+	6: string subnetAddress;
+	7: string subnetMask;
+	8: string gatewayAddress;
 }
 
 struct VRouterInfo {
@@ -112,4 +123,12 @@ struct TaskInfo {
 	3: String startTime;
 	4: String timeout;
     5: list<String> stackTrace;
+}
+
+request sandesh VNetworkListReq {
+	1: optional bool total;
+}
+
+response sandesh VNetworkListResp {
+	1: list<VNetworkInfo> vNetworks;
 }

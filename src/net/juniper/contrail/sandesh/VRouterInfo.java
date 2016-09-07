@@ -1,11 +1,11 @@
 /* This class will be generated based on struct VRouterInfo
- * from vcenter.sandesh 
+ * from vcenter.sandesh
  */
 
 package net.juniper.contrail.sandesh;
 
-public class VRouterInfo implements SandeshObject 
-{    
+public class VRouterInfo implements SandeshObject
+{
     private String ipAddr;
     public String getIpAddr() {
         return ipAddr;
@@ -29,7 +29,7 @@ public class VRouterInfo implements SandeshObject
          .append(ipAddr)
          .append("</ipAddr>");
     }
-   
+
     boolean state;
     public boolean getState() {
         return state;
@@ -46,8 +46,8 @@ public class VRouterInfo implements SandeshObject
          .append(state)
          .append("</state>");
     }
-  
-    private String esxiHost;   
+
+    private String esxiHost;
     public String getEsxiHost() {
         return esxiHost;
     }
@@ -62,23 +62,23 @@ public class VRouterInfo implements SandeshObject
          .append(esxiHost)
          .append("</EsxiHost>");
     }
-    
+
     private SandeshObjectList<VirtualNetworkSandesh> vNetworks;
-    
+
     public SandeshObjectList<VirtualNetworkSandesh> getVNetworks() {
         return vNetworks;
     }
-    
+
     public void setVNetworks(SandeshObjectList<VirtualNetworkSandesh> vNetworks) {
         this.vNetworks = vNetworks;
     }
-    
+
     public VRouterInfo() {
-        this.vNetworks = 
+        this.vNetworks =
                 new SandeshObjectList<VirtualNetworkSandesh>(VirtualNetworkSandesh.class,
                         new ComparatorVirtualNetworkSandesh());
     }
-    
+
     public void writeObject(StringBuilder s,  DetailLevel detail, int identifier)
     {
         s.append("<VRouterInfo type=\"struct\" identifier=\"")
@@ -92,8 +92,8 @@ public class VRouterInfo implements SandeshObject
         writeFieldState(s, inner_id++);
         writeFieldEsxiHost(s, inner_id++);
         if (detail == DetailLevel.FULL) {
-            vNetworks.writeObject(s, "VirtualNetworks", 
-                    DetailLevel.REGULAR, inner_id++);
+            vNetworks.writeObject(s, "VirtualNetworks",
+                    DetailLevel.PARENT, inner_id++);
         }
         if (detail == DetailLevel.FULL) {
             s.append("</VRouterInfoStruct>");
