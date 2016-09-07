@@ -2,6 +2,7 @@ package net.juniper.contrail.sandesh;
 
 import java.util.Map;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
+import net.juniper.contrail.vcenter.MainDB;
 import net.juniper.contrail.vcenter.VCenterMonitor;
 import net.juniper.contrail.vcenter.VCenterNotify;
 import net.juniper.contrail.vcenter.VRouterNotifier;
@@ -22,6 +23,7 @@ public class VCenterPluginResp {
             populateApiServerInfo();
             populateVCenterServerInfo();
             populatePluginState();
+            populateVNetworkStats();
         }
     }
 
@@ -83,6 +85,10 @@ public class VCenterPluginResp {
                 vCenterServerInfo.setDvsMor(dvs.getMOR().getVal());
             }
         }
+    }
+
+    private void populateVNetworkStats() {
+        vCenterPluginInfo.getVNetworkStats().setTotal(MainDB.getVNs().size());
     }
 
     public void writeObject(StringBuilder s) {
