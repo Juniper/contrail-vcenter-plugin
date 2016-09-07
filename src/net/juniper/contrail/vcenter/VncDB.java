@@ -5,6 +5,8 @@
 package net.juniper.contrail.vcenter;
 
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
@@ -1015,11 +1017,15 @@ public class VncDB {
                 for (ObjectReference<ApiPropertyBase> vnRef :
                     Utils.safe(vnRefs)) {
                     if (vnRef.getUuid().equals(vmiInfo.vnInfo.getUuid())) {
-                        vmiInfo.setIpAddress(inst.getAddress());
-                        vmiInfo.apiInstanceIp = inst;
-                        // this is in fact a list of IP addresses
-                        // but we only support one
-                        return;
+                        String ipAddress = inst.getAddress();
+                        InetAddress ipAddr = InetAddress.getByName(ipAddress);
+                        if (ipAddr instanceof Inet4Address) {
+                            vmiInfo.setIpAddress(inst.getAddress());
+                            vmiInfo.apiInstanceIp = inst;
+                            // the VMI can have multiple IPv4 and IPv6 addresses,
+                            // but we pick only the first IPv4 address
+                            return;
+                        }
                     }
                 }
             }
