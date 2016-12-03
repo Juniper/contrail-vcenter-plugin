@@ -142,8 +142,15 @@ public class VCenterEventHandler {
     }
 
     private void handleNetworkDeleteEvent(Event event) throws Exception {
-
-        VirtualNetworkInfo vnInfo = MainDB.getVnByName(event.getNet().getName());
+	String net_name = event.getNet().getName();
+	/*
+	From Mitaka nova driver will append cluster_id to port group
+	therefore need to extract the appended cluster id
+	*/
+	if (vcenterDB.mode == Mode.VCENTER_AS_COMPUTE) {
+            net_name = net_name.substring(Math.max(0, net_name.length() - 36));
+	}
+        VirtualNetworkInfo vnInfo = MainDB.getVnByName(net_name);
 
         if (vnInfo == null) {
             return;

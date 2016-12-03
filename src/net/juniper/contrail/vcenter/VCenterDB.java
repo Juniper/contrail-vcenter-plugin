@@ -1012,6 +1012,11 @@ public class VCenterDB {
                 // network is managed by Openstack or other entity
                 // UUID is used in the name because name is not unique
                 String uuid = net.getName();
+                /*
+                From Mitaka nova driver will append cluster_id to port group
+                therefore need to extract the appended cluster id
+                */
+                uuid = uuid.substring(Math.max(0, uuid.length() - 36));
                 vnInfo = MainDB.getVnById(uuid);
                 if (vnInfo == null) {
                     s_logger.info("Skipping VMI in unmanaged network " + uuid);

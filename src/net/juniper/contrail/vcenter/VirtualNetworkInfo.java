@@ -229,6 +229,11 @@ public class VirtualNetworkInfo extends VCenterObject {
 
         switch(vcenterDB.mode) {
         case VCENTER_AS_COMPUTE:
+            /*
+            From Mitaka nova driver will append cluster_id to port group
+            therefore need to extract the appended cluster id
+            */
+            name = name.substring(Math.max(0, name.length() - 36));
             // UUID is allocated by OpenStack and saved in the name field
             uuid = name;
             break;
