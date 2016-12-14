@@ -81,15 +81,7 @@ public class VCenterEventHandler {
         }
 
         VirtualMachineInfo newVmInfo = null;
-        try {
-            newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
-        } catch (Exception e) {
-            s_logger.info("Skipping update event " + event.getClass().getName()
-                    +" for missing VM, due to exception " + e);
-            s_logger.error(Throwables.getStackTraceAsString(e));
-            return;
-        }
-
+        newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
 
         VirtualMachineInfo oldVmInfo = MainDB.getVmById(newVmInfo.getUuid());
 
@@ -120,16 +112,7 @@ public class VCenterEventHandler {
     }
 
     private void handleNetworkUpdateEvent(Event event) throws Exception {
-        VirtualNetworkInfo newVnInfo = null;
-
-        try {
-            newVnInfo = new VirtualNetworkInfo(event, vcenterDB, vncDB);
-        } catch (Exception e) {
-            s_logger.info("Skipping update event " + event.getClass().getName() +
-                    " for missing network, due to exception " + e);
-            s_logger.error(Throwables.getStackTraceAsString(e));
-            return;
-        }
+        VirtualNetworkInfo newVnInfo = new VirtualNetworkInfo(event, vcenterDB, vncDB);
 
         VirtualNetworkInfo oldVnInfo = MainDB.getVnByName(newVnInfo.getName());
 
