@@ -80,8 +80,7 @@ public class VCenterEventHandler {
             }
         }
 
-        VirtualMachineInfo newVmInfo = null;
-        newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
+        VirtualMachineInfo newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
 
         VirtualMachineInfo oldVmInfo = MainDB.getVmById(newVmInfo.getUuid());
 
