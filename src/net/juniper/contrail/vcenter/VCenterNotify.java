@@ -7,8 +7,10 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import com.vmware.vim25.ArrayOfEvent;
 import com.vmware.vim25.ArrayOfGuestNicInfo;
@@ -71,7 +73,8 @@ public class VCenterNotify implements Runnable
     private static Map<ManagedObject, PropertyFilter> watchedFilters
                 = new HashMap<ManagedObject, PropertyFilter>();
     private static List<EventHistoryCollector> collectors = new ArrayList<EventHistoryCollector>();
-
+    public static final int threshold = 1000;
+    private static Set<Integer> eventIDs = new HashSet<Integer>();
 
     private static Boolean shouldRun;
     private static Thread watchUpdates = null;
@@ -330,6 +333,10 @@ public class VCenterNotify implements Runnable
 
     void handleChanges(ObjectUpdate oUpdate) throws Exception
     {
+        if (eventIDs.size() > threshold) {
+            eventIDs.clear();
+        }
+
         PropertyChange[] changes = oUpdate.getChangeSet();
         if (changes == null) {
             return;
@@ -385,36 +392,50 @@ public class VCenterNotify implements Runnable
                         if (anEvent == null) {
                             continue;
                         }
+                        if (eventIDs.contains(anEvent.getKey())) {
+                            s_logger.info("Skipping already handled Event ID " + anEvent.getKey());
+                            continue;
+                        }
+                        eventIDs.add(anEvent.getKey());
                         printEvent(anEvent);
                         eventHandler.handle(anEvent);
                     }
                     s_logger.info("Done processing array of events");
                 } else if ((value instanceof EnteredMaintenanceModeEvent) || (value instanceof HostConnectionLostEvent)) {
                     Event anEvent = (Event) value;
-                    printEvent(anEvent);
-                    String hostName = anEvent.getHost().getName();
-                    String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(hostName);
-                    if (vRouterIpAddress != null) {
-                        VCenterDB.vRouterActiveMap.put(vRouterIpAddress, false);
-                        s_logger.info("Entering maintenance mode. Marking the host " + hostName +
-                                " inactive. VRouter ip address is " + anEvent.getHost().getName());
+                    if (eventIDs.contains(anEvent.getKey())) {
+                        s_logger.info("Skipping already handled Event ID " + anEvent.getKey());
                     } else {
-                        s_logger.info("Skipping event for unmanaged host " + hostName);
+                        eventIDs.add(anEvent.getKey());
+                        printEvent(anEvent);
+                        String hostName = anEvent.getHost().getName();
+                        String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(hostName);
+                        if (vRouterIpAddress != null) {
+                            VCenterDB.vRouterActiveMap.put(vRouterIpAddress, false);
+                            s_logger.info("Entering maintenance mode. Marking the host " + hostName +
+                                    " inactive. VRouter ip address is " + anEvent.getHost().getName());
+                        } else {
+                            s_logger.info("Skipping event for unmanaged host " + hostName);
+                        }
+                        s_logger.info("Done processing event " + anEvent.getFullFormattedMessage());
                     }
-                    s_logger.info("Done processing event " + anEvent.getFullFormattedMessage());
                 } else if ((value instanceof ExitMaintenanceModeEvent) || (value instanceof HostConnectedEvent)) {
                     Event anEvent = (Event) value;
-                    printEvent(anEvent);
-                    String hostName = anEvent.getHost().getName();
-                    String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(hostName);
-                    if (vRouterIpAddress != null) {
-                        VCenterDB.vRouterActiveMap.put(vRouterIpAddress, true);
-                        s_logger.info("\nExit maintenance mode. Marking the host " + hostName
-                                + " active. VRouter IP address is " +  vRouterIpAddress);
+                    if (eventIDs.contains(anEvent.getKey())) {
+                        s_logger.info("Skipping already handled Event ID " + anEvent.getKey());
                     } else {
-                        s_logger.info("Skipping event for unmanaged host " + hostName);
+                        printEvent(anEvent);
+                        String hostName = anEvent.getHost().getName();
+                        String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(hostName);
+                        if (vRouterIpAddress != null) {
+                            VCenterDB.vRouterActiveMap.put(vRouterIpAddress, true);
+                            s_logger.info("\nExit maintenance mode. Marking the host " + hostName
+                                    + " active. VRouter IP address is " +  vRouterIpAddress);
+                        } else {
+                            s_logger.info("Skipping event for unmanaged host " + hostName);
+                        }
+                        s_logger.info("Done processing event " + anEvent.getFullFormattedMessage());
                     }
-                    s_logger.info("Done processing event " + anEvent.getFullFormattedMessage());
                 } else if (value instanceof ArrayOfGuestNicInfo) {
                     s_logger.info("Received event update array of GuestNics");
                     ArrayOfGuestNicInfo aog = (ArrayOfGuestNicInfo) value;
@@ -422,8 +443,12 @@ public class VCenterNotify implements Runnable
 
                 } else if (value instanceof Event) {
                     Event anEvent = (Event)value;
-                    printEvent(anEvent);
-                    eventHandler.handle(anEvent);
+                    if (eventIDs.contains(anEvent.getKey())) {
+                        s_logger.info("Skipping already handled Event ID " + anEvent.getKey());
+                    } else {
+                        printEvent(anEvent);
+                        eventHandler.handle(anEvent);
+                    }
                 } else {
                     if (value != null) {
                         s_logger.info("\n Received unhandled property");
@@ -508,7 +533,7 @@ public class VCenterNotify implements Runnable
                 propColl = vcenterDB.getServiceInstance().getPropertyCollector();
 
                 eventManager = vcenterDB.getServiceInstance().getEventManager();
-
+                eventIDs.clear();
                 createEventFilters();
             }
         } catch (Exception e) {
