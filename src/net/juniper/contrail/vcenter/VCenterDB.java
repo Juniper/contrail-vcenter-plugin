@@ -198,6 +198,10 @@ public class VCenterDB {
     }
 
     public boolean connect(int timeout) {
+        datacenters.clear();
+        dvswitches.clear();
+        dvsPvlanMap.clear();
+
         while(!createServiceInstance(timeout)) {
             try{
                 Thread.sleep(5000);
