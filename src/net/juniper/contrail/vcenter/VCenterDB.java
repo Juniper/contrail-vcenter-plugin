@@ -118,6 +118,10 @@ public class VCenterDB {
             return false;
         }
 
+        datacenters.clear();
+        dvswitches.clear();
+        dvsPvlanMap.clear();
+
         rootFolder = null;
         rootFolder = serviceInstance.getRootFolder();
         if (rootFolder == null) {
@@ -942,6 +946,28 @@ public class VCenterDB {
         }
     }
 
+    private void findHostsInFolder(Folder hostsFolder, List<HostSystem> hostsList)
+            throws IOException, Exception {
+        for (ManagedEntity e : hostsFolder.getChildEntity()) {
+            if (e instanceof HostSystem) {
+                hostsList.add((HostSystem)e);
+            }
+
+            // This is a cluster resource. Delve deeper to
+            // find more hosts.
+            if (e instanceof ComputeResource) {
+                ComputeResource cluster = (ComputeResource) e;
+                for(HostSystem host : cluster.getHosts()) {
+                    hostsList.add((HostSystem)host);
+                }
+            }
+
+            if (e instanceof Folder) {
+                findHostsInFolder((Folder)e, hostsList);
+            }
+        }
+    }
+
     SortedMap<String, VirtualMachineInfo> readVirtualMachines()
             throws IOException, Exception {
 
@@ -966,20 +992,7 @@ public class VCenterDB {
 
         List<HostSystem> hostsList = new ArrayList<HostSystem>();
 
-        for (ManagedEntity e : hostsFolder.getChildEntity()) {
-            // This is a cluster resource. Delve deeper to
-            // find more hosts.
-            if (e instanceof ComputeResource) {
-                ComputeResource cluster = (ComputeResource) e;
-                for(HostSystem host : cluster.getHosts()) {
-                    hostsList.add((HostSystem)host);
-                }
-            }
-
-            if (e instanceof HostSystem) {
-                hostsList.add((HostSystem)e);
-            }
-        }
+        findHostsInFolder(hostsFolder, hostsList);
 
         for (HostSystem host : hostsList) {
             readVirtualMachines(map, host, contrailDC, contrailDataCenterName);
