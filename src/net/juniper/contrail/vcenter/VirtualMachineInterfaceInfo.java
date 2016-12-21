@@ -99,6 +99,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         if (vnInfo.isIpAddressInSubnetAndRange(ipAddress)) {
             this.ipAddress = ipAddress;
         } else {
+            s_logger.error(this + " Ignoring IP Address " + ipAddress + ", out of range for VN " + vnInfo);
             this.ipAddress = null;
         }
     }
@@ -129,6 +130,8 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
             // IP address has not changed
             return;
         }
+
+        s_logger.info("Updated guestNic Address " + " to " + newIpAddress + " for " + this);
 
          if (ipAddress != null) {
             vncDB.deleteInstanceIp(this);
@@ -179,7 +182,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
 
     @Override
     void create(VncDB vncDB) throws Exception {
-        if (vncDB.mode != Mode.VCENTER_AS_COMPUTE && vnInfo.getExternalIpam() == true) {
+        if (vncDB.mode != Mode.VCENTER_AS_COMPUTE && vnInfo.getExternalIpam()) {
             if (vmInfo.getToolsRunningStatus().equals(VirtualMachineToolsRunningStatus.guestToolsRunning.toString())) {
                 // static IP Address & vmWare tools installed
                 // see if we can read it from Guest Nic Info

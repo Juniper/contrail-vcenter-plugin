@@ -106,7 +106,6 @@ public class VCenterEventHandler {
             return;
         }
 
-        VCenterNotify.unwatchVm(vmInfo);
         vmInfo.delete(vncDB);
     }
 

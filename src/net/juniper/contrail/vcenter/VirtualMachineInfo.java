@@ -521,6 +521,8 @@ public class VirtualMachineInfo extends VCenterObject {
     void delete(VncDB vncDB)
             throws IOException {
 
+        VCenterNotify.unwatchVm(this);
+
         for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
                  vmiInfoMap.entrySet()) {
             VirtualMachineInterfaceInfo vmiInfo = entry.getValue();

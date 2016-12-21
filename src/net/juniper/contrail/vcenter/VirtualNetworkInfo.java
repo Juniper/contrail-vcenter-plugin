@@ -376,6 +376,7 @@ public class VirtualNetworkInfo extends VCenterObject {
             ipPoolEnabled = ipConfigInfo.getIpPoolEnabled();
             range = ipConfigInfo.getRange();
             this.ipPoolId = ipPool.id;
+            s_logger.info("Set ipPoolId to " + ipPoolId + " for " + this);
         } else {
             subnetAddress = null;
             subnetMask = null;
@@ -383,6 +384,7 @@ public class VirtualNetworkInfo extends VCenterObject {
             ipPoolEnabled = false;
             range = null;
             this.ipPoolId = null;
+            s_logger.info("Set ipPoolId to null for " + this);
         }
     }
 
