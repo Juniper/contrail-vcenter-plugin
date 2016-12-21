@@ -882,7 +882,7 @@ public class VCenterDB {
                             this, dvPgs[i], pTables[i], contrailDC, contrailDataCenterName,
                             contrailDVS, contrailDvSwitchName);
 
-            s_logger.info("Read from vcenter " + vnInfo);
+            s_logger.info("Read from vcenter " + vnInfo + ", ipPoolId " + vnInfo.getIpPoolId());
             VCenterNotify.watchVn(vnInfo);
             map.put(vnInfo.getUuid(), vnInfo);
         }

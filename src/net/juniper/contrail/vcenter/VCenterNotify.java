@@ -67,10 +67,10 @@ public class VCenterNotify implements Runnable
     private Calendar vcenterConnectedTime;
     private final static String[] guestProps = { "guest.toolsRunningStatus", "guest.net" };
     private final static String[] ipPoolProps = { "summary.ipPoolId" };
-    private static Map<String, VirtualMachineInfo> watchedVMs
-                = new HashMap<String, VirtualMachineInfo>();
-    private static Map<String, VirtualNetworkInfo> watchedVNs
-                = new HashMap<String, VirtualNetworkInfo>();
+    private static Map<String, String> watchedVMs
+                = new HashMap<String, String>();
+    private static Map<String, String> watchedVNs
+                = new HashMap<String, String>();
     private static Map<ManagedObject, PropertyFilter> watchedFilters
                 = new HashMap<ManagedObject, PropertyFilter>();
     private static List<EventHistoryCollector> collectors = new ArrayList<EventHistoryCollector>();
@@ -159,50 +159,83 @@ public class VCenterNotify implements Runnable
     }
 
     public static void watchVm(VirtualMachineInfo vmInfo) {
+        if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE) {
+            return;
+        }
         if (vmInfo.vm == null) {
             return;
         }
-        if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE
-            || watchedVMs.containsKey(vmInfo.vm.getMOR().getVal())) {
+        String key = vmInfo.vm.getMOR().getVal();
+        if (watchedVMs.containsKey(key)) {
+            String val = watchedVMs.get(key);
+            if (!val.equals(vmInfo.getUuid())) {
+
+                s_logger.error("Found different UUID in watched VMs, expected " +
+                        vmInfo.getUuid() + ", actual " + val +
+                        ", for mor " + vmInfo.vm.getMOR().getType() +  ", value " + key);
+                watchedVMs.put(key, vmInfo.getUuid());
+            }
             return;
         }
-        watchedVMs.put(vmInfo.vm.getMOR().getVal(), vmInfo);
+        s_logger.info("Now watching VM with MOR " + key + ", " + vmInfo);
+        watchedVMs.put(key, vmInfo.getUuid());
         watchManagedObject(vmInfo.vm, guestProps);
     }
 
     public static void unwatchVm(VirtualMachineInfo vmInfo) {
+        if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE) {
+            return;
+        }
         if (vmInfo.vm == null) {
             return;
         }
-        if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE
-            || !watchedVMs.containsKey(vmInfo.vm.getMOR().getVal())) {
+        String key = vmInfo.vm.getMOR().getVal();
+        if (!watchedVMs.containsKey(key)) {
             return;
         }
-        watchedVMs.remove(vmInfo.vm.getMOR().getVal());
+        s_logger.info("Unwatching VM with MOR " + key + ", " + vmInfo);
+        watchedVMs.remove(key);
         unwatchManagedObject(vmInfo.vm);
     }
 
     public static void watchVn(VirtualNetworkInfo vnInfo) {
+        if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE) {
+            return;
+        }
         if (vnInfo.dpg == null) {
             return;
         }
-        if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE
-                || watchedVNs.containsKey(vnInfo.dpg.getMOR().getVal())) {
+        String key = vnInfo.dpg.getMOR().getVal();
+        if (watchedVNs.containsKey(key)) {
+
+            String val = watchedVNs.get(key);
+            if (!val.equals(vnInfo.getUuid())) {
+
+                s_logger.error("Found different UUID in watched VNs, expected " +
+                        vnInfo.getUuid() + ", actual " + val +
+                        ", for mor " + vnInfo.dpg.getMOR().getType() +  " value " + key );
+                watchedVNs.put(key, vnInfo.getUuid());
+            }
             return;
         }
-        watchedVNs.put(vnInfo.dpg.getMOR().getVal(), vnInfo);
+        s_logger.info("Now watching VN with MOR " + key + ", " + vnInfo);
+        watchedVNs.put(key, vnInfo.getUuid());
         watchManagedObject(vnInfo.dpg, ipPoolProps);
     }
 
     public static void unwatchVn(VirtualNetworkInfo vnInfo) {
+        if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE) {
+            return;
+        }
         if (vnInfo.dpg == null) {
             return;
         }
-        if (VCenterMonitor.mode == Mode.VCENTER_AS_COMPUTE
-            || !watchedVNs.containsKey(vnInfo.dpg.getMOR().getVal())) {
+        String key = vnInfo.dpg.getMOR().getVal();
+        if (!watchedVNs.containsKey(key)) {
             return;
         }
-        watchedVNs.remove(vnInfo.dpg.getMOR().getVal());
+        s_logger.info("Unwatching VN with MOR " + key + ", " + vnInfo);
+        watchedVNs.remove(key);
         unwatchManagedObject(vnInfo.dpg);
     }
 
@@ -360,11 +393,13 @@ public class VCenterNotify implements Runnable
             if (op!= PropertyChangeOp.remove) {
                 if (propName.equals("summary.ipPoolId")) {
                     Integer newPoolId = (Integer)value;
-                    s_logger.info("Received Event ID summary.ipPoolId property change to " + newPoolId);
                     ManagedObjectReference mor = oUpdate.getObj();
                     if (watchedVNs.containsKey(mor.getVal())) {
-                        VirtualNetworkInfo vnInfo = watchedVNs.get(mor.getVal());
+                        String vnUuid = watchedVNs.get(mor.getVal());
+                        VirtualNetworkInfo vnInfo = MainDB.getVnById(vnUuid);
                         Integer oldPoolId = vnInfo.getIpPoolId();
+                        s_logger.info("Received Event ID summary.ipPoolId change to " + newPoolId +
+                                " from " + oldPoolId + " for " + vnInfo);
                         if ((oldPoolId == null && newPoolId == null)
                                 || (oldPoolId != null && newPoolId != null
                                         && oldPoolId.equals(newPoolId))) {
@@ -380,10 +415,14 @@ public class VCenterNotify implements Runnable
                                + newVnInfo.getIpPoolId());
                             vnInfo.update(newVnInfo, vncDB);
                         }
+                    } else {
+                        s_logger.info("Received Event ID summary.ipPoolId property change to "
+                                    + newPoolId + " for unwatched VN");
                     }
                 } else if (propName.equals("guest.toolsRunningStatus")) {
                     toolsRunningStatus = (String)value;
-                    s_logger.info("Received Event ID guest.toolsRunningStatus property change to " + toolsRunningStatus);
+                    s_logger.info("Received Event ID guest.toolsRunningStatus property change to "
+                                    + toolsRunningStatus);
                 } else if (value instanceof ArrayOfEvent) {
                     s_logger.info("Received ArrayOfEvent");
                     ArrayOfEvent aoe = (ArrayOfEvent) value;
@@ -456,7 +495,7 @@ public class VCenterNotify implements Runnable
                         s_logger.info("Done processing event " + anEvent.getFullFormattedMessage());
                     }
                 } else if (value instanceof ArrayOfGuestNicInfo) {
-                    s_logger.info("Received event update array of GuestNics");
+                    s_logger.info("Received event ID array of GuestNics");
                     ArrayOfGuestNicInfo aog = (ArrayOfGuestNicInfo) value;
                     nics = aog.getGuestNicInfo();
 
@@ -484,16 +523,20 @@ public class VCenterNotify implements Runnable
         if (toolsRunningStatus != null || nics != null) {
             ManagedObjectReference mor = oUpdate.getObj();
             if (watchedVMs.containsKey(mor.getVal())) {
-                VirtualMachineInfo vmInfo = watchedVMs.get(mor.getVal());
+                String vmUuid = watchedVMs.get(mor.getVal());
+                VirtualMachineInfo vmInfo = MainDB.getVmById(vmUuid);
                 if (toolsRunningStatus != null) {
+                    s_logger.info("Set toolsRunning status to " + toolsRunningStatus + " for " + vmInfo);
                     vmInfo.setToolsRunningStatus(toolsRunningStatus);
                 }
                 if (vmInfo.getToolsRunningStatus().equals(
                         VirtualMachineToolsRunningStatus.guestToolsRunning.toString())) {
                     vmInfo.updatedGuestNics(nics, vncDB);
+                } else {
+                    s_logger.warn("Received guestNic info, but guestToolsRunningStatus is " + toolsRunningStatus + ", for " + vmInfo);
                 }
             }
-            s_logger.info("Done processing property update");
+            s_logger.info("Done processing property update for MOR type " + mor.getType() + " , value " + mor.getVal());
         }
     }
 
