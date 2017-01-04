@@ -7,14 +7,14 @@
 package net.juniper.contrail.vcenter;
 
 import com.google.common.base.Throwables;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import org.apache.log4j.Logger;
 import net.juniper.contrail.contrail_vrouter_api.ContrailVRouterApi;
 
 public class VRouterNotifier {
-    static volatile HashMap<String, ContrailVRouterApi> vrouterApiMap =
-            new HashMap<String, ContrailVRouterApi>();
+    static volatile Map<String, ContrailVRouterApi> vrouterApiMap =
+            new ConcurrentHashMap<String, ContrailVRouterApi>();
     static final int vrouterApiPort = 9091;
 
     private final static Logger s_logger =
@@ -62,11 +62,7 @@ public class VRouterNotifier {
             ipAddress = "0.0.0.0";
         }
         try {
-            ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
-            if (vrouterApi == null) {
-                vrouterApi = new ContrailVRouterApi(vrouterIpAddress, vrouterApiPort);
-                vrouterApiMap.put(vrouterIpAddress, vrouterApi);
-            }
+            ContrailVRouterApi vrouterApi = getVrouterApi(vrouterIpAddress);
 
             boolean ret = vrouterApi.addPort(vmiInfo.getUuid(),
                     vmInfo.getUuid(), vmiInfo.getUuid(),
@@ -121,12 +117,7 @@ public class VRouterNotifier {
             ipAddress = "0.0.0.0";
         }
 
-        ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
-        if (vrouterApi == null) {
-            vrouterApi = new ContrailVRouterApi(vrouterIpAddress, vrouterApiPort);
-
-            vrouterApiMap.put(vrouterIpAddress, vrouterApi);
-        }
+        ContrailVRouterApi vrouterApi = getVrouterApi(vrouterIpAddress);
         boolean ret = vrouterApi.deletePort(vmiInfo.getUuid());
 
         if (ret) {
@@ -139,25 +130,28 @@ public class VRouterNotifier {
         }
     }
 
+    private static ContrailVRouterApi getVrouterApi(String vrouterIpAddress) {
+        ContrailVRouterApi vrouterApi = null;
+        if (vrouterApiMap.containsKey(vrouterIpAddress)) {
+            vrouterApi = vrouterApiMap.get(vrouterIpAddress);
+        }
+        if (vrouterApi == null) {
+            vrouterApi = new ContrailVRouterApi(vrouterIpAddress, vrouterApiPort);
+
+            vrouterApiMap.put(vrouterIpAddress, vrouterApi);
+        }
+        return vrouterApi;
+    }
+
     // KeepAlive with all active vRouter Agent Connections.
     public static void vrouterAgentPeriodicConnectionCheck() {
 
-        Map<String, Boolean> vRouterActiveMap = VCenterDB.vRouterActiveMap;
-
-        for (Map.Entry<String, Boolean> entry: vRouterActiveMap.entrySet()) {
-            if (entry.getValue() == Boolean.FALSE) {
-                // host is in maintenance mode
-                continue;
-            }
-
+        for (Map.Entry<String, ContrailVRouterApi> entry: vrouterApiMap.entrySet()) {
             String vrouterIpAddress = entry.getKey();
-            ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
-            if (vrouterApi == null) {
-                    vrouterApi = new ContrailVRouterApi(
-                          vrouterIpAddress,
-                          vrouterApiPort);
-
-                vrouterApiMap.put(vrouterIpAddress, vrouterApi);
+            ContrailVRouterApi vrouterApi = getVrouterApi(vrouterIpAddress);
+            if (!vrouterApi.getActive()) {
+                // host is in maintenance mode or Contrail VM is down
+                continue;
             }
             if (!vrouterApi.periodicCheck()) {
                 s_logger.warn(vrouterIpAddress + " periodic check failed");
@@ -167,22 +161,12 @@ public class VRouterNotifier {
 
     public static void syncVrouterAgent() {
 
-        Map<String, Boolean> vRouterActiveMap = VCenterDB.vRouterActiveMap;
-
-        for (Map.Entry<String, Boolean> entry: vRouterActiveMap.entrySet()) {
-            if (entry.getValue() == Boolean.FALSE) {
-                // host is in maintenance mode
-                continue;
-            }
-
+        for (Map.Entry<String, ContrailVRouterApi> entry: vrouterApiMap.entrySet()) {
             String vrouterIpAddress = entry.getKey();
-            ContrailVRouterApi vrouterApi = vrouterApiMap.get(vrouterIpAddress);
-            if (vrouterApi == null) {
-                    vrouterApi = new ContrailVRouterApi(
-                          vrouterIpAddress,
-                          vrouterApiPort);
-
-                vrouterApiMap.put(vrouterIpAddress, vrouterApi);
+            ContrailVRouterApi vrouterApi = getVrouterApi(vrouterIpAddress);
+            if (!vrouterApi.getActive()) {
+                // host is in maintenance mode or Contrail VM is down
+                continue;
             }
             boolean ret = vrouterApi.sync();
 
@@ -195,5 +179,10 @@ public class VRouterNotifier {
                 s_logger.warn("vRouter " + vrouterIpAddress + " sync request failed");
             }
         }
+    }
+
+    public static void setVrouterActive(String vrouterIpAddress, boolean active) {
+       ContrailVRouterApi vrouterApi = getVrouterApi(vrouterIpAddress);
+        vrouterApi.setActive(active);
     }
 }
