@@ -25,7 +25,8 @@ public class VirtualMachineInfo extends VCenterObject {
     private String vrouterIpAddress;
     private VirtualMachinePowerState powerState;
     private String toolsRunningStatus = VirtualMachineToolsRunningStatus.guestToolsNotRunning.toString();
-    private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap;
+    private SortedMap<String, VirtualMachineInterfaceInfo> vmiInfoMap =
+            new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
         /* keyed by MAC address, contains only interfaces
          * belonging to managed networks
          */
@@ -47,8 +48,6 @@ public class VirtualMachineInfo extends VCenterObject {
             throw new IllegalArgumentException("Cannot init VM with null uuid");
         }
         this.uuid = uuid;
-
-        vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
     }
 
     public VirtualMachineInfo(String uuid, String name, String hostName, String vrouterIpAddress,
@@ -60,8 +59,6 @@ public class VirtualMachineInfo extends VCenterObject {
         this.hostName = hostName;
         this.vrouterIpAddress = vrouterIpAddress;
         this.powerState = powerState;
-
-        vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
     }
 
     public VirtualMachineInfo(VirtualMachineInfo vmInfo)
@@ -129,7 +126,8 @@ public class VirtualMachineInfo extends VCenterObject {
             toolsRunningStatus = guest.getToolsRunningStatus();
         }
 
-        vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
+        setContrailVmActiveState();
+
         vcenterDB.readVirtualMachineInterfaces(this);
 
         if (vcenterDB.mode == Mode.VCENTER_AS_COMPUTE) {
@@ -138,6 +136,21 @@ public class VirtualMachineInfo extends VCenterObject {
                 vmiInfoMap.entrySet()) {
                 VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
                 vncDB.readVirtualMachineInterface(vmiInfo);
+            }
+        }
+    }
+
+    private void setContrailVmActiveState() {
+        if (name.toLowerCase().contains(contrailVRouterVmNamePrefix.toLowerCase())) {
+            // this is a Contrail VM
+            if (!powerState.equals(VirtualMachinePowerState.poweredOn)) {
+                VRouterNotifier.setVrouterActive(vrouterIpAddress, false);
+            } else if (host != null) {
+                if (host.getRuntime().isInMaintenanceMode()) {
+                    VRouterNotifier.setVrouterActive(vrouterIpAddress, false);
+                } else {
+                    VRouterNotifier.setVrouterActive(vrouterIpAddress, true);
+                }
             }
         }
     }
@@ -186,6 +199,7 @@ public class VirtualMachineInfo extends VCenterObject {
             ManagedObjectReference hostHmor = (ManagedObjectReference) pTable.get("runtime.host");
             host = new HostSystem(vm.getServerConnection(), hostHmor);
         }
+        this.host = host;
         hostName = host.getName();
 
         powerState = (VirtualMachinePowerState)pTable.get("runtime.powerState");
@@ -197,7 +211,7 @@ public class VirtualMachineInfo extends VCenterObject {
         }
         this.vrouterIpAddress = vrouterIpAddress;
 
-        vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
+        setContrailVmActiveState();
     }
 
     public String getHostName() {

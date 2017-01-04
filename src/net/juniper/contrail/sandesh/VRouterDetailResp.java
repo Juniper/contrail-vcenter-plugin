@@ -27,7 +27,7 @@ public class VRouterDetailResp {
         }
         vrouter.setIpAddr(req.ipAddr);
         ContrailVRouterApi api = vRouters.get(req.ipAddr);
-        vrouter.setState(api!= null);
+        vrouter.setState(api.getActive());
 
         Map<String, String> host2VrouterMap = VCenterNotify.getVcenterDB().getEsxiToVRouterIpMap();
 

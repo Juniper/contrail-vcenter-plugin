@@ -80,10 +80,7 @@ public class VCenterDB {
     private volatile ConcurrentMap<String, Datacenter> datacenters;
     private volatile ConcurrentMap<String, VmwareDistributedVirtualSwitch> dvswitches; // key is dvsName
     private volatile ConcurrentMap<String, VMwareDVSPvlanMapEntry[]> dvsPvlanMap; // key is dvsName
-
     public volatile Map<String, String> esxiToVRouterIpMap;
-    public static volatile Map<String, Boolean> vRouterActiveMap;
-
     public static final String OK = "Ok";
     private String operationalStatus = OK;
     private Calendar lastTimeSeenAlive;
@@ -104,7 +101,6 @@ public class VCenterDB {
         this.mode                   = mode;
 
         s_logger.info("VCenterDB(" + contrailDvsName + ", " + ipFabricPgName + ")");
-        vRouterActiveMap = new HashMap<String, Boolean>();
         datacenters = new ConcurrentHashMap<String, Datacenter>();
         dvswitches = new ConcurrentHashMap<String, VmwareDistributedVirtualSwitch>();
         dvsPvlanMap = new ConcurrentHashMap<String, VMwareDVSPvlanMapEntry[]>();
@@ -274,7 +270,7 @@ public class VCenterDB {
                 String[] part = nextLine.split(":");
                 s_logger.info(" ESXi IP Address:" + part[0] + " vRouter-IP-Address: " + part[1]);
                 esxiToVRouterIpMap.put(part[0], part[1]);
-                vRouterActiveMap.put(part[1], true);
+                VRouterNotifier.setVrouterActive(part[1], true);
             }
             input.close();
         } catch (FileNotFoundException e) {
@@ -377,8 +373,10 @@ public class VCenterDB {
                     throws Exception {
         // Find if vRouter Ip Fabric mapping exists..
         String vRouterIpAddress = esxiToVRouterIpMap.get(hostName);
-        if (host.getRuntime().isInMaintenanceMode())
-            vRouterActiveMap.put(vRouterIpAddress, false);
+        if (host.getRuntime().isInMaintenanceMode()) {
+            VRouterNotifier.setVrouterActive(vRouterIpAddress, false);
+        }
+
         if (vRouterIpAddress != null) {
             return vRouterIpAddress;
         }

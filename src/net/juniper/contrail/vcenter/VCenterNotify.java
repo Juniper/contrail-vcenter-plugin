@@ -468,9 +468,9 @@ public class VCenterNotify implements Runnable
                         String hostName = anEvent.getHost().getName();
                         String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(hostName);
                         if (vRouterIpAddress != null) {
-                            VCenterDB.vRouterActiveMap.put(vRouterIpAddress, false);
                             s_logger.info("Entering maintenance mode. Marking the host " + hostName +
                                     " inactive. VRouter ip address is " + anEvent.getHost().getName());
+                            VRouterNotifier.setVrouterActive(vRouterIpAddress, false);
                         } else {
                             s_logger.info("Skipping event for unmanaged host " + hostName);
                         }
@@ -486,9 +486,9 @@ public class VCenterNotify implements Runnable
                         String hostName = anEvent.getHost().getName();
                         String vRouterIpAddress = vcenterDB.esxiToVRouterIpMap.get(hostName);
                         if (vRouterIpAddress != null) {
-                            VCenterDB.vRouterActiveMap.put(vRouterIpAddress, true);
                             s_logger.info("\nExit maintenance mode. Marking the host " + hostName
                                     + " active. VRouter IP address is " +  vRouterIpAddress);
+                            VRouterNotifier.setVrouterActive(vRouterIpAddress, true);
                         } else {
                             s_logger.info("Skipping event for unmanaged host " + hostName);
                         }

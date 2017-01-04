@@ -111,6 +111,8 @@ public class VirtualMachineInfoTest extends TestCase {
         VirtualMachineInterfaceInfoTest.vncDB = vncDB;
         MainDB.vncDB = vncDB;
 
+        VRouterNotifier.setVrouterActive("10.84.24.45", true);
+
         // Setup mock VRouterApi connection for vrouterIp = 10.84.24.45
         Map<String, ContrailVRouterApi> vrouterApiMap = VRouterNotifier.getVrouterApiMap();
         vrouterApi = mock(ContrailVRouterApi.class);
