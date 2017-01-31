@@ -633,10 +633,8 @@ public class VCenterNotify implements Runnable
                         TaskWatchDog.stopMonitoring(this);
                         if (update != null && update.getFilterSet() != null)
                         {
-                            version = update.getVersion();
-
                             this.handleUpdate(update);
-
+                            version = update.getVersion();
                         } else
                         {
                             vcenterDB.setReadTimeout(VCENTER_READ_TIMEOUT);
