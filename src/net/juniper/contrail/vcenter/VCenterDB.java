@@ -687,10 +687,6 @@ public class VCenterDB {
             }
         }
 
-        IpPool pool = getIpPool(poolid, nwName);
-        if (pool != null) {
-            return pool;
-        }
         // refresh cached pools and try again
         ipPools = ipPoolManager.queryIpPools(dc);
         if (ipPools == null || ipPools.length == 0) {
