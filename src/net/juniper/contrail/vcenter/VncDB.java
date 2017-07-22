@@ -31,6 +31,7 @@ import net.juniper.contrail.api.types.VirtualMachineInterface;
 import net.juniper.contrail.api.types.VirtualNetwork;
 import net.juniper.contrail.api.types.VnSubnetsType;
 import net.juniper.contrail.api.types.VnSubnetsType.IpamSubnetType;
+import net.juniper.contrail.api.types.AllocationPoolType;
 import net.juniper.contrail.api.types.Project;
 import net.juniper.contrail.api.types.IdPermsType;
 import com.google.common.base.Throwables;
@@ -502,19 +503,19 @@ public class VncDB {
         String cidr = subnetUtils.getInfo().getCidrSignature();
         String[] addr_pair = cidr.split("\\/");
 
-        List<VnSubnetsType.IpamSubnetType.AllocationPoolType> allocation_pools = null;
+        List<AllocationPoolType> allocation_pools = null;
         if (vnInfo.getIpPoolEnabled() == true && !vnInfo.getRange().isEmpty()) {
             String[] pools = vnInfo.getRange().split("\\#");
             if (pools.length == 2) {
-                allocation_pools = new ArrayList<VnSubnetsType.IpamSubnetType.AllocationPoolType>();
+                allocation_pools = new ArrayList<AllocationPoolType>();
                 String start = (pools[0]).replace(" ","");
                 String num   = (pools[1]).replace(" ","");
                 int start_ip = InetAddresses.coerceToInteger(InetAddresses.forString(start));
                 int end_ip = start_ip + Integer.parseInt(num) - 1;
                 String end = InetAddresses.toAddrString(InetAddresses.fromInteger(end_ip));
                 s_logger.debug("Subnet IP Range :  Start:"  + start + " End:" + end);
-                VnSubnetsType.IpamSubnetType.AllocationPoolType pool1 = new
-                        VnSubnetsType.IpamSubnetType.AllocationPoolType(start, end);
+                AllocationPoolType pool1 = new
+                        AllocationPoolType(start, end);
                 allocation_pools.add(pool1);
             }
         }
