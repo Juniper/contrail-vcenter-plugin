@@ -103,6 +103,12 @@ public class VirtualMachineInfo extends VCenterObject {
                         && !name.toLowerCase().contains(
                         contrailVRouterVmNamePrefix.toLowerCase())) {
                     displayName = vm.getConfig().getAnnotation();
+                    if(displayName.contains(":")) {
+                       String parts[] = displayName.split("\\s");
+                       displayName = parts[0];
+                       String name[] = displayName.split(":");
+                       displayName = name[1];
+                    }
                 } else {
                     displayName = name;
                 }
