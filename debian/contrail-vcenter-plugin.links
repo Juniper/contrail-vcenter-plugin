@@ -1,1 +1,2 @@
 /usr/share/contrail-vcenter-plugin/juniper-contrail-vcenter-3.0-SNAPSHOT.jar /usr/share/contrail-vcenter-plugin/juniper-contrail-vcenter.jar
+etc/init.d/contrail-vcenter-plugin.init /etc/init.d/contrail-vcenter-plugin

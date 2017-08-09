@@ -4,6 +4,7 @@
 export INSTALL_ROOT=$(shell pwd)
 JAVA_HOME=/usr/lib/jvm/default-java
 
+DESTDIR = $(shell pwd)/debian/contrail-vcenter-plugin
 SRC_VER ?= $(shell cat ./../controller/src/base/version.info)
 BUILDNUM ?= $(shell date -u +%m%d%Y)
 export BUILDTAG ?= $(SRC_VER)-$(BUILDNUM)
@@ -38,6 +39,9 @@ override_dh_auto_clean:
 
 override_dh_install:
 	dh_install
+
+override_dh_auto_install:
+	install -D -m 644 vcenter-plugin-logrotate.properties $(DESTDIR)/etc/logrotate.d/vcenter-plugin
 
 override_dh_installinit:
 	dh_installinit
