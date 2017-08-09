@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd /usr/share/contrail-vcenter-plugin
+java -cp ./juniper-contrail-vcenter.jar:./juniper-contrail-api.jar:./juniper-contrail-vijava.jar:./juniper-contrail-vrouter-api.jar:./lib/commons-exec-1.2.jar:./lib/commons-net-3.3.jar:./lib/commons-lang-2.6.jar:./lib/dom4j-1.6.1.jar:./lib/guava-14.0.jar:./lib/gson-1.7.1.jar:./lib/httpclient-4.2.1.jar:./lib/httpcore-4.2.1.jar:./lib/libthrift-0.8.0.jar:./lib/log4j-1.2.16.jar:./lib/slf4j-api-1.5.8.jar:./lib/slf4j-simple-1.5.8.jar:./lib/curator-framework-2.7.0.jar:./lib/curator-client-2.7.0.jar:./lib/curator-recipes-2.7.0.jar:./lib/openstack4j-2.0.1-withdeps.jar:./lib/openstack4j-jersey2-2.0.1.jar:./lib/openstack4j-core-2.0.1.jar:./lib/zookeeper-3.4.5.jar -Dlog4j.configuration=file:"./log4j.properties" net.juniper.contrail.vcenter.VCenterMonitor >> /var/log/contrail/contrail-vcenter-plugin-stdout.log 2>&1

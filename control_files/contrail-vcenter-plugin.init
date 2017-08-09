@@ -1,0 +1,64 @@
+#!/bin/bash
+      
+#set -x
+PID=
+get_pid() {
+        #x=$(ps -aux | grep -v grep | grep vcenter | awk '{print $2}')
+        x=$(pgrep -f juniper-contrail-vcenter.jar)
+        if [ ! -z "$x" ]; then
+            PID=$x
+        else
+            PID=0
+        fi
+}
+      
+start() {
+        get_pid
+        if [ $PID -ne 0 ]; then
+            echo "Service already running: $PID"
+        else
+            echo "Starting Contrail Vcenter Plugin Service:"
+            /usr/bin/contrail-vcenter-plugin &
+            echo Started
+        fi
+}
+      
+stop() {
+        get_pid
+        echo -n "Stopping Contrail Vcenter Plugin Service:"
+        kill -9 $PID
+        echo Stopped
+}
+      
+status() {
+        get_pid
+        if [ $PID -ne 0 ]; then
+            echo "Service contrail-vcenter-plugin Running: $PID"
+            echo ""
+        else
+            echo "Service contrail-vcenter-plugin not Running"
+            echo ""
+        fi
+}
+      
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        status
+        ;;
+  restart)
+        stop
+        start
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart|status}"
+        exit 1
+esac
+      
+exit 0
+

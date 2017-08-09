@@ -20,3 +20,7 @@ target/openstack4j-2.0.1-withdeps.jar usr/share/contrail-vcenter-plugin/lib
 target/openstack4j-core-2.0.1.jar /usr/share/contrail-vcenter-plugin/lib
 target/zookeeper-3.4.5.jar /usr/share/contrail-vcenter-plugin/lib
 control_files/contrail-vcenter-plugin.service /lib/systemd/system/
+control_files/contrail-vcenter-plugin.init /etc/init.d
+control_files/contrail-vcenter-plugin /usr/bin
+contrail-vcenter-plugin.conf /etc/contrail
+log4j.properties /usr/share/contrail-vcenter-plugin
