@@ -99,7 +99,7 @@ public class VCenterNotify implements Runnable
 
     public VCenterNotify(
             String vcenterUrl, String vcenterUsername,
-            String vcenterPassword, String dcName,
+            String vcenterPassword, String dcName, String clusterName,
             String dvsName, String ipFabricPgName,
             String _apiServerAddress, int _apiServerPort,
             String _username, String _password,
@@ -107,7 +107,7 @@ public class VCenterNotify implements Runnable
             String _authtype, String _authurl, Mode mode)
     {
         vcenterDB = new VCenterDB(vcenterUrl, vcenterUsername, vcenterPassword,
-                dcName, dvsName, ipFabricPgName, mode);
+                dcName, clusterName, dvsName, ipFabricPgName, mode);
 
         switch (mode) {
         case VCENTER_ONLY:

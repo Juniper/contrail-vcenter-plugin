@@ -21,12 +21,14 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.net.MalformedURLException;
 import java.rmi.RemoteException;
+import java.lang.RuntimeException;
 import java.io.FileNotFoundException;
 import com.vmware.vim25.VirtualMachineToolsRunningStatus;
 import org.apache.log4j.Logger;
 import com.google.common.base.Throwables;
 import com.vmware.vim25.DVPortSetting;
 import com.vmware.vim25.DVPortgroupConfigInfo;
+import com.vmware.vim25.Event;
 import com.vmware.vim25.GuestInfo;
 import com.vmware.vim25.GuestNicInfo;
 import com.vmware.vim25.IpPool;
@@ -57,6 +59,7 @@ import com.vmware.vim25.mo.ServiceInstance;
 import com.vmware.vim25.mo.VirtualMachine;
 import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
 import com.vmware.vim25.mo.ComputeResource;
+import com.vmware.vim25.mo.ClusterComputeResource;
 
 public class VCenterDB {
     private static final Logger s_logger =
@@ -64,6 +67,7 @@ public class VCenterDB {
     private static final String esxiToVRouterIpMapFile = "/etc/contrail/ESXiToVRouterIp.map";
     protected final String contrailDvSwitchName;
     public final String contrailDataCenterName;
+    public final String contrailClusterName;
     private final String vcenterUrl;
     private final String vcenterUsername;
     private final String vcenterPassword;
@@ -90,12 +94,13 @@ public class VCenterDB {
     }
 
     public VCenterDB(String vcenterUrl, String vcenterUsername,
-                     String vcenterPassword, String contrailDcName,
+                     String vcenterPassword, String contrailDcName, String contrailClusterName,
                      String contrailDvsName, String ipFabricPgName, Mode mode) {
         this.vcenterUrl             = vcenterUrl;
         this.vcenterUsername        = vcenterUsername;
         this.vcenterPassword        = vcenterPassword;
         this.contrailDataCenterName = contrailDcName;
+        this.contrailClusterName = contrailClusterName;
         this.contrailDvSwitchName   = contrailDvsName;
         this.contrailIpFabricPgName = ipFabricPgName;
         this.mode                   = mode;
@@ -808,6 +813,34 @@ public class VCenterDB {
         return host;
     }
 
+    public boolean isVmEventOnMonitoredCluster(Event event, String hostName)
+        throws RemoteException {
+        String dcName;
+        Datacenter dc;
+
+        // If contrailClusterName is null, all clusters under datacenter 
+        // are monitored by vcenter plugin.
+        if (contrailClusterName == null)
+            return true;
+
+        if (event.getHost() != null) {
+            hostName = event.getHost().getName();
+            HostSystem host = getVmwareHost(hostName, contrailDC, contrailDataCenterName);
+
+            if (host != null) {
+                ClusterComputeResource cluster = (ClusterComputeResource) host.getParent();
+                if (cluster != null) {
+                    String clstrName = cluster.getName();
+                    if (clstrName != null && clstrName.equals(contrailClusterName)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     public VirtualMachine getVmwareVirtualMachine(String name,
             HostSystem host, String hostName, String dcName)
         throws RemoteException {
@@ -821,15 +854,15 @@ public class VCenterDB {
             vm = (VirtualMachine)inventoryNavigator.searchManagedEntity(
                     "VirtualMachine", name);
         } catch (RemoteException e ) {
-            String msg = "Failed to retrieve " + description;
+            String msg = "VM1: Failed to retrieve " + description;
             s_logger.error(msg);
             throw new RemoteException(msg, e);
         }
 
         if (vm == null) {
-            String msg = "Failed to retrieve " + description;
+            String msg = "VM2: Failed to retrieve " + description;
             s_logger.error(msg);
-            throw new RemoteException(msg);
+            throw new RuntimeException(msg);
         }
 
         s_logger.info("Found " + description);
@@ -954,8 +987,15 @@ public class VCenterDB {
             // This is a cluster resource. Delve deeper to
             // find more hosts.
             if (e instanceof ComputeResource) {
-                ComputeResource cluster = (ComputeResource) e;
-                for(HostSystem host : cluster.getHosts()) {
+                ComputeResource cr = (ComputeResource) e;
+                if (e instanceof ClusterComputeResource) {
+                    ClusterComputeResource cluster = (ClusterComputeResource) e;
+                    if ((contrailClusterName != null) && 
+                         (cluster.getName().equals(contrailClusterName) != true)) {
+                       continue;
+                   }
+                }
+                for(HostSystem host : cr.getHosts()) {
                     hostsList.add((HostSystem)host);
                 }
             }
