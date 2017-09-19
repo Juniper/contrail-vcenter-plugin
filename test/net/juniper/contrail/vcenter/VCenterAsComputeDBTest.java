@@ -22,7 +22,7 @@ public class VCenterAsComputeDBTest extends TestCase {
     public void globalSetUp() throws IOException {
         // Setup VCenter object
         vcenterDB = new VCenterDB("https://10.20.30.40/sdk", "admin", "admin123",
-                                   "unittest_dc", "unittest_dvs", "unittest_fabric_pg",
+                                   "unittest_dc", "unittest_cluster", "unittest_dvs", "unittest_fabric_pg",
                                    Mode.VCENTER_AS_COMPUTE);
     }
 

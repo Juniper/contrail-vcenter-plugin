@@ -60,6 +60,7 @@ public class VCenterMonitor {
     private static String _vcenterUsername   = "admin";
     private static String _vcenterPassword   = "Contrail123!";
     private static String _vcenterDcName     = "Datacenter";
+    private static String _vcenterClusterName = null;
     private static String _vcenterDvsName    = "dvSwitch";
     private static String _vcenterIpFabricPg = "contrail-fab-pg";
 
@@ -136,6 +137,7 @@ public class VCenterMonitor {
                     if (tenant != null && tenant.length() > 0)
                         _tenant = tenant;
 
+                    _vcenterClusterName = configProps.getProperty("vcenter.cluster_name");
                 } else { // vcenter-only mode
                     mode = Mode.VCENTER_ONLY;
                 }
@@ -175,7 +177,7 @@ public class VCenterMonitor {
         }
 
         _eventMonitor = new VCenterNotify(_vcenterURL, _vcenterUsername, _vcenterPassword,
-                _vcenterDcName, _vcenterDvsName, _vcenterIpFabricPg,
+                _vcenterDcName, _vcenterClusterName, _vcenterDvsName, _vcenterIpFabricPg,
                 _apiServerAddress, _apiServerPort, _username, _password,
                 _tenant,
                 _authtype, _authurl, mode);
