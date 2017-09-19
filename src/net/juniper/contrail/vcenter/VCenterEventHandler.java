@@ -8,6 +8,7 @@
 package net.juniper.contrail.vcenter;
 
 import org.apache.log4j.Logger;
+import java.lang.RuntimeException;
 
 import com.google.common.base.Throwables;
 import com.vmware.vim25.DVPortgroupCreatedEvent;
@@ -72,15 +73,25 @@ public class VCenterEventHandler {
     }
 
     private void handleVmUpdateEvent(Event event) throws Exception {
+        VirtualMachineInfo newVmInfo = null;
         if (event.getHost() != null) {
             String hostName = event.getHost().getName();
             if (!vcenterDB.esxiToVRouterIpMap.containsKey(hostName)) {
                 s_logger.info("Skipping event for unmanaged host " + hostName);
                 return;
             }
+            if (!vcenterDB.isVmEventOnMonitoredCluster(event, hostName)) {
+                s_logger.info("Skipping vm event from host " + hostName);
+                return;
+            }
         }
 
-        VirtualMachineInfo newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
+        try {
+            newVmInfo = new VirtualMachineInfo(event, vcenterDB, vncDB);
+        } catch (RuntimeException e) {
+            s_logger.error(e.getMessage());
+            return;
+        }
 
         VirtualMachineInfo oldVmInfo = MainDB.getVmById(newVmInfo.getUuid());
 
