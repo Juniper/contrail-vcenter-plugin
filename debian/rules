@@ -9,17 +9,8 @@ SRC_VER ?= $(shell cat ./../controller/src/base/version.info)
 BUILDNUM ?= $(shell date -u +%m%d%Y)
 export BUILDTAG ?= $(SRC_VER)-$(BUILDNUM)
 
-SERIES := $(shell lsb_release -c)
-ifeq (,$(findstring trusty,$(SERIES)))
-	DH_WITH=--with javahelper,systemd
-else
-	DH_WITH=--with javahelper
-endif
-
-
 %:
-	dh $@ $(DH_WITH)
-
+	dh $@ --with javahelper
 
 override_dh_auto_build:
 	cat debian/changelog.in | sed 's,BUILDTAG,$(BUILDTAG),g' > debian/changelog
