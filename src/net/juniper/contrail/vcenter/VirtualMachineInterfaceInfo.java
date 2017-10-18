@@ -20,6 +20,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
     private String ipAddress;
     private String macAddress;
     private boolean portAdded;
+    private boolean portSecurityEnabled = true;
 
     //API server objects
     net.juniper.contrail.api.types.VirtualMachineInterface apiVmi;
