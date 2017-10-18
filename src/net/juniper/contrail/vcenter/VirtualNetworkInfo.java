@@ -43,6 +43,7 @@ public class VirtualNetworkInfo extends VCenterObject {
     private boolean ipPoolEnabled;
     private String range;
     private boolean externalIpam;
+    private boolean portSecurityEnabled = true;
 
     // Vmware
     com.vmware.vim25.mo.Network net;
@@ -350,6 +351,14 @@ public class VirtualNetworkInfo extends VCenterObject {
 
     public void setIpPoolEnabled(boolean _ipPoolEnabled) {
         this.ipPoolEnabled = _ipPoolEnabled;
+    }
+
+    public boolean getPortSecurityEnabled() {
+        return portSecurityEnabled;
+    }
+
+    public void setPortSecurityEnabled(boolean _portSecurityEnabled) {
+        this.portSecurityEnabled = _portSecurityEnabled;
     }
 
     public String getRange() {

@@ -478,6 +478,7 @@ public class VncDB {
         }
 
         vn.setExternalIpam(vnInfo.getExternalIpam());
+        vn.setPortSecurityEnabled(vnInfo.getPortSecurityEnabled());
 
         VnSubnetsType subnet = getSubnet(vnInfo);
         if (subnet != null) {
@@ -693,6 +694,7 @@ public class VncDB {
         vmInterface.setName(vmiInfo.getUuid());
         vmInterface.setParent(vCenterProject);
         vmInterface.setSecurityGroup(vCenterDefSecGrp);
+        vmInterface.setPortSecurityEnabled(vmiInfo.getPortSecurityEnabled());
         vmInterface.setVirtualNetwork(network);
         vmInterface.addVirtualMachine(vm);
         MacAddressesType macAddrType = new MacAddressesType();
