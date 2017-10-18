@@ -20,6 +20,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
     private String ipAddress;
     private String macAddress;
     private boolean portAdded;
+    private boolean portSecurityEnabled = true;
 
     //API server objects
     net.juniper.contrail.api.types.VirtualMachineInterface apiVmi;
@@ -110,6 +111,14 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
 
     public void setPortAdded(boolean portAdded) {
         this.portAdded = portAdded;
+    }
+
+    public boolean getPortSecurityEnabled() {
+        return portSecurityEnabled;
+    }
+
+    public void setPortSecurityEnabled(boolean _portSecurityEnabled) {
+        this.portSecurityEnabled = _portSecurityEnabled;
     }
 
     public void updatedGuestNic(GuestNicInfo nic, VncDB vncDB)
