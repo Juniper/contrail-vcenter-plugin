@@ -25,7 +25,7 @@ import com.vmware.vim25.mo.ManagedObject;
 import com.vmware.vim25.mo.util.PropertyCollectorUtil;
 import net.juniper.contrail.api.ObjectReference;
 import net.juniper.contrail.api.types.VnSubnetsType;
-import net.juniper.contrail.api.types.VnSubnetsType.IpamSubnetType;
+import net.juniper.contrail.api.types.IpamSubnetType;
 
 public class VirtualNetworkInfo extends VCenterObject {
     private final Logger s_logger =
