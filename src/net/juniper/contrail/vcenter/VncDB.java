@@ -8,8 +8,8 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.Arrays;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.SortedMap;
 import java.util.UUID;
@@ -19,19 +19,22 @@ import net.juniper.contrail.api.ApiConnector;
 import net.juniper.contrail.api.ApiConnectorFactory;
 import net.juniper.contrail.api.ApiPropertyBase;
 import net.juniper.contrail.api.ObjectReference;
+import net.juniper.contrail.api.types.AddressType;
+import net.juniper.contrail.api.types.AllocationPoolType;
 import net.juniper.contrail.api.types.InstanceIp;
 import net.juniper.contrail.api.types.FloatingIp;
 import net.juniper.contrail.api.types.MacAddressesType;
 import net.juniper.contrail.api.types.NetworkIpam;
 import net.juniper.contrail.api.types.SecurityGroup;
 import net.juniper.contrail.api.types.PolicyEntriesType;
+import net.juniper.contrail.api.types.PolicyRuleType;
 import net.juniper.contrail.api.types.SubnetType;
 import net.juniper.contrail.api.types.VirtualMachine;
 import net.juniper.contrail.api.types.VirtualMachineInterface;
 import net.juniper.contrail.api.types.VirtualNetwork;
 import net.juniper.contrail.api.types.VnSubnetsType;
-import net.juniper.contrail.api.types.VnSubnetsType.IpamSubnetType;
-import net.juniper.contrail.api.types.VnSubnetsType.IpamSubnetType.AllocationPoolType;
+import net.juniper.contrail.api.types.IpamSubnetType;
+import net.juniper.contrail.api.types.PortType;
 import net.juniper.contrail.api.types.Project;
 import net.juniper.contrail.api.types.IdPermsType;
 import com.google.common.base.Throwables;
@@ -259,32 +262,32 @@ public class VncDB {
 
             PolicyEntriesType sg_rules = new PolicyEntriesType();
 
-            PolicyEntriesType.PolicyRuleType ingress_rule =
-                              new PolicyEntriesType.PolicyRuleType(
+            PolicyRuleType ingress_rule =
+                              new PolicyRuleType(
                                       null,
                                       UUID.randomUUID().toString(),
                                       ">",
                                       "any",
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null, null)}),
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
+                                       Arrays.asList(new AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null, null)),
+                                       Arrays.asList(new PortType(0,65535)), //src_ports
                                        null, //application
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null, null) }),
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
+                                       Arrays.asList(new AddressType(null, null, "local", null, null)),
+                                       Arrays.asList(new PortType(0,65535)), //dest_ports
                                        null, // action_list
                                        "IPv4"); // ethertype
             sg_rules.addPolicyRule(ingress_rule);
 
-            PolicyEntriesType.PolicyRuleType egress_rule  =
-                              new PolicyEntriesType.PolicyRuleType(
+            PolicyRuleType egress_rule  =
+                              new PolicyRuleType(
                                       null,
                                       UUID.randomUUID().toString(),
                                       ">",
                                       "any",
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null, null) }),
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
+                                       Arrays.asList(new AddressType(null, null, "local", null, null)),
+                                       Arrays.asList(new PortType(0,65535)), //src_ports
                                        null, //application
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(new SubnetType("0.0.0.0", 0), null, null, null, null) }),
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
+                                       Arrays.asList(new AddressType(new SubnetType("0.0.0.0", 0), null, null, null, null)),
+                                       Arrays.asList(new PortType(0,65535)), //dest_ports
                                        null, // action_list
                                        "IPv4"); // ethertype);
             sg_rules.addPolicyRule(egress_rule);
@@ -381,32 +384,32 @@ public class VncDB {
 
             PolicyEntriesType sg_rules = new PolicyEntriesType();
 
-            PolicyEntriesType.PolicyRuleType ingress_rule =
-                              new PolicyEntriesType.PolicyRuleType(
+            PolicyRuleType ingress_rule =
+                              new PolicyRuleType(
                                       null,
                                       UUID.randomUUID().toString(),
                                       ">",
                                       "any",
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null, null)}),
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
+                                       Arrays.asList(new AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null, null)),
+                                       Arrays.asList(new PortType(0,65535)), //src_ports
                                        null, //application
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null, null) }),
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
+                                       Arrays.asList(new AddressType(null, null, "local", null, null)),
+                                       Arrays.asList(new PortType(0,65535)), //dest_ports
                                        null, // action_list
                                        "IPv4"); // ethertype
             sg_rules.addPolicyRule(ingress_rule);
 
-            PolicyEntriesType.PolicyRuleType egress_rule  =
-                              new PolicyEntriesType.PolicyRuleType(
+            PolicyRuleType egress_rule  =
+                              new PolicyRuleType(
                                       null,
                                       UUID.randomUUID().toString(),
                                       ">",
                                       "any",
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(null, null, "local", null, null) }),
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //src_ports
+                                       Arrays.asList(new AddressType(null, null, "local", null, null)),
+                                       Arrays.asList(new PortType(0,65535)), //src_ports
                                        null, //application
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.AddressType[] {new PolicyEntriesType.PolicyRuleType.AddressType(new SubnetType("0.0.0.0", 0), null, null, null, null) }),
-                                       Arrays.asList(new PolicyEntriesType.PolicyRuleType.PortType[] {new PolicyEntriesType.PolicyRuleType.PortType(0,65535)}), //dest_ports
+                                       Arrays.asList(new AddressType(new SubnetType("0.0.0.0", 0), null, null, null, null)),
+                                       Arrays.asList(new PortType(0,65535)), //dest_ports
                                        null, // action_list
                                        "IPv4"); // ethertype);
             sg_rules.addPolicyRule(egress_rule);
@@ -504,19 +507,19 @@ public class VncDB {
         String cidr = subnetUtils.getInfo().getCidrSignature();
         String[] addr_pair = cidr.split("\\/");
 
-        List<VnSubnetsType.IpamSubnetType.AllocationPoolType> allocation_pools = null;
+        List<AllocationPoolType> allocation_pools = null;
         if (vnInfo.getIpPoolEnabled() == true && !vnInfo.getRange().isEmpty()) {
             String[] pools = vnInfo.getRange().split("\\#");
             if (pools.length == 2) {
-                allocation_pools = new ArrayList<VnSubnetsType.IpamSubnetType.AllocationPoolType>();
+                allocation_pools = new ArrayList<AllocationPoolType>();
                 String start = (pools[0]).replace(" ","");
                 String num   = (pools[1]).replace(" ","");
                 int start_ip = InetAddresses.coerceToInteger(InetAddresses.forString(start));
                 int end_ip = start_ip + Integer.parseInt(num) - 1;
                 String end = InetAddresses.toAddrString(InetAddresses.fromInteger(end_ip));
                 s_logger.debug("Subnet IP Range :  Start:"  + start + " End:" + end);
-                VnSubnetsType.IpamSubnetType.AllocationPoolType pool1 = new
-                        VnSubnetsType.IpamSubnetType.AllocationPoolType(start, end);
+                AllocationPoolType pool1 = new
+                        AllocationPoolType(start, end);
                 allocation_pools.add(pool1);
             }
         }
@@ -530,7 +533,7 @@ public class VncDB {
         }
 
         VnSubnetsType subnet = new VnSubnetsType();
-        subnet.addIpamSubnets(new VnSubnetsType.IpamSubnetType(
+        subnet.addIpamSubnets(new IpamSubnetType(
                                    new SubnetType(addr_pair[0],
                                        Integer.parseInt(addr_pair[1])),
                                        vnInfo.getGatewayAddress(),
