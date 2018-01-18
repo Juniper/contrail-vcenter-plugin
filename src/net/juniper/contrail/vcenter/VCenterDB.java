@@ -277,9 +277,11 @@ public class VCenterDB {
             while(input.hasNext()) {
                 String nextLine = input.nextLine();
                 String[] part = nextLine.split(":");
-                s_logger.info(" ESXi IP Address:" + part[0] + " vRouter-IP-Address: " + part[1]);
-                esxiToVRouterIpMap.put(part[0], part[1]);
-                VRouterNotifier.setVrouterActive(part[1], true);
+                if (part.length >= 2) {
+                    s_logger.info(" ESXi IP Address:" + part[0] + " vRouter-IP-Address: " + part[1]);
+                    esxiToVRouterIpMap.put(part[0], part[1]);
+                    VRouterNotifier.setVrouterActive(part[1], true);
+                }
             }
             input.close();
         } catch (FileNotFoundException e) {
@@ -388,6 +390,9 @@ public class VCenterDB {
 
         if (vRouterIpAddress != null) {
             return vRouterIpAddress;
+        } else {
+            s_logger.debug(" vRouter IP mapping for Host: " + hostName +
+                    "does not exist");
         }
 
         VirtualMachine[] vms = host.getVms();
@@ -963,13 +968,13 @@ public class VCenterDB {
                     (VirtualMachine)vms[i], pTables[i],
                     host, vrouterIpAddress);
 
-            readVirtualMachineInterfaces(vmInfo);
-
             // Ignore virtual machine?
             if (vmInfo.ignore()) {
                 s_logger.debug(" Ignoring vm: " + vmInfo.getName());
                 continue;
             }
+
+            readVirtualMachineInterfaces(vmInfo);
 
             s_logger.info("Read from vcenter " + vmInfo);
 
