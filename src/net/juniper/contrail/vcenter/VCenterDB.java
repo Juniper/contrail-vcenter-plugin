@@ -272,9 +272,11 @@ public class VCenterDB {
             while(input.hasNext()) {
                 String nextLine = input.nextLine();
                 String[] part = nextLine.split(":");
-                s_logger.info(" ESXi IP Address:" + part[0] + " vRouter-IP-Address: " + part[1]);
-                esxiToVRouterIpMap.put(part[0], part[1]);
-                VRouterNotifier.setVrouterActive(part[1], true);
+                if (part.length >= 2) {
+                    s_logger.info(" ESXi IP Address:" + part[0] + " vRouter-IP-Address: " + part[1]);
+                    esxiToVRouterIpMap.put(part[0], part[1]);
+                    VRouterNotifier.setVrouterActive(part[1], true);
+                }
             }
             input.close();
         } catch (FileNotFoundException e) {
