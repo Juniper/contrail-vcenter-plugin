@@ -132,6 +132,13 @@ public class VRouterNotifier {
 
     private static ContrailVRouterApi getVrouterApi(String vrouterIpAddress) {
         ContrailVRouterApi vrouterApi = null;
+
+        if (vrouterIpAddress == null) {
+            s_logger.error(
+                "vRouterIp Address is null, cannot search in vrouterApiMap");
+            return null;
+        }
+
         if (vrouterApiMap.containsKey(vrouterIpAddress)) {
             vrouterApi = vrouterApiMap.get(vrouterIpAddress);
         }
