@@ -935,13 +935,13 @@ public class VCenterDB {
                     (VirtualMachine)vms[i], pTables[i],
                     host, vrouterIpAddress);
 
+            readVirtualMachineInterfaces(vmInfo);
+
             // Ignore virtual machine?
             if (vmInfo.ignore()) {
                 s_logger.debug(" Ignoring vm: " + vmInfo.getName());
                 continue;
             }
-
-            readVirtualMachineInterfaces(vmInfo);
 
             s_logger.info("Read from vcenter " + vmInfo);
 
