@@ -729,8 +729,6 @@ public class VncDB {
             return;
         }
 
-        clearSecurityGroups(apiVmi);
-
         clearFloatingIp(apiVmi);
 
         deleteInstanceIps(apiVmi);
@@ -751,38 +749,9 @@ public class VncDB {
                 apiConnector.findById(FloatingIp.class,
                                       floatingIpRefs.get(0).getUuid());
             // clear VMInterface back reference.
-            FloatingIp fip = new FloatingIp();
-            fip.setParent(floatingIp.getParent());
-            fip.setName(floatingIp.getName());
-            fip.setUuid(floatingIp.getUuid());
-            fip.setVirtualMachineInterface(apiVmi);
-            fip.clearVirtualMachineInterface();
-            apiConnector.update(fip);
-            floatingIp.clearVirtualMachineInterface();
+            floatingIp.removeVirtualMachineInterface(apiVmi);
+            apiConnector.update(floatingIp);
             s_logger.info("Removed floatingIp association for VMInterface:" + apiVmi.getUuid());
-        }
-    }
-
-    private void clearSecurityGroups(VirtualMachineInterface apiVmi) throws IOException {
-        // Clear security-group associations if it exists on VMInterface
-        List<ObjectReference<ApiPropertyBase>> secGroupRefs =
-                apiVmi.getSecurityGroup();
-        if ((secGroupRefs != null) && !secGroupRefs.isEmpty()) {
-            s_logger.info("SecurityGroup association exists for VMInterface:" + apiVmi.getUuid());
-            SecurityGroup secGroup = (SecurityGroup)
-                apiConnector.findById(SecurityGroup.class,
-                                      secGroupRefs.get(0).getUuid());
-            VirtualMachineInterface vmi = new VirtualMachineInterface();
-            vmi.setParent(apiVmi.getParent());
-            vmi.setName(apiVmi.getName());
-            vmi.setUuid(apiVmi.getUuid());
-            if (secGroup != null) {
-                vmi.addSecurityGroup(secGroup);
-            }
-            vmi.clearSecurityGroup();
-            apiConnector.update(vmi);
-            apiVmi.clearSecurityGroup();
-            s_logger.info("Removed SecurityGroup association for VMInterface:" + apiVmi.getUuid());
         }
     }
 
