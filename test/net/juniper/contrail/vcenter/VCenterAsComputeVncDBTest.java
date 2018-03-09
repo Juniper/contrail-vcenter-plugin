@@ -73,7 +73,7 @@ public class VCenterAsComputeVncDBTest extends TestCase {
         Project vProject = new Project();
         vProject.setName("default-project");
         try {
-            if (!_api.create(vProject)) {
+            if (!_api.create(vProject).isSuccess()) {
                 s_logger.error("Unable to create project: " + vProject.getName());
                 fail("default-project creation failed");
                 return;
