@@ -201,7 +201,7 @@ public class VncDB {
             vCenterProject.setName("vCenter");
             vCenterProject.setIdPerms(vCenterIdPerms);
             try {
-                if (!apiConnector.create(vCenterProject)) {
+                if (!apiConnector.create(vCenterProject).isSuccess()) {
                     s_logger.error("Unable to create project: " + vCenterProject.getName());
                     return false;
                 }
@@ -231,7 +231,7 @@ public class VncDB {
             vCenterIpam.setName("vCenter-ipam");
             vCenterIpam.setIdPerms(vCenterIdPerms);
             try {
-                if (!apiConnector.create(vCenterIpam)) {
+                if (!apiConnector.create(vCenterIpam).isSuccess()) {
                     s_logger.error("Unable to create Ipam: " + vCenterIpam.getName());
                 }
             } catch (Exception e) {
@@ -295,7 +295,7 @@ public class VncDB {
             vCenterDefSecGrp.setEntries(sg_rules);
 
             try {
-                if (!apiConnector.create(vCenterDefSecGrp)) {
+                if (!apiConnector.create(vCenterDefSecGrp).isSuccess()) {
                     s_logger.error("Unable to create defSecGrp: " + vCenterDefSecGrp.getName());
                 }
             } catch (Exception e) {
@@ -326,7 +326,7 @@ public class VncDB {
             vCenterProject = new Project();
             vCenterProject.setName("vCenter-test");
             try {
-                if (!apiConnector.create(vCenterProject)) {
+                if (!apiConnector.create(vCenterProject).isSuccess()) {
                     s_logger.error("Unable to create project: " + vCenterProject.getName());
                     return false;
                 }
@@ -354,7 +354,7 @@ public class VncDB {
             vCenterIpam.setParent(vCenterProject);
             vCenterIpam.setName("vCenter-ipam-test");
             try {
-                if (!apiConnector.create(vCenterIpam)) {
+                if (!apiConnector.create(vCenterIpam).isSuccess()) {
                     s_logger.error("Unable to create test Ipam: " + vCenterIpam.getName());
                 }
             } catch (IOException e) {
@@ -417,7 +417,7 @@ public class VncDB {
             vCenterDefSecGrp.setEntries(sg_rules);
 
             try {
-                if (!apiConnector.create(vCenterDefSecGrp)) {
+                if (!apiConnector.create(vCenterDefSecGrp).isSuccess()) {
                     s_logger.error("Unable to create def sec grp: " + vCenterDefSecGrp.getName());
                 }
             } catch (Exception e) {
