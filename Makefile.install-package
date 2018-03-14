@@ -4,16 +4,28 @@ BUILDNUM ?= $(shell date -u +%m%d%Y)
 export BUILDTAG ?= $(SRC_VER)-$(BUILDNUM)
 
 vijava-deb:
-	(cd vijava && make all)
+	(cd vijava && make deb)
 
 java-api-deb:
-	(cd java-api && make all)
+	(cd java-api && make deb)
 
 vrouter-java-api-deb:
-	(cd vrouter-java-api && make all)
+	(cd vrouter-java-api && make deb)
 
 vcenter-plugin-deb:
-	(cd vcenter-plugin && make all)
+	(cd vcenter-plugin && make deb)
+
+vijava-rpm:
+	(cd vijava && make rpm)
+
+java-api-rpm:
+	(cd java-api && make rpm)
+
+vrouter-java-api-rpm:
+	(cd vrouter-java-api && make rpm)
+
+vcenter-plugin-rpm:
+	(cd vcenter-plugin && make rpm)
 
 install-package-deb:
 	$(eval BUILDDIR=./build/packages)
@@ -35,3 +47,4 @@ clean: clean-install-package
 
 
 all: vijava-deb java-api-deb vrouter-java-api-deb vcenter-plugin-deb install-package-deb
+rpm: vijava-rpm java-api-rpm vrouter-java-api-rpm vcenter-plugin-rpm
