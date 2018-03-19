@@ -3,7 +3,7 @@ BUILDNUM ?= $(shell date -u +%m%d%Y)
 export BUILDTAG ?= $(SRC_VER)-$(BUILDNUM)
 
 build:
-	$(eval BUILDDIR=$(realpath ./../build/vcenter-plugin))
+	$(eval BUILDDIR=./../build/vcenter-plugin)
 	mkdir -p ${BUILDDIR}
 	cp -ar * ${BUILDDIR}
 	(cd ${BUILDDIR}; mvn install)
@@ -13,6 +13,7 @@ deb: build
 	@echo "Wrote: ${BUILDDIR}/../contrail-vcenter-plugin_all.deb"
 
 rpm: build
+	$(eval BUILDDIR=$(realpath ./../build/vcenter-plugin))
 	cp rpm/contrail-vcenter-plugin.spec ${BUILDDIR}
 	mkdir -p ${BUILDDIR}/{BUILD,RPMS,SOURCES,SPECS,SRPMS,TOOLS}
 	rpmbuild -bb --define "_topdir ${BUILDDIR}" --define "_buildTag $(BUILDNUM)" \
