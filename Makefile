@@ -6,7 +6,7 @@ build:
 	$(eval BUILDDIR=./../build/vcenter-plugin)
 	mkdir -p ${BUILDDIR}
 	cp -ar * ${BUILDDIR}
-	(cd ${BUILDDIR}; mvn install)
+	(cd ${BUILDDIR}; mvn install -DskipTests)
 
 deb: build
 	(cd ${BUILDDIR}; debuild --preserve-envvar=BUILDTAG -i -us -uc -b)
