@@ -20,6 +20,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
     private String ipAddress;
     private String macAddress;
     private boolean portAdded;
+    private boolean portEnabled = false;
     private boolean portSecurityEnabled = true;
 
     //API server objects
@@ -113,6 +114,14 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         this.portAdded = portAdded;
     }
 
+    public boolean getEnablePort() {
+        return portEnabled;
+    }
+
+    public void setEnablePort(boolean portEnabled) {
+        this.portEnabled = portEnabled;
+    }
+
     public boolean getPortSecurityEnabled() {
         return portSecurityEnabled;
     }
@@ -155,6 +164,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         }
 
         addPort();
+        enablePort();
     }
 
     public boolean equals(VirtualMachineInterfaceInfo vmi) {
@@ -211,7 +221,7 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         } else {
             s_logger.info("Skipping addPort, port already added for VM " + toString());
         }
-
+        enablePort();
         vnInfo.created(this);
         vmInfo.created(this);
     }
@@ -256,13 +266,13 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         }
 
         if (vmInfo.isPoweredOnState()) {
-            if (!portAdded) {
-                addPort();
+            if (portAdded && !portEnabled) {
+                enablePort();
             } else {
-                s_logger.info("Skipping addPort, port already added for VM " + toString());
+                s_logger.info("Skipping enablePort, port already enabled for VM " + toString());
             }
-        } else {
-            deletePort();
+        } else if (portAdded && portEnabled){
+            disablePort();
         }
     }
 
@@ -323,17 +333,34 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         }
 
         addPort();
-
+        enablePort();
+ 
         vnInfo.created(this);
     }
 
     public void addPort() {
-        if (vmInfo.isPoweredOnState()) {
             portAdded = true;
             VRouterNotifier.created(this);
+    }
+
+    public void enablePort() {
+        if (vmInfo.isPoweredOnState() && portAdded && !portEnabled) {
+            portEnabled = true;
+            VRouterNotifier.update(this);
+            s_logger.info("enablePort for powered ON VM " + toString());
         } else {
-            s_logger.info("Skipping addPort for powered off VM " + toString());
-        }
+            s_logger.info("Skipping enablePort for powered off VM " + toString());
+        }    
+    }
+
+    public void disablePort() {
+        if (!vmInfo.isPoweredOnState() && portAdded && portEnabled) {
+            portEnabled = false;
+            VRouterNotifier.update(this);
+            s_logger.info("disablePort for powered off VM " + toString());
+        } else {
+            s_logger.info("Skipping disablePort for powered ON VM " + toString());
+        }    
     }
 
     public void deletePort() {
