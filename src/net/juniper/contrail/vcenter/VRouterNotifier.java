@@ -87,6 +87,69 @@ public class VRouterNotifier {
         }
     }
 
+    public static void update(VirtualMachineInterfaceInfo vmiInfo) {
+        if (vmiInfo == null) {
+            s_logger.error("Null vmiInfo argument, cannot perform enablePort");
+            return;
+        }
+
+        if (vmiInfo.vmInfo == null)  {
+            s_logger.error("Null vmInfo, cannot perform enablePort for " + vmiInfo);
+            return;
+        }
+        if (vmiInfo.vnInfo == null)  {
+            s_logger.error("Null vnInfo, cannot perform enablePort for " + vmiInfo);
+            return;
+        }
+
+        if (vmiInfo.getUuid() == null)  {
+            s_logger.error("Null uuid, cannot perform enablePort for " + vmiInfo);
+            return;
+        }
+
+        String vrouterIpAddress = vmiInfo.getVmInfo().getVrouterIpAddress();
+        String ipAddress = vmiInfo.getIpAddress();
+        VirtualMachineInfo vmInfo = vmiInfo.vmInfo;
+        VirtualNetworkInfo vnInfo = vmiInfo.vnInfo;
+
+        if (vrouterIpAddress == null) {
+            s_logger.error(
+                "enablePort notification NOT sent as vRouterIp Address not known for " + vmiInfo);
+            return;
+        }
+        if (ipAddress == null) {
+            ipAddress = "0.0.0.0";
+        }   
+        ContrailVRouterApi vrouterApi = getVrouterApi(vrouterIpAddress);
+        if (!vmInfo.isPoweredOnState()) {
+            try {
+                boolean ret = vrouterApi.disablePort(vmiInfo.getUuid(), vmiInfo.getUuid());
+                if (ret) {
+                    s_logger.info("vRouter " + vrouterIpAddress + " disablePort success for " + vmiInfo);
+                } else {
+                    s_logger.warn("vRouter " + vrouterIpAddress + " disablePort failed for " + vmiInfo);
+                } 
+            } catch(Throwable e) {
+                s_logger.warn("vRouter " + vrouterIpAddress + " Exception in disablePort for "
+                        + vmiInfo + ": " + e.getMessage());
+                s_logger.error(Throwables.getStackTraceAsString(e));
+            }
+        } else {
+            try {
+                boolean ret = vrouterApi.enablePort(vmiInfo.getUuid(), vmiInfo.getUuid());
+                if (ret) {
+                    s_logger.info("vRouter " + vrouterIpAddress + " enablePort success for " + vmiInfo);
+                } else {
+                    s_logger.warn("vRouter " + vrouterIpAddress + " enablePort failed for " + vmiInfo);
+                } 
+            } catch(Throwable e) {
+                s_logger.warn("vRouter " + vrouterIpAddress + " Exception in enablePort for "
+                        + vmiInfo + ": " + e.getMessage());
+                s_logger.error(Throwables.getStackTraceAsString(e));
+            }
+        }
+    }
+
     public static void deleted(VirtualMachineInterfaceInfo vmiInfo) {
         if (vmiInfo == null) {
             s_logger.error("Null vmiInfo argument, cannot perform deletePort");
