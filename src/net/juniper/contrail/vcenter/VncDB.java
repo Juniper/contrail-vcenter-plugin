@@ -472,13 +472,11 @@ public class VncDB {
 
         VirtualNetwork vn = new VirtualNetwork();
         vn.setUuid(vnInfo.getUuid());
-        if (create) {
-            // these fields can only be set during create
-            vn.setName(vnInfo.getName());
-            vn.setDisplayName(vnInfo.getName());
-            vn.setIdPerms(vCenterIdPerms);
-            vn.setParent(vCenterProject);
-        }
+
+        vn.setName(vnInfo.getName());
+        vn.setDisplayName(vnInfo.getName());
+        vn.setIdPerms(vCenterIdPerms);
+        vn.setParent(vCenterProject);
 
         vn.setExternalIpam(vnInfo.getExternalIpam());
         vn.setPortSecurityEnabled(vnInfo.getPortSecurityEnabled());
