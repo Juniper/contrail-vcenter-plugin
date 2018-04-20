@@ -506,6 +506,10 @@ public class VirtualMachineInfo extends VCenterObject {
                 vmiInfoMap.entrySet()) {
                VirtualMachineInterfaceInfo vmiInfo = entry.getValue();
                vmiInfo.addPort();
+               if (vmiInfo.getEnablePort()) {
+                   vmiInfo.setEnablePort(false);
+               }
+               vmiInfo.enablePort();
             }
         }
         if (vmiInfoMap.size() == 0) {
