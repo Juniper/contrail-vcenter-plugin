@@ -16,6 +16,8 @@ public class MainDB {
             new ConcurrentSkipListMap<String, VirtualNetworkInfo>();
     private static volatile SortedMap<String, VirtualMachineInfo> vmwareVMs =
             new ConcurrentSkipListMap<String, VirtualMachineInfo>();
+    private static volatile SortedMap<String, VirtualNetworkInfo> oldVNs =
+            new ConcurrentSkipListMap<String, VirtualNetworkInfo>();
 
     static volatile VncDB vncDB;
     private static volatile VCenterDB vcenterDB;
@@ -108,22 +110,36 @@ public class MainDB {
         Entry<K, V> oldEntry = oldIter.hasNext()? oldIter.next() : null;
         Iterator<Entry<K, V>> newIter = newMap.entrySet().iterator();
         Entry<K, V> newEntry = newIter.hasNext()? newIter.next() : null;
-
+        int count = 1;
         while (oldEntry != null && newEntry != null) {
             Integer cmp = newEntry.getKey().compareTo(oldEntry.getKey());
             try {
+                
                 if (cmp == 0) {
-                    newEntry.getValue().sync(oldEntry.getValue(), vncDB);
+                    // TBD: clean just the commented line
+                   /* vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(),(newEntry.getValue().getName() + count));
+                    s_logger.info("Create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
+                    vcenterDB.deleteVmwarePG(vcenterDB.getVmwareDpg((newEntry.getValue().getName() + count),
+                            vcenterDB.getContrailDvs(), vcenterDB.contrailDvSwitchName,
+                            vcenterDB.contrailDataCenterName));
+                    s_logger.info("delete ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
+                    count++;*/
+                    //newEntry.getValue().sync(oldEntry.getValue(), vncDB);
                     oldEntry = oldIter.hasNext()? oldIter.next() : null;
                     newEntry = newIter.hasNext()? newIter.next() : null;
+
                 } else if (cmp < 0) {
                     if (mode != Mode.VCENTER_AS_COMPUTE) {
-                        newEntry.getValue().create(vncDB);
+                        vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(), newEntry.getValue().getName());
+                        s_logger.info("Create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
                     }
                     newEntry = newIter.hasNext()? newIter.next() : null;
                 } else {
                     if (mode != Mode.VCENTER_AS_COMPUTE) {
-                        oldEntry.getValue().delete(vncDB);
+                        vcenterDB.deleteVmwarePG(vcenterDB.getVmwareDpg(oldEntry.getValue().getName(),
+                       	        vcenterDB.getContrailDvs(), vcenterDB.contrailDvSwitchName,
+                                vcenterDB.contrailDataCenterName));
+                        s_logger.info("delete ["  + oldEntry.getKey() + ", " + oldEntry.getValue() + "]" );
                     }
                     oldEntry = oldIter.hasNext()? oldIter.next() : null;
                 }
@@ -133,20 +149,10 @@ public class MainDB {
             }
         }
 
-        if (mode != Mode.VCENTER_AS_COMPUTE) {
-            while (oldEntry != null) {
-                try {
-                    oldEntry.getValue().delete(vncDB);
-                } catch (Exception e) {
-                    s_logger.error("Cannot delete old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "]");
-                }
-                oldEntry = oldIter.hasNext()? oldIter.next() : null;
-            }
-        }
-
         while (newEntry != null) {
             try {
-                newEntry.getValue().create(vncDB);
+                vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(), newEntry.getValue().getName());
+                s_logger.info("Create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
             } catch (Exception e) {
                 s_logger.error("Cannot create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
             }
@@ -162,42 +168,71 @@ public class MainDB {
         Iterator<Entry<K, V>> newIter = newMap.entrySet().iterator();
         Entry<K, V> newEntry = newIter.hasNext()? newIter.next() : null;
 
-        while (oldEntry != null && newEntry != null) {
-            Integer cmp = newEntry.getKey().compareTo(oldEntry.getKey());
-            try {
-                if (cmp == 0) {
-                    oldEntry.getValue().update(newEntry.getValue(), vncDB);
-                    oldEntry = oldIter.hasNext()? oldIter.next() : null;
-                    newEntry = newIter.hasNext()? newIter.next() : null;
-                } else if (cmp < 0) {
-                    newEntry.getValue().create(vncDB);
-                    newEntry = newIter.hasNext()? newIter.next() : null;
-                } else {
-                    oldEntry.getValue().delete(vncDB);
-                    oldEntry = oldIter.hasNext()? oldIter.next() : null;
-                }
-            } catch (Exception e) {
-                s_logger.error("Cannot update old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "] with new [" +
-                        newEntry.getKey() + ", " + newEntry.getValue() + "]" );
-            }
-        }
-
-        while (oldEntry != null) {
-            try {
-                oldEntry.getValue().delete(vncDB);
-            } catch (Exception e) {
-                s_logger.error("Cannot delete old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "]");
-            }
-            oldEntry = oldIter.hasNext()? oldIter.next() : null;
-        }
-
         while (newEntry != null) {
-            try {
-                newEntry.getValue().create(vncDB);
-            } catch (Exception e) {
-                s_logger.error("Cannot create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
+            oldIter = oldMap.entrySet().iterator();
+            oldEntry = oldIter.hasNext()? oldIter.next() : null;
+            boolean newVncVn = true;
+            while (oldEntry != null) {
+                s_logger.info("create case  old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "] with new [" +
+                    newEntry.getKey() + ", " + newEntry.getValue() + "]" );
+                Integer cmp = newEntry.getValue().getName().compareTo(oldEntry.getValue().getName());
+                try {
+                    if (cmp == 0) {
+                        newVncVn = false;
+                        s_logger.info("compare zero " + newVncVn);
+                        break;
+                    } else {
+                        oldEntry = oldIter.hasNext()? oldIter.next() : null;
+                    }
+                } catch (Exception e) {
+                    s_logger.error("Cannot update old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "] with new [" +
+                        newEntry.getKey() + ", " + newEntry.getValue() + "]" );
+                }
+            }
+            if (newVncVn) {
+                try {
+                    vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(), newEntry.getValue().getName());
+                    s_logger.info("Create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" ); 
+                } catch (Exception e) {
+                    s_logger.error("Cannot create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
+                }
             }
             newEntry = newIter.hasNext()? newIter.next() : null;
+        } 
+        oldIter = oldMap.entrySet().iterator();
+        oldEntry = oldIter.hasNext()? oldIter.next() : null;
+        while (oldEntry != null) {
+            newIter = newMap.entrySet().iterator();
+            newEntry = newIter.hasNext()? newIter.next() : null;
+            boolean newVcenterPg = true;
+            while (newEntry != null) {
+                s_logger.info("delete case old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "] with new [" +
+                    newEntry.getKey() + ", " + newEntry.getValue() + "]" );
+                Integer cmp = newEntry.getValue().getName().compareTo(oldEntry.getValue().getName());
+                try {
+                    if (cmp == 0) {
+                        newVcenterPg = false;
+                        s_logger.info("compare zero " + newVcenterPg);
+                        break;
+                    } else {
+                        newEntry = newIter.hasNext()? newIter.next() : null;
+                    }
+                } catch (Exception e) {
+                    s_logger.error("Cannot update old [" + oldEntry.getKey() + ", " + oldEntry.getValue() + "] with new [" +
+                        newEntry.getKey() + ", " + newEntry.getValue() + "]" );
+                }
+            }
+            if (newVcenterPg) {
+                try {
+                    vcenterDB.deleteVmwarePG(vcenterDB.getVmwareDpg(oldEntry.getValue().getName(),
+                            vcenterDB.getContrailDvs(), vcenterDB.contrailDvSwitchName,
+                            vcenterDB.contrailDataCenterName));
+                    s_logger.info("delete ["  + oldEntry.getKey() + ", " + oldEntry.getValue() + "]" );
+                } catch (Exception e) {
+                    s_logger.error("Cannot delete ["  + oldEntry.getKey() + ", " + oldEntry.getValue() + "]" );
+                }
+            }
+            oldEntry = oldIter.hasNext()? oldIter.next() : null;
         }
     }
 
@@ -208,16 +243,19 @@ public class MainDB {
         mode = _mode;
 
         vmwareVNs.clear();
-        vmwareVMs.clear();
+        //vmwareVMs.clear();
+
+        SortedMap<String, VirtualNetworkInfo> newVNs = vncDB.readVirtualNetworks();
+        sync(oldVNs, newVNs);
+        oldVNs = newVNs; 
 
         vmwareVNs = vcenterDB.readVirtualNetworks();
-        SortedMap<String, VirtualNetworkInfo> oldVNs = vncDB.readVirtualNetworks();
-        sync(oldVNs, vmwareVNs);
-
+        update(vmwareVNs, newVNs);
+        /* TBD:clear
         vmwareVMs = vcenterDB.readVirtualMachines();
         SortedMap<String, VirtualMachineInfo> oldVMs = vncDB.readVirtualMachines();
         VRouterNotifier.syncVrouterAgent();
-        sync(oldVMs, vmwareVMs);
+        sync(oldVMs, vmwareVMs);*/
 
         printInfo();
     }

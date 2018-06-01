@@ -186,12 +186,12 @@ public class VCenterMonitor {
         _eventMonitor.start();
         s_logger.info("Notify task started.");
 
-        // Launch the periodic VRouterMonitorTask
-        VRouterMonitorTask _monitorTask = new VRouterMonitorTask();
-        s_logger.info("Starting vrouter periodic monitor task.. ");
-        scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 8, //8 second periodic
-                TimeUnit.SECONDS);
-        s_logger.info("Periodic monitor task started.");
+        //TBD:clean  Launch the periodic VRouterMonitorTask
+        //VRouterMonitorTask _monitorTask = new VRouterMonitorTask();
+        //s_logger.info("Starting vrouter periodic monitor task.. ");
+        //scheduledTaskExecutor.scheduleWithFixedDelay(_monitorTask, 0, 8, //8 second periodic
+        //        TimeUnit.SECONDS);
+        //s_logger.info("Periodic monitor task started.");
 
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));
