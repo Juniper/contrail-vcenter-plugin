@@ -185,7 +185,7 @@ public class VncDB {
         }
 
         // create objects specific to VCENTER_ONLY mode
-        // Check if Vmware Project exists on VNC. If not, create one.
+        // Check if Vmware Project exists on VNC.
         try {
             vCenterProject = (Project) apiConnector.findByFQN(Project.class,
                                         VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT);
@@ -195,26 +195,7 @@ public class VncDB {
             return false;
         }
 
-        if (vCenterProject == null) {
-            s_logger.info(" vCenter project not present, creating ");
-            vCenterProject = new Project();
-            vCenterProject.setName("vCenter");
-            vCenterProject.setIdPerms(vCenterIdPerms);
-            try {
-                if (!apiConnector.create(vCenterProject).isSuccess()) {
-                    s_logger.error("Unable to create project: " + vCenterProject.getName());
-                    return false;
-                }
-            } catch (Exception e) {
-                s_logger.error("Exception in creating vcenter object: " + e);
-                s_logger.error(Throwables.getStackTraceAsString(e));
-                return false;
-            }
-        } else {
-            s_logger.info(" vCenter project present, continue ");
-        }
-
-        // Check if VMWare vCenter-ipam exists on VNC. If not, create one.
+        // Check if VMWare vCenter-ipam exists on VNC.
         try {
             vCenterIpam = (NetworkIpam) apiConnector.findByFQN(NetworkIpam.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_IPAM);
@@ -223,27 +204,8 @@ public class VncDB {
             s_logger.error(Throwables.getStackTraceAsString(e));
             return false;
         }
-
-        if (vCenterIpam == null) {
-            s_logger.info(" vCenter Ipam not present, creating ...");
-            vCenterIpam = new NetworkIpam();
-            vCenterIpam.setParent(vCenterProject);
-            vCenterIpam.setName("vCenter-ipam");
-            vCenterIpam.setIdPerms(vCenterIdPerms);
-            try {
-                if (!apiConnector.create(vCenterIpam).isSuccess()) {
-                    s_logger.error("Unable to create Ipam: " + vCenterIpam.getName());
-                }
-            } catch (Exception e) {
-                s_logger.error("Exception in network Ipam create: " + e);
-                s_logger.error(Throwables.getStackTraceAsString(e));
-                return false;
-            }
-        } else {
-            s_logger.info(" vCenter Ipam present, continue ");
-        }
-
-        // Check if VMWare vCenter default security-group exists on VNC. If not, create one.
+        
+        // Check if VMWare vCenter default security-group exists on VNC.
         try {
             vCenterDefSecGrp = (SecurityGroup) apiConnector.findByFQN(SecurityGroup.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_DEFAULT_SG);
@@ -252,63 +214,7 @@ public class VncDB {
             s_logger.error(Throwables.getStackTraceAsString(e));
             return false;
         }
-
-        if (vCenterDefSecGrp == null) {
-            s_logger.info(" vCenter default Security-group not present, creating ...");
-            vCenterDefSecGrp = new SecurityGroup();
-            vCenterDefSecGrp.setParent(vCenterProject);
-            vCenterDefSecGrp.setName("default");
-            vCenterDefSecGrp.setIdPerms(vCenterIdPerms);
-
-            PolicyEntriesType sg_rules = new PolicyEntriesType();
-
-            PolicyRuleType ingress_rule =
-                              new PolicyRuleType(
-                                      null,
-                                      UUID.randomUUID().toString(),
-                                      ">",
-                                      "any",
-                                       Arrays.asList(new AddressType(null, null, VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + "default", null, null)),
-                                       Arrays.asList(new PortType(0,65535)), //src_ports
-                                       null, //application
-                                       Arrays.asList(new AddressType(null, null, "local", null, null)),
-                                       Arrays.asList(new PortType(0,65535)), //dest_ports
-                                       null, // action_list
-                                       "IPv4"); // ethertype
-            sg_rules.addPolicyRule(ingress_rule);
-
-            PolicyRuleType egress_rule  =
-                              new PolicyRuleType(
-                                      null,
-                                      UUID.randomUUID().toString(),
-                                      ">",
-                                      "any",
-                                       Arrays.asList(new AddressType(null, null, "local", null, null)),
-                                       Arrays.asList(new PortType(0,65535)), //src_ports
-                                       null, //application
-                                       Arrays.asList(new AddressType(new SubnetType("0.0.0.0", 0), null, null, null, null)),
-                                       Arrays.asList(new PortType(0,65535)), //dest_ports
-                                       null, // action_list
-                                       "IPv4"); // ethertype);
-            sg_rules.addPolicyRule(egress_rule);
-
-            vCenterDefSecGrp.setEntries(sg_rules);
-
-            try {
-                if (!apiConnector.create(vCenterDefSecGrp).isSuccess()) {
-                    s_logger.error("Unable to create defSecGrp: " + vCenterDefSecGrp.getName());
-                }
-            } catch (Exception e) {
-                s_logger.error("Exception : " + e);
-                String stackTrace = Throwables.getStackTraceAsString(e);
-                s_logger.error(stackTrace);
-                return false;
-            }
-        } else {
-            s_logger.info(" vCenter default sec-group present, continue ");
-        }
-
-
+        
         return true;
     }
 
@@ -810,7 +716,7 @@ public class VncDB {
     }
 
     @SuppressWarnings("unchecked")
-    SortedMap<String, VirtualNetworkInfo> readVirtualNetworks() {
+    public SortedMap<String, VirtualNetworkInfo> readVirtualNetworks() {
         s_logger.info("Start reading virtual networks from the API server ...");
 
         SortedMap<String, VirtualNetworkInfo>  map =
@@ -831,12 +737,6 @@ public class VncDB {
                 apiConnector.read(vn);
                 // Ignore network ?
                 if (doIgnoreVirtualNetwork(vn.getName())) {
-                    continue;
-                }
-                // Ignore objects where creator isn't "vcenter-plugin"
-                if ((mode == Mode.VCENTER_ONLY) &&
-                        ((vn.getIdPerms().getCreator() == null)  ||
-                    !(vn.getIdPerms().getCreator().equals(VNC_VCENTER_PLUGIN)))) {
                     continue;
                 }
                 VirtualNetworkInfo vnInfo = new VirtualNetworkInfo(vn);
