@@ -30,6 +30,7 @@ import com.vmware.vim25.VmReconfiguredEvent;
 import com.vmware.vim25.VmRemovedEvent;
 import com.vmware.vim25.VmRenamedEvent;
 import com.vmware.vim25.VmSuspendedEvent;
+import com.vmware.vim25.VmMessageEvent;
 
 public class VCenterEventHandler {
     VCenterDB vcenterDB;
@@ -54,6 +55,7 @@ public class VCenterEventHandler {
             || event instanceof DrsVmMigratedEvent
             || event instanceof DrsVmPoweredOnEvent
             || event instanceof VmMigratedEvent
+            || event instanceof VmMessageEvent
             || event instanceof VmPoweredOnEvent
             || event instanceof VmPoweredOffEvent
             || event instanceof VmSuspendedEvent) {
