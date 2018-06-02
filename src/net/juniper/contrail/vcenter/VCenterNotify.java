@@ -790,7 +790,9 @@ public class VCenterNotify implements Runnable
             "DrsVmMigratedEvent",
             "VmMigratedEvent",
             // VM delete events
-            "VmRemovedEvent"
+            "VmRemovedEvent",
+            // VM message event
+            "VmMessageEvent",
         };
 
         watchManagedObjectEvents(dc, eventNames);
