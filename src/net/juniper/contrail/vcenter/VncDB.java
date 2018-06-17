@@ -185,7 +185,7 @@ public class VncDB {
         }
 
         // create objects specific to VCENTER_ONLY mode
-        // Check if Vmware Project exists on VNC. If not, create one.
+        // Check if Vmware Project exists on VNC.
         try {
             vCenterProject = (Project) apiConnector.findByFQN(Project.class,
                                         VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT);
@@ -214,7 +214,7 @@ public class VncDB {
             s_logger.info(" vCenter project present, continue ");
         }
 
-        // Check if VMWare vCenter-ipam exists on VNC. If not, create one.
+        // Check if VMWare vCenter-ipam exists on VNC.
         try {
             vCenterIpam = (NetworkIpam) apiConnector.findByFQN(NetworkIpam.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_IPAM);
@@ -242,8 +242,8 @@ public class VncDB {
         } else {
             s_logger.info(" vCenter Ipam present, continue ");
         }
-
-        // Check if VMWare vCenter default security-group exists on VNC. If not, create one.
+        
+        // Check if VMWare vCenter default security-group exists on VNC.
         try {
             vCenterDefSecGrp = (SecurityGroup) apiConnector.findByFQN(SecurityGroup.class,
                        VNC_ROOT_DOMAIN + ":" + VNC_VCENTER_PROJECT + ":" + VNC_VCENTER_DEFAULT_SG);
@@ -307,7 +307,6 @@ public class VncDB {
         } else {
             s_logger.info(" vCenter default sec-group present, continue ");
         }
-
 
         return true;
     }
@@ -810,7 +809,7 @@ public class VncDB {
     }
 
     @SuppressWarnings("unchecked")
-    SortedMap<String, VirtualNetworkInfo> readVirtualNetworks() {
+    public SortedMap<String, VirtualNetworkInfo> readVirtualNetworks() {
         s_logger.info("Start reading virtual networks from the API server ...");
 
         SortedMap<String, VirtualNetworkInfo>  map =
@@ -831,12 +830,6 @@ public class VncDB {
                 apiConnector.read(vn);
                 // Ignore network ?
                 if (doIgnoreVirtualNetwork(vn.getName())) {
-                    continue;
-                }
-                // Ignore objects where creator isn't "vcenter-plugin"
-                if ((mode == Mode.VCENTER_ONLY) &&
-                        ((vn.getIdPerms().getCreator() == null)  ||
-                    !(vn.getIdPerms().getCreator().equals(VNC_VCENTER_PLUGIN)))) {
                     continue;
                 }
                 VirtualNetworkInfo vnInfo = new VirtualNetworkInfo(vn);
