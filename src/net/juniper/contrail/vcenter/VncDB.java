@@ -845,6 +845,8 @@ public class VncDB {
 
             } catch (Exception e) {
                 s_logger.error("Cannot read VN " + vn.getName());
+                s_logger.error("Exception in readVirtualNetworks");
+                s_logger.error(Throwables.getStackTraceAsString(e));
             }
         }
 
