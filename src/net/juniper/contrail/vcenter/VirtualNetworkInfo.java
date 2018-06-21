@@ -121,7 +121,7 @@ public class VirtualNetworkInfo extends VCenterObject {
         uuid = vn.getUuid();
         name = vn.getName();
         vmiInfoMap = new ConcurrentSkipListMap<String, VirtualMachineInterfaceInfo>();
-        externalIpam = vn.getExternalIpam();
+        externalIpam = false; // vn.getExternalIpam(); FIXME:temprary workaround for plugin exception during network read
 
         readIpAm();
     }
