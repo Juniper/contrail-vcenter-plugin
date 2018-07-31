@@ -5,5 +5,4 @@ public abstract class VCenterObject {
     abstract void update(VCenterObject obj, VncDB vnc) throws Exception;
     abstract void delete(VncDB vnc) throws Exception;
     abstract void sync(VCenterObject obj, VncDB vncDB) throws Exception;
-    abstract String getName(); 
 }
