@@ -5,7 +5,6 @@
 package net.juniper.contrail.vcenter;
 
 import java.io.*;
-import java.util.*; 
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.URL;
@@ -61,10 +60,6 @@ import com.vmware.vim25.mo.VirtualMachine;
 import com.vmware.vim25.mo.VmwareDistributedVirtualSwitch;
 import com.vmware.vim25.mo.ComputeResource;
 import com.vmware.vim25.mo.ClusterComputeResource;
-import com.vmware.vim25.mo.Task;
-import com.vmware.vim25.*;
-import com.vmware.vim25.mo.*;
-import com.vmware.vim25.mo.util.*;
 
 public class VCenterDB {
     private static final Logger s_logger =
@@ -784,12 +779,12 @@ public class VCenterDB {
             s_logger.error(msg);
             throw new RemoteException(msg, e);
         }
-        
+
         if (dpg == null) {
             String msg = "Failed to retrieve " + description;
             s_logger.error(msg);
             throw new RemoteException(msg);
-        } 
+        }
 
         s_logger.info("Found " + description);
         return dpg;
@@ -1130,68 +1125,4 @@ public class VCenterDB {
     public VmwareDistributedVirtualSwitch getContrailDvs() {
         return contrailDVS;
     }
-
-    private static TaskInfo waitFor(Task task) throws RemoteException, InterruptedException {
-        while(true)
-        {
-            TaskInfo ti = task.getTaskInfo();
-            TaskInfoState state = ti.getState();
-            if(state == TaskInfoState.success || state == TaskInfoState.error)
-            {
-                return ti;
-            }
-            Thread.sleep(1000);
-        }
-    }
-
-    public DistributedVirtualPortgroup createVmwareDPG(VmwareDistributedVirtualSwitch dvs, String vnName)
-            throws DvsFault, DuplicateName, InvalidName, RuntimeFault, RemoteException, InterruptedException {
-        // create port group under this DVS 
-        DVPortgroupConfigSpec dvpgs = new DVPortgroupConfigSpec();
-        dvpgs.setName(vnName);
-        dvpgs.setNumPorts(128);
-        dvpgs.setType("earlyBinding");
-
-        VMwareDVSPortgroupPolicy pgPolicy = new VMwareDVSPortgroupPolicy();
-        pgPolicy.setBlockOverrideAllowed(true);
-        pgPolicy.setVlanOverrideAllowed(true);
-        dvpgs.setPolicy(pgPolicy);
-
-        VMwareDVSPortSetting dvsPort = new VMwareDVSPortSetting();
-        dvpgs.setDefaultPortConfig(dvsPort);
-        
-        DVPortgroupConfigSpec[] portGroups = new DVPortgroupConfigSpec[] {dvpgs};
-        Task task_pg = dvs.addDVPortgroup_Task(portGroups);
-
-        TaskInfo ti = waitFor(task_pg);
-
-        if(ti.getState() == TaskInfoState.error)
-        {
-            s_logger.error("Failed to create a new DVS.");
-            return null;
-        }
-        ManagedObjectReference pgMor = (ManagedObjectReference) ti.getResult();
-        DistributedVirtualPortgroup pg = (DistributedVirtualPortgroup)
-        MorUtil.createExactManagedEntity(dvs.getServerConnection(), pgMor);
-        return pg;
-    }
-
-    public void deleteVmwarePG(final DistributedVirtualPortgroup portGroup)
-        throws RemoteException {
-        try
-        {
-            portGroup.destroy_Task();
-        }
-        catch (Exception e)
-        {
-            String message =
-                "Could not delete the port group '" + portGroup.getName() + "' because of: "
-                    + e.getMessage();
-
-            s_logger.error(message);
-            throw new RemoteException(message, e);
-        }
-    }
-
-
 }
