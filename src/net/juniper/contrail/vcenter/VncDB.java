@@ -37,6 +37,7 @@ import net.juniper.contrail.api.types.IpamSubnetType;
 import net.juniper.contrail.api.types.PortType;
 import net.juniper.contrail.api.types.Project;
 import net.juniper.contrail.api.types.IdPermsType;
+import net.juniper.contrail.api.types.PermType2;
 import com.google.common.base.Throwables;
 import com.google.common.net.InetAddresses;
 
@@ -587,10 +588,13 @@ public class VncDB {
         }
 
         String vmUuid = vmInfo.getUuid();
+        PermType2 perm2 = new PermType2();
+        perm2.setOwner(vCenterProject.getUuid());
         VirtualMachine vm = new VirtualMachine();
         vmInfo.apiVm = vm;
         vm.setName(vmUuid);
         vm.setUuid(vmUuid);
+        vm.setPerms2(perm2);
 
         // Encode VRouter IP address in display name
         if (vmInfo.getVrouterIpAddress() != null) {
