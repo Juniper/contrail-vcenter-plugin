@@ -384,8 +384,15 @@ public class VCenterDB {
                     throws Exception {
         // Find if vRouter Ip Fabric mapping exists..
         String vRouterIpAddress = esxiToVRouterIpMap.get(hostName);
+        if (vRouterIpAddress == null) {
+            s_logger.error("No vRouter-ip exists for Host: " + hostName +
+                   ". Host not managed by Contrail");
+        }
+
         if (host.getRuntime().isInMaintenanceMode()) {
-            VRouterNotifier.setVrouterActive(vRouterIpAddress, false);
+            if (vRouterIpAddress != null) {
+                VRouterNotifier.setVrouterActive(vRouterIpAddress, false);
+            }
         }
 
         if (vRouterIpAddress != null) {
@@ -1089,7 +1096,8 @@ public class VCenterDB {
             vmiInfo.setMacAddress(getVirtualMachineMacAddress(vm.getConfig(), vnInfo.getDpg()));
 
             if (mode != Mode.VCENTER_AS_COMPUTE && vnInfo.getExternalIpam() ){
-                if (vmInfo.getToolsRunningStatus().equals(
+                if ((vmInfo.getToolsRunningStatus() != null) &&
+                    vmInfo.getToolsRunningStatus().equals(
                         VirtualMachineToolsRunningStatus.guestToolsRunning.toString())) {
                     // static IP Address & vmWare tools installed
                     // see if we can read it from Guest Nic Info

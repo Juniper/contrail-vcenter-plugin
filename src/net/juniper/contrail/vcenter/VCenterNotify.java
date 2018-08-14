@@ -529,7 +529,8 @@ public class VCenterNotify implements Runnable
                     s_logger.info("Set toolsRunning status to " + toolsRunningStatus + " for " + vmInfo);
                     vmInfo.setToolsRunningStatus(toolsRunningStatus);
                 }
-                if (vmInfo.getToolsRunningStatus().equals(
+                if ((vmInfo.getToolsRunningStatus() != null) &&
+                    vmInfo.getToolsRunningStatus().equals(
                         VirtualMachineToolsRunningStatus.guestToolsRunning.toString())) {
                     vmInfo.updatedGuestNics(nics, vncDB);
                 } else {

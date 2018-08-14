@@ -118,7 +118,12 @@ public class MainDB {
                     newEntry = newIter.hasNext()? newIter.next() : null;
                 } else if (cmp < 0) {
                     if (mode != Mode.VCENTER_AS_COMPUTE) {
-                        newEntry.getValue().create(vncDB);
+                        try {
+                            newEntry.getValue().create(vncDB);
+                        } catch (Exception e) {
+                            s_logger.error("Exception during create of new [" +
+                                newEntry.getKey() + ", " + newEntry.getValue() + "]" );
+                        }
                     }
                     newEntry = newIter.hasNext()? newIter.next() : null;
                 } else {

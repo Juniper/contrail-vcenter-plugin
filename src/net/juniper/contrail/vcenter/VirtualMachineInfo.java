@@ -16,8 +16,11 @@ import com.vmware.vim25.Event;
 import com.vmware.vim25.GuestNicInfo;
 import com.vmware.vim25.GuestInfo;
 import com.vmware.vim25.ManagedObjectReference;
+import org.apache.log4j.Logger;
 
 public class VirtualMachineInfo extends VCenterObject {
+    private static final Logger s_logger =
+            Logger.getLogger(VirtualMachineInfo.class);
     private String uuid; // required attribute, key for this object
     private String name;
     private String displayName;
@@ -425,7 +428,12 @@ public class VirtualMachineInfo extends VCenterObject {
             return;
         }
 
-        vncDB.createVirtualMachine(this);
+        try {
+          vncDB.createVirtualMachine(this);
+        } catch (Exception e) {
+          s_logger.error("Exception during create of VM [" +
+                          this.uuid + ", " + this.name + "]" );
+        }
 
         for (Map.Entry<String, VirtualMachineInterfaceInfo> entry:
             vmiInfoMap.entrySet()) {
