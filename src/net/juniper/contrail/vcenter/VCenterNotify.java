@@ -637,7 +637,6 @@ public class VCenterNotify implements Runnable
                     Thread.sleep(5000);
                 }
 
-                syncNeeded = true;
                 // Perform sync between VNC and VCenter DBs.
                 if (syncNeeded) {
                     s_logger.info("+++++++++++++ Start syncing  +++++++++++++++++++++");
@@ -660,13 +659,11 @@ public class VCenterNotify implements Runnable
                     }
 
                     TaskWatchDog.stopMonitoring(this);
-                    Thread.sleep(5000);
 
                     s_logger.info("+++++++++++++ Done syncing +++++++++++++++++++++");
                 }
 
                 s_logger.info("+++++++++++++ Waiting for events +++++++++++++++++++++");
-                /* TBD:clean 
                 try
                 {
                     WaitOptions wOpt = new WaitOptions();
@@ -705,7 +702,7 @@ public class VCenterNotify implements Runnable
                     vCenterConnected = false;
                     s_logger.error("Error in event handling, reconnect and resync needed");
                     s_logger.error(Throwables.getStackTraceAsString(e));
-                } */
+                }
             }
         } catch (Exception e)
         {
@@ -742,6 +739,7 @@ public class VCenterNotify implements Runnable
 
         createDvsEventFilter(vcenterDB.getContrailDvs());
 
+        createDatacenterEventFilter(vcenterDB.getDatacenter());
     }
 
     private void createDvsEventFilter(VmwareDistributedVirtualSwitch dvs)
