@@ -61,10 +61,6 @@ public class VirtualMachineInterfaceInfo extends VCenterObject {
         this.uuid = vmiInfo.uuid;
     }
 
-    public String getName() {
-        return uuid;
-    }
-
     public String getUuid() {
         return uuid;
     }
