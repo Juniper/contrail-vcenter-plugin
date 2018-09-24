@@ -631,12 +631,20 @@ public class VCenterNotify implements Runnable
                     version = "";
                     syncNeeded = true;
                 }
+                // we will yield mastership if we couldn't get response
+                // from api server after 10 attempts which is 50 Sec.
 
-                while (vncDB.isVncApiServerAlive() == false) {
+                short retryAttempt = 10;
+                while (vncDB.isVncApiServerAlive() == false &&  retryAttempt > 0) {
                     s_logger.info("Waiting for API server... ");
+                    retryAttempt--;
                     Thread.sleep(5000);
                 }
-
+                
+                if (retryAttempt == 0) {
+                    System.exit(0);
+                }
+                 
                 syncNeeded = true;
                 // Perform sync between VNC and VCenter DBs.
                 if (syncNeeded) {
