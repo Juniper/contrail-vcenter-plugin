@@ -641,6 +641,8 @@ public class VCenterNotify implements Runnable
                 }
                 
                 if (retryAttempt == 0) {
+                    VCenterMonitor.zookeeperClose();
+                    s_logger.error("API server is down, so yielding mastership and exist");
                     System.exit(0);
                 }
                  
