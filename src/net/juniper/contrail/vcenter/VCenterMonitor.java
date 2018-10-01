@@ -87,6 +87,14 @@ public class VCenterMonitor {
         return zk_ms.isLeader();
     }
 
+    public static void zookeeperClose() {
+        try {
+            zk_ms.close();
+        } catch (IOException e) {
+            s_logger.error("zookeeper client close failed " + e);
+        }
+    }
+
     private static Properties readVcenterPluginConfigFile() {
         final Properties configProps = new Properties();
         File configFile = new File(_configurationFile);
