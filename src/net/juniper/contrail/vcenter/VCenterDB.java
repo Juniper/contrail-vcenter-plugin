@@ -882,7 +882,7 @@ public class VCenterDB {
     public SortedMap<String, VirtualNetworkInfo> readVirtualNetworks()
             throws Exception {
 
-        s_logger.info("Start reading virtual networks from vcenter ...");
+        s_logger.debug("Start reading virtual networks from vcenter ...");
 
         SortedMap<String, VirtualNetworkInfo> map =
                 new ConcurrentSkipListMap<String, VirtualNetworkInfo>();
@@ -923,12 +923,12 @@ public class VCenterDB {
                             this, dvPgs[i], pTables[i], contrailDC, contrailDataCenterName,
                             contrailDVS, contrailDvSwitchName);
 
-            s_logger.info("Read from vcenter " + vnInfo + ", ipPoolId " + vnInfo.getIpPoolId());
+            s_logger.debug("Read from vcenter " + vnInfo + ", ipPoolId " + vnInfo.getIpPoolId());
             VCenterNotify.watchVn(vnInfo);
             map.put(vnInfo.getUuid(), vnInfo);
         }
 
-        s_logger.info("Done reading from vcenter, found " + map.size() + " Virtual Networks");
+        s_logger.debug("Done reading from vcenter, found " + map.size() + " Virtual Networks");
         return map;
     }
 
