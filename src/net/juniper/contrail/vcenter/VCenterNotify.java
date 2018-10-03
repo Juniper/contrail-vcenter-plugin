@@ -218,7 +218,7 @@ public class VCenterNotify implements Runnable
             }
             return;
         }
-        s_logger.info("Now watching VN with MOR " + key + ", " + vnInfo);
+        s_logger.debug("Now watching VN with MOR " + key + ", " + vnInfo);
         watchedVNs.put(key, vnInfo.getUuid());
         watchManagedObject(vnInfo.dpg, ipPoolProps);
     }
@@ -649,7 +649,7 @@ public class VCenterNotify implements Runnable
                 syncNeeded = true;
                 // Perform sync between VNC and VCenter DBs.
                 if (syncNeeded) {
-                    s_logger.info("+++++++++++++ Start syncing  +++++++++++++++++++++");
+                    s_logger.debug("+++++++++++++ Start syncing  +++++++++++++++++++++");
 
                     TaskWatchDog.startMonitoring(this, "Sync",
                             300000, TimeUnit.MILLISECONDS);
@@ -671,50 +671,9 @@ public class VCenterNotify implements Runnable
                     TaskWatchDog.stopMonitoring(this);
                     Thread.sleep(5000);
 
-                    s_logger.info("+++++++++++++ Done syncing +++++++++++++++++++++");
+                    s_logger.debug("+++++++++++++ Done syncing +++++++++++++++++++++");
                 }
 
-                s_logger.info("+++++++++++++ Waiting for events +++++++++++++++++++++");
-                /* TBD:clean 
-                try
-                {
-                    WaitOptions wOpt = new WaitOptions();
-                    wOpt.setMaxWaitSeconds(VCENTER_WAIT_FOR_UPDATES_SERVER_TIMEOUT);
-                    for ( ; ; ) {
-                        vcenterDB.setReadTimeout(VCENTER_WAIT_FOR_UPDATES_READ_TIMEOUT);
-                        TaskWatchDog.startMonitoring(this, "WaitForUpdatesEx",
-                                VCENTER_WAIT_FOR_UPDATES_READ_TIMEOUT + VCENTER_TIMEOUT_DELTA,
-                                TimeUnit.MILLISECONDS);
-                        UpdateSet update = propColl.waitForUpdatesEx(version, wOpt);
-                        TaskWatchDog.stopMonitoring(this);
-                        if (update != null && update.getFilterSet() != null)
-                        {
-                            this.handleUpdate(update);
-                            version = update.getVersion();
-                        } else
-                        {
-                            vcenterDB.setReadTimeout(VCENTER_READ_TIMEOUT);
-                            TaskWatchDog.startMonitoring(this, "AlivenessCheck",
-                                    VCENTER_READ_TIMEOUT + VCENTER_TIMEOUT_DELTA,
-                                    TimeUnit.MILLISECONDS);
-                            if (vcenterDB.isAlive() == false) {
-                                s_logger.error("Vcenter connection lost, reconnect and resync needed");
-                                vCenterConnected = false;
-                                TaskWatchDog.stopMonitoring(this);
-                                break;
-                            }
-                            TaskWatchDog.stopMonitoring(this);
-                        }
-                    }
-                } catch (RemoteException e)  {
-                    vCenterConnected = false;
-                    s_logger.info("Vcenter disconnected, reconnect and resync needed: " + e);
-                    s_logger.info(Throwables.getStackTraceAsString(e));
-                } catch (Exception e) {
-                    vCenterConnected = false;
-                    s_logger.error("Error in event handling, reconnect and resync needed");
-                    s_logger.error(Throwables.getStackTraceAsString(e));
-                } */
             }
         } catch (Exception e)
         {

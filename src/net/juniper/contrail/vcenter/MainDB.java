@@ -122,6 +122,7 @@ public class MainDB {
                 } else if (cmp < 0) {
                     if (mode != Mode.VCENTER_AS_COMPUTE) {
                         vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(), newEntry.getValue().getName());
+                        s_logger.info("Create Vmware DPG [" + newEntry.getValue().getName() + "]" );
                     }
                     newEntry = newIter.hasNext()? newIter.next() : null;
                 } else {
@@ -129,6 +130,7 @@ public class MainDB {
                         vcenterDB.deleteVmwarePG(vcenterDB.getVmwareDpg(oldEntry.getValue().getName(),
                        	        vcenterDB.getContrailDvs(), vcenterDB.contrailDvSwitchName,
                                 vcenterDB.contrailDataCenterName));
+                        s_logger.info("Delete Vmware DPG [" + oldEntry.getValue().getName() + "]" );
                     }
                     oldEntry = oldIter.hasNext()? oldIter.next() : null;
                 }
@@ -141,6 +143,7 @@ public class MainDB {
         while (newEntry != null) {
             try {
                 vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(), newEntry.getValue().getName());
+                s_logger.info("Create Vmware DPG [" + newEntry.getValue().getName() + "]" );
             } catch (Exception e) {
                 s_logger.error("Cannot create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
             }
@@ -177,6 +180,7 @@ public class MainDB {
             if (newVncVn) {
                 try {
                     vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(), newEntry.getValue().getName());
+                    s_logger.info("Create Vmware DPG [" + newEntry.getValue().getName() + "]" );
                 } catch (Exception e) {
                     s_logger.error("Cannot create new ["  + newEntry.getKey() + ", " + newEntry.getValue() + "]" );
                 }
@@ -208,6 +212,7 @@ public class MainDB {
                     vcenterDB.deleteVmwarePG(vcenterDB.getVmwareDpg(oldEntry.getValue().getName(),
                             vcenterDB.getContrailDvs(), vcenterDB.contrailDvSwitchName,
                             vcenterDB.contrailDataCenterName));
+                    s_logger.info("Delete Vmware DPG [" + oldEntry.getValue().getName() + "]" );
                 } catch (Exception e) {
                     s_logger.error("Cannot delete ["  + oldEntry.getKey() + ", " + oldEntry.getValue() + "]" );
                 }

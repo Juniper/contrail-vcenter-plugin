@@ -153,7 +153,7 @@ public class VncDB {
         }
 
         // Read project list as a life check
-        s_logger.info(" Checking if api-server is alive and kicking..");
+        s_logger.debug(" Checking if api-server is alive and kicking..");
 
         try {
             @SuppressWarnings("unchecked")
@@ -169,7 +169,7 @@ public class VncDB {
         }
 
         alive = true;
-        s_logger.info(" Api-server alive. Got the pulse..");
+        s_logger.debug(" Api-server alive. Got the pulse..");
         return true;
 
     }
@@ -814,7 +814,7 @@ public class VncDB {
 
     @SuppressWarnings("unchecked")
     public SortedMap<String, VirtualNetworkInfo> readVirtualNetworks() {
-        s_logger.info("Start reading virtual networks from the API server ...");
+        s_logger.debug("Start reading virtual networks from the API server ...");
 
         SortedMap<String, VirtualNetworkInfo>  map =
                 new ConcurrentSkipListMap<String, VirtualNetworkInfo>();
@@ -847,7 +847,7 @@ public class VncDB {
             }
         }
 
-        s_logger.info("Done reading from the API server, found " + map.size() + " Virtual Networks");
+        s_logger.debug("Done reading from the API server, found " + map.size() + " Virtual Networks");
         return map;
     }
 
