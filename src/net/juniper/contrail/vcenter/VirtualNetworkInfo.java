@@ -310,7 +310,7 @@ public class VirtualNetworkInfo extends VCenterObject {
             VmwareDistributedVirtualSwitchVlanIdSpec vlanIdSpec =
                     (VmwareDistributedVirtualSwitchVlanIdSpec) vlanSpec;
             primaryVlanId = isolatedVlanId = (short)vlanIdSpec.getVlanId();
-            s_logger.info(this + " VlanType = VLAN " + " VlanId = " + primaryVlanId);
+            s_logger.debug(this + " VlanType = VLAN " + " VlanId = " + primaryVlanId);
         } else {
             s_logger.error(this + " Cannot populate vlan, invalid vlan spec: " + vlanSpec);
         }
@@ -390,7 +390,7 @@ public class VirtualNetworkInfo extends VCenterObject {
             ipPoolEnabled = ipConfigInfo.getIpPoolEnabled();
             range = ipConfigInfo.getRange();
             this.ipPoolId = ipPool.id;
-            s_logger.info("Set ipPoolId to " + ipPoolId + " for " + this);
+            s_logger.debug("Set ipPoolId to " + ipPoolId + " for " + this);
         } else {
             subnetAddress = null;
             subnetMask = null;
@@ -398,7 +398,7 @@ public class VirtualNetworkInfo extends VCenterObject {
             ipPoolEnabled = false;
             range = null;
             this.ipPoolId = null;
-            s_logger.info("Set ipPoolId to null for " + this);
+            s_logger.debug("Set ipPoolId to null for " + this);
         }
     }
 
