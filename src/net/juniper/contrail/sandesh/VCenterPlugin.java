@@ -40,20 +40,6 @@ public class VCenterPlugin {
          .append("</pluginSessions>");
     }
 
-    private VRouterStats vRouterStats;
-
-    public VRouterStats getVRouterStats() {
-        return vRouterStats;
-    }
-
-    public void setVRouterStats(VRouterStats vRouterStats) {
-        this.vRouterStats = vRouterStats;
-    }
-
-    private void writeFieldVRouterStats(StringBuilder s, int identifier) {
-        vRouterStats.writeObject(s, identifier);
-    }
-
     private volatile ApiServerInfo apiServerInfo;
 
     public ApiServerInfo getApiServerInfo() {
@@ -102,7 +88,6 @@ public class VCenterPlugin {
 
 
     public VCenterPlugin() {
-        vRouterStats = new VRouterStats();
         apiServerInfo = new ApiServerInfo();
         vCenterServerInfo = new VCenterServerInfo();
         vNetworkStats = new VNetworkStats();
@@ -119,7 +104,6 @@ public class VCenterPlugin {
         writeFieldMaster(s, inner_identifier++);
         if (master) {
             writeFieldPluginSessions(s, inner_identifier++);
-            writeFieldVRouterStats(s, inner_identifier++);
             writeFieldApiServerInfo(s, inner_identifier++);
             writeFieldVCenterServerInfo(s, inner_identifier++);
             writeFieldVNetworkStats(s, inner_identifier++);

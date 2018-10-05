@@ -7,12 +7,6 @@
    User is responsible for populating with the actual values of the response.
 */
 
-struct VRouterStats {
-    1: int total (link="vRoutersTotal");
-    2: int up (link="vRoutersUp");
-    3: int down (link="vRoutersDown");
-}
-
 struct ApiServerInfo {
 	1: string ipAddr;
 	2: int port;
@@ -31,10 +25,9 @@ struct VNetworkStats {
 struct VCenterPlugin {
 	1: bool master;
 	2: bool pluginState;
-	3: VRouterStats vRouterStats;
-	4: ApiServerInfo apiServerInfo;
-	5: VCenterServerInfo vCenterServerInfo;
-	6: VNetworkStats vNetworkStats;
+	3: ApiServerInfo apiServerInfo;
+	4: VCenterServerInfo vCenterServerInfo;
+	5: VNetworkStats vNetworkStats;
 }
 
 /* all requests to "/" are handled here */
@@ -43,18 +36,6 @@ request sandesh VCenterPluginReq {
 
 response sandesh VCenterPluginResp {
 	1: struct VCenterPlugin info;
-}
-
-
-request sandesh VRouterListReq {
-	1: optional bool total;
-	2: optional bool up;
-	3: optional bool down;
-	4: optional string ipAddr;
-}
-
-response sandesh VRouterListResp {
-	1: list<VRouterInfo> vRouters;
 }
 
 struct VirtualMachineInfo {
@@ -91,23 +72,6 @@ struct VirtualNetworkInfo {
 	6: string subnetAddress;
 	7: string subnetMask;
 	8: string gatewayAddress;
-}
-
-struct VRouterInfo {
-	1: string ipAddr
-		(link="vRouterDetail" && detail != "FULL", goto=":8085" && detail = "FULL");
-    2: bool state;
-    3: string EsxiHost;
-    4: list<VirtualNetworkInfo> vNetworks;
-    5: list<VirtualMachineInfo> vMachines;
-}
-
-request sandesh VRouterDetailReq {
-	1: string ipAddr;
-}
-
-response sandesh VRouterDetailResp {
-	1: VRouterDetail vRouter;
 }
 
 request sandesh TaskWatchDogReq {
