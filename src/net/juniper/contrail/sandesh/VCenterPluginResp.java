@@ -19,7 +19,6 @@ public class VCenterPluginResp {
         vCenterPluginInfo.setMaster(VCenterMonitor.isZookeeperLeader());
 
         if (VCenterMonitor.isZookeeperLeader()) {
-            populateVRouterStats();
             populateApiServerInfo();
             populateVCenterServerInfo();
             populatePluginState();
@@ -30,31 +29,8 @@ public class VCenterPluginResp {
     private void populatePluginState() {
         vCenterPluginInfo.setPluginSessions(
                 (vCenterPluginInfo.getApiServerInfo().getConnected() == true)
-                && (vCenterPluginInfo.getVCenterServerInfo().getConnected() == true)
-                && (( vCenterPluginInfo.getVRouterStats().getDown() == 0)));
-    }
-
-    private void populateVRouterStats() {
-        int up = 0;
-        int down = 0;
-
-        Map<String, ContrailVRouterApi> apiMap = VRouterNotifier.getVrouterApiMap();
-
-        if (apiMap == null) {
-            return;
-        }
-
-        for (Map.Entry<String, ContrailVRouterApi> entry: apiMap.entrySet()) {
-            Boolean active = (entry.getValue() != null);
-            if (active == Boolean.TRUE) {
-                up++;
-            } else {
-                down++;
-            }
-        }
-        vCenterPluginInfo.getVRouterStats().setTotal(apiMap.size());
-        vCenterPluginInfo.getVRouterStats().setUp(up);
-        vCenterPluginInfo.getVRouterStats().setDown(down);
+                && (vCenterPluginInfo.getVCenterServerInfo().getConnected() == true));
+                
     }
 
     private void populateApiServerInfo() {

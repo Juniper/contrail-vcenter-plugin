@@ -38,8 +38,6 @@ public class VCenterHttpServices {
 
     public static void registerHttpHandlers() {
         new VCenterPluginReqHttpHandler();
-        new VRouterListReqHttpHandler();
-        new VRouterDetailReqHttpHandler();
         new TaskWatchDogHttpHandler();
         new VNetworkListReqHttpHandler();
     }
