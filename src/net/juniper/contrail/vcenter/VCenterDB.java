@@ -1146,6 +1146,24 @@ public class VCenterDB {
 
     public DistributedVirtualPortgroup createVmwareDPG(VmwareDistributedVirtualSwitch dvs, String vnName)
             throws DvsFault, DuplicateName, InvalidName, RuntimeFault, RemoteException, InterruptedException {
+
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(rootFolder);
+        
+        DistributedVirtualPortgroup dpg = null;
+        try {
+            dpg = (DistributedVirtualPortgroup)inventoryNavigator.searchManagedEntity(
+                  "DistributedVirtualPortgroup", vnName);
+        } catch (RemoteException e ) {
+            // Silently discard the exception, since we are checking to just see
+            // port group already exists. We will proceed with creating port group
+            // anyways as we don't want exception for non-existing port group lead
+            // to not creating valid port group.
+        }
+        
+        if (dpg != null) {
+            return dpg;
+        }
+
         // create port group under this DVS 
         DVPortgroupConfigSpec dvpgs = new DVPortgroupConfigSpec();
         dvpgs.setName(vnName);
@@ -1167,7 +1185,7 @@ public class VCenterDB {
 
         if(ti.getState() == TaskInfoState.error)
         {
-            s_logger.error("Failed to create a new DVS.");
+            s_logger.error("Failed to create a new Distributed port group." + vnName);
             return null;
         }
         ManagedObjectReference pgMor = (ManagedObjectReference) ti.getResult();
@@ -1178,6 +1196,22 @@ public class VCenterDB {
 
     public void deleteVmwarePG(final DistributedVirtualPortgroup portGroup)
         throws RemoteException {
+        InventoryNavigator inventoryNavigator = new InventoryNavigator(rootFolder);
+        
+        DistributedVirtualPortgroup dpg = null;
+        try {
+            dpg = (DistributedVirtualPortgroup)inventoryNavigator.searchManagedEntity(
+                  "DistributedVirtualPortgroup", portGroup.getName());
+        } catch (RemoteException e ) {
+            // Silently discard the exception, since we are checking to just see
+            // port group already exists. We will proceed with deleting port group
+            // anyways as we don't want exception for existing port group lead
+            // to not deleting valid port group.
+        }
+        
+        if (dpg == null) {
+            return;
+        }
         try
         {
             portGroup.destroy_Task();
