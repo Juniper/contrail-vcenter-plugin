@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.SortedMap;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.TimeUnit;
 import org.apache.log4j.Logger;
 
 public class MainDB {
@@ -24,6 +25,8 @@ public class MainDB {
     private static volatile Mode mode;
     private final static Logger s_logger =
             Logger.getLogger(MainDB.class);
+    private final static int maxPollWorkTime = 5000; // Maximum work to be done during sync is 5 sec interval
+    private static volatile long startTime;
 
     public static SortedMap<String, VirtualNetworkInfo> getVNs() {
         return vmwareVNs;
@@ -103,6 +106,18 @@ public class MainDB {
         }
     }
 
+    private static void sleepDelta() {
+        long currTime = System.currentTimeMillis();
+        if (currTime - startTime >= maxPollWorkTime) {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (Exception e) {
+                s_logger.error("Unable to sleep for 1 sec");
+            }
+            startTime = System.currentTimeMillis();
+        }
+    }
+
     public static <K extends Comparable<K>, V extends VCenterObject>
     void sync(SortedMap<K, V> oldMap, SortedMap<K, V> newMap) {
 
@@ -111,22 +126,24 @@ public class MainDB {
         Iterator<Entry<K, V>> newIter = newMap.entrySet().iterator();
         Entry<K, V> newEntry = newIter.hasNext()? newIter.next() : null;
 
+        startTime = System.currentTimeMillis();
         while (oldEntry != null && newEntry != null) {
             Integer cmp = newEntry.getKey().compareTo(oldEntry.getKey());
             try {
-                
                 if (cmp == 0) {
                     oldEntry = oldIter.hasNext()? oldIter.next() : null;
                     newEntry = newIter.hasNext()? newIter.next() : null;
 
                 } else if (cmp < 0) {
                     if (mode != Mode.VCENTER_AS_COMPUTE) {
+                        sleepDelta();
                         vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(), newEntry.getValue().getName());
                         s_logger.info("Create Vmware DPG [" + newEntry.getValue().getName() + "]" );
                     }
                     newEntry = newIter.hasNext()? newIter.next() : null;
                 } else {
                     if (mode != Mode.VCENTER_AS_COMPUTE) {
+                        sleepDelta();
                         vcenterDB.deleteVmwarePG(vcenterDB.getVmwareDpg(oldEntry.getValue().getName(),
                        	        vcenterDB.getContrailDvs(), vcenterDB.contrailDvSwitchName,
                                 vcenterDB.contrailDataCenterName));
@@ -142,6 +159,7 @@ public class MainDB {
 
         while (newEntry != null) {
             try {
+                sleepDelta();
                 vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(), newEntry.getValue().getName());
                 s_logger.info("Create Vmware DPG [" + newEntry.getValue().getName() + "]" );
             } catch (Exception e) {
@@ -159,6 +177,7 @@ public class MainDB {
         Iterator<Entry<K, V>> newIter = newMap.entrySet().iterator();
         Entry<K, V> newEntry = newIter.hasNext()? newIter.next() : null;
 
+        startTime = System.currentTimeMillis();
         while (newEntry != null) {
             oldIter = oldMap.entrySet().iterator();
             oldEntry = oldIter.hasNext()? oldIter.next() : null;
@@ -179,6 +198,7 @@ public class MainDB {
             }
             if (newVncVn) {
                 try {
+                    sleepDelta();
                     vcenterDB.createVmwareDPG(vcenterDB.getContrailDvs(), newEntry.getValue().getName());
                     s_logger.info("Create Vmware DPG [" + newEntry.getValue().getName() + "]" );
                 } catch (Exception e) {
@@ -186,7 +206,7 @@ public class MainDB {
                 }
             }
             newEntry = newIter.hasNext()? newIter.next() : null;
-        } 
+        }
         oldIter = oldMap.entrySet().iterator();
         oldEntry = oldIter.hasNext()? oldIter.next() : null;
         while (oldEntry != null) {
@@ -209,6 +229,7 @@ public class MainDB {
             }
             if (newVcenterPg) {
                 try {
+                    sleepDelta();
                     vcenterDB.deleteVmwarePG(vcenterDB.getVmwareDpg(oldEntry.getValue().getName(),
                             vcenterDB.getContrailDvs(), vcenterDB.contrailDvSwitchName,
                             vcenterDB.contrailDataCenterName));
