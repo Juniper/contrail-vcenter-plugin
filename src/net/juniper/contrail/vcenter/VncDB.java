@@ -437,7 +437,8 @@ public class VncDB {
         // Ignore default, fabric, and link-local networks
         if (name.equals("__link_local__") ||
                 name.equals("default-virtual-network") ||
-                name.equals("ip-fabric")) {
+                name.equals("ip-fabric") ||
+                name.equals("dci-network")) {
             return true;
         }
         return false;
