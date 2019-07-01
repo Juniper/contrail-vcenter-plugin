@@ -9,7 +9,7 @@ target/curator-recipes-2.7.0.jar usr/share/contrail-vcenter-plugin/lib
 target/dom4j-1.6.1.jar usr/share/contrail-vcenter-plugin/lib
 target/guava-14.0.jar usr/share/contrail-vcenter-plugin/lib
 target/gson-1.7.1.jar usr/share/contrail-vcenter-plugin/lib
-target/httpclient-4.2.1.jar usr/share/contrail-vcenter-plugin/lib
+target/httpclient-4.3.6.jar usr/share/contrail-vcenter-plugin/lib
 target/httpcore-4.2.1.jar usr/share/contrail-vcenter-plugin/lib
 target/libthrift-0.8.0.jar usr/share/contrail-vcenter-plugin/lib
 target/log4j-1.2.16.jar usr/share/contrail-vcenter-plugin/lib

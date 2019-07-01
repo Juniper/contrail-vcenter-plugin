@@ -20,7 +20,7 @@ override_dh_auto_build:
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/dom4j/dom4j/1.6.1/dom4j-1.6.1.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/com/google/guava/guava/14.0/guava-14.0.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/com/google/code/gson/gson/1.7.1/gson-1.7.1.jar
-	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/apache/httpcomponents/httpclient/4.2.1/httpclient-4.2.1.jar
+	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/apache/httpcomponents/httpclient/4.3.6/httpclient-4.3.6.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/apache/httpcomponents/httpcore/4.2.1/httpcore-4.2.1.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/org/apache/thrift/libthrift/0.8.0/libthrift-0.8.0.jar
 	wget --directory-prefix=target http://repo.maven.apache.org/maven2/log4j/log4j/1.2.16/log4j-1.2.16.jar
