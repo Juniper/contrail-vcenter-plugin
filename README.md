@@ -1,2 +1,0 @@
-contrail-vcenter-plugin
-=======================

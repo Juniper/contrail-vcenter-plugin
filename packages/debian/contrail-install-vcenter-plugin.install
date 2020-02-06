@@ -1,7 +1,0 @@
-../libcontrail-vijava_3.0-SNAPSHOT_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
-../libcontrail-java-api_3.0-SNAPSHOT_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
-../libcontrail-vrouter-java-api_3.0-SNAPSHOT_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
-../contrail-vcenter-plugin_3.0-SNAPSHOT_all.deb /opt/contrail/contrail_vcenter_plugin_install_repo
-contrail-vcenter-plugin /usr/bin
-contrail-vcenter-plugin.conf /etc/init
-log4j.properties /usr/share/contrail-vcenter-plugin
